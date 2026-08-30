@@ -1,33 +1,6 @@
-import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig, type Plugin } from "vite";
-
-const rootDir = dirname(fileURLToPath(import.meta.url));
-const partialsDir = join(rootDir, "src/web/partials");
-const PARTIAL_RE = /<!--\s*partial:([\w.-]+)\s*-->/g;
-
-function htmlPartials(): Plugin {
-  return {
-    name: "html-partials",
-    transformIndexHtml: {
-      order: "pre",
-      handler(html) {
-        return html.replace(PARTIAL_RE, (_match, name: string) =>
-          readFileSync(join(partialsDir, name), "utf8"),
-        );
-      },
-    },
-    configureServer(server) {
-      server.watcher.add(partialsDir);
-    },
-    handleHotUpdate({ file, server }) {
-      if (file.startsWith(partialsDir)) {
-        server.ws.send({ type: "full-reload" });
-      }
-    },
-  };
-}
 
 function shareOpenPage(): Plugin {
   return {
@@ -47,7 +20,7 @@ function shareOpenPage(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [htmlPartials(), shareOpenPage()],
+  plugins: [svelte(), shareOpenPage()],
   build: {
     outDir: "dist/client",
     emptyOutDir: true,

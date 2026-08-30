@@ -154,7 +154,8 @@ describe("routes", () => {
     const response = await app.request("http://localhost/new");
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain("env-input");
+    expect(html).toContain('import Create from "/src/web/Create.svelte"');
+    expect(html).toContain('id="app"');
   });
 
   it("GET /s/:id is always 200", async () => {

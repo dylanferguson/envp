@@ -1,0 +1,52 @@
+@import "@fontsource/intel-one-mono/400.css";
+@import "@fontsource/intel-one-mono/500.css";
+
+:root {
+  --bg: #08090b;
+  --surface: #101215;
+  --hairline: #23262b;
+  --hairline-lit: #3b4048;
+  --fg: #d8dbe0;
+  --muted: #7c828b;
+  --phosphor: #48d597;
+  --teal: #0d2b22;
+  --teal-hover: #123d30;
+  --coral: #ff6a80;
+  --col: 44rem;
+  --font: "Intel One Mono", ui-monospace, monospace;
+  --tick: 0.68rem;
+  --track: 0.16em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  font-feature-settings: "ss01" on;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--phosphor);
+  color: var(--bg);
+}
