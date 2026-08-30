@@ -5,17 +5,20 @@ Browser-encrypted `.env` sharing. Paste on the create page, get a link. The decr
 ## Run locally
 
 ```bash
-npm install
-npm run dev
+mise install
+pnpm install
+pnpm dev
 ```
 
 Open `http://127.0.0.1:5173` for the UI. Vite proxies `/shares` to the API on port 8080.
 
+`mise.toml` pins Node 24.16.0 and pnpm 11.22.0. `mise install` in this directory uses those versions.
+
 Production-style single process:
 
 ```bash
-npm run build
-npm start
+pnpm build
+pnpm start
 ```
 
 Serves the built UI and API from one Node process on port 8080 (override with `PORT`).
@@ -64,8 +67,8 @@ Out of scope for v1. Target shape is a single Node process plus one SQLite file 
 ## Tests
 
 ```bash
-npm test
-npm run check   # typecheck + tests
+pnpm test
+pnpm check
 ```
 
 ## Issue
