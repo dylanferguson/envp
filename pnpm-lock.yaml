@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/intel-one-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@hono/node-server':
         specifier: 1.14.3
         version: 1.14.3(hono@4.13.5)
@@ -356,6 +359,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource/intel-one-mono@5.3.0':
+    resolution: {integrity: sha512-L9lZRv7C20zJ9Jz61aS7L3Lc4Z5laQ+CJIkGmGjwTtYKddMmR6R+tPg6anwlBQnsJNHn2E0hKLeTjSLLoq62eA==}
 
   '@hono/node-server@1.14.3':
     resolution: {integrity: sha512-KuDMwwghtFYSmIpr4WrKs1VpelTrptvJ+6x6mbUcZnFcc213cumTF5BdqfHyW93B19TNI4Vaev14vOI2a0Ie3w==}
@@ -1228,6 +1234,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@fontsource/intel-one-mono@5.3.0': {}
 
   '@hono/node-server@1.14.3(hono@4.13.5)':
     dependencies:

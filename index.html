@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>env-share</title>
+  </head>
+  <body>
+    <!-- partial:header.html -->
+
+    <main id="app">
+      <pre class="tree" id="cycle" aria-hidden="true"><span class="tree-node is-hold" data-step="paste">.env</span>
+<span class="tree-twig" data-twig="encrypt">├── </span><span class="tree-node" data-step="encrypt">encrypt in this tab</span>
+<span class="tree-twig" data-twig="send">│   ├── </span><span class="tree-node" data-step="send">ciphertext only</span>
+<span class="tree-twig" data-twig="link">│   └── </span><span class="tree-node" data-step="link">#key in the URL</span>
+</pre>
+
+      <div class="swap-stage">
+        <div id="compose" class="swap-pane">
+          <section>
+            <label for="env-input">paste your .env</label>
+            <div class="rail" aria-hidden="true">
+              <span>┌─ cat .env </span>
+              <span class="rail-fill"></span>
+              <span> 16 KiB max ─┐</span>
+            </div>
+            <div class="panel">
+              <textarea id="env-input" spellcheck="false" autocomplete="off"></textarea>
+            </div>
+            <div class="rail" aria-hidden="true">
+              <span>└─ key stays after # </span>
+              <span class="rail-fill"></span>
+              <span>─┘</span>
+            </div>
+          </section>
+
+          <div class="controls">
+            <label class="control-label" for="ttl">ttl</label>
+            <input id="ttl" type="range" min="60" max="86400" value="3600" />
+            <span id="expiry-label" class="readout">expires in 1h</span>
+            <button id="share" type="button">share</button>
+          </div>
+
+          <div id="status" class="status"></div>
+        </div>
+
+        <div id="done" class="done swap-pane is-out">
+          <p id="done-title" class="done-title" aria-live="polite"></p>
+          <p id="done-expiry" class="readout"></p>
+          <label for="share-url">share link</label>
+          <div class="rail" aria-hidden="true">
+            <span>┌─ url </span>
+            <span class="rail-fill"></span>
+            <span> includes #key ─┐</span>
+          </div>
+          <div class="panel">
+            <input id="share-url" type="text" readonly spellcheck="false" />
+          </div>
+          <div class="rail" aria-hidden="true">
+            <span>└─ </span><span id="done-rail">already on your clipboard</span>
+            <span class="rail-fill"></span>
+            <span>─┘</span>
+          </div>
+          <p class="done-hint">
+            Send the whole URL. The key is the part after #. Cut that off and it
+            will not open.
+          </p>
+          <div class="done-actions">
+            <button id="copy-link" type="button">copy again</button>
+            <button id="again" class="ghost" type="button">share another</button>
+          </div>
+        </div>
+      </div>
+
+      <figure class="fig">
+        <figcaption>
+          <span>Fig. 1</span>
+          <span>Key stays in the link</span>
+        </figcaption>
+        <pre aria-hidden="true">      this tab                server               their tab
+   ┌────────────┐          ┌──────────┐          ┌────────────┐
+   │ .env       │ --seal-> │ ▒▒▒▒▒▒▒▒ │ --get--> │ .env       │
+   │ #key       │          │ no key   │          │ #key       │
+   └─────┬──────┘          └──────────┘          └──────┬─────┘
+         └──────────── the link carries #key ───────────┘</pre>
+      </figure>
+    </main>
+
+    <!-- partial:footer.html -->
+    <script type="module" src="/src/web/create.ts"></script>
+  </body>
+</html>

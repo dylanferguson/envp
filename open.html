@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>env-share · open</title>
+  </head>
+  <body>
+    <!-- partial:header.html -->
+
+    <main id="app">
+      <pre class="tree" id="cycle" aria-hidden="true"><span class="tree-node" data-step="key">#key from the URL</span>
+<span class="tree-twig" data-twig="fetch">├── </span><span class="tree-node is-now" data-step="fetch">fetch ciphertext</span>
+<span class="tree-twig" data-twig="unlock">│   └── </span><span class="tree-node" data-step="unlock">unlock in this tab</span>
+<span class="tree-twig" data-twig="env">│       └── </span><span class="tree-node" data-step="env">.env</span>
+</pre>
+
+      <section>
+        <label for="env-output">decrypted .env</label>
+        <div class="rail" aria-hidden="true">
+          <span>┌─ open </span>
+          <span class="rail-fill"></span>
+          <span> local decrypt ─┐</span>
+        </div>
+        <div class="panel">
+          <textarea id="env-output" class="is-out" readonly spellcheck="false"></textarea>
+        </div>
+        <div class="rail" aria-hidden="true">
+          <span>└─ never innerHTML </span>
+          <span class="rail-fill"></span>
+          <span>─┘</span>
+        </div>
+        <button id="copy" class="is-out" type="button">copy</button>
+      </section>
+
+      <div id="status" class="status"></div>
+    </main>
+
+    <!-- partial:footer.html -->
+    <script type="module" src="/src/web/open.ts"></script>
+  </body>
+</html>

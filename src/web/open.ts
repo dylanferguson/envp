@@ -1,96 +1,108 @@
 import "./styles.css";
 import { parseKeyFragment, parseShareId } from "../shared/limits.js";
-import { EnvelopeError, importKeyFromFragment, open } from "../shared/envelope.js";
-import type { KeyFragment } from "../shared/limits.js";
-import { clear, el, footer } from "./dom.js";
+import { importKeyFromFragment, open } from "../shared/envelope.js";
+import { paintTree } from "./tree.js";
+import { must, showReading, type Reading } from "./chrome.js";
+
+const OPEN_STEPS = ["key", "fetch", "unlock", "env"] as const;
+type OpenStep = (typeof OPEN_STEPS)[number];
 
 type OpenState =
   | { phase: "loading" }
+  | { phase: "unlocking" }
   | { phase: "revealed" }
   | { phase: "gone" }
   | { phase: "tampered" }
   | { phase: "missing_key" };
 
-const root = document.getElementById("app");
-if (!root) {
-  throw new Error("missing #app");
-}
+const READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
+  loading: {
+    word: "fetching",
+    tone: "live",
+    step: "fetch",
+    kind: "now",
+    note: "fetching ciphertext…",
+  },
+  unlocking: {
+    word: "unsealing",
+    tone: "live",
+    step: "unlock",
+    kind: "now",
+    note: "decrypting in your browser…",
+  },
+  revealed: {
+    word: "open",
+    tone: "ok",
+    step: "env",
+    kind: "hold",
+    note: "",
+  },
+  gone: {
+    word: "gone",
+    tone: "error",
+    step: "fetch",
+    kind: "error",
+    note: "gone. expired, deleted, or never existed.",
+  },
+  tampered: {
+    word: "fault",
+    tone: "error",
+    step: "unlock",
+    kind: "error",
+    note: "couldn't decrypt. wrong link or corrupted data.",
+  },
+  missing_key: {
+    word: "no key",
+    tone: "error",
+    step: "key",
+    kind: "error",
+    note: "no key in the link. ask the sender for the full URL, including the part after #.",
+  },
+};
 
-const textarea = el("textarea", {
-  id: "env-output",
-  readonly: "true",
-  spellcheck: "false",
-});
-textarea.classList.add("hidden");
-
-const copyButton = el("button", { type: "button" }, "copy");
-copyButton.classList.add("hidden");
-
-const status = el("div", { class: "status" });
+const textarea = must<HTMLTextAreaElement>("env-output");
+const copyButton = must<HTMLButtonElement>("copy");
+const cycle = must("cycle");
+let openLoadToken = 0;
 
 function shareIdFromPath(): string | null {
   const match = location.pathname.match(/^\/s\/([^/]+)$/);
   return match?.[1] ?? null;
 }
 
-function keyFromHash(): KeyFragment | null {
-  return parseKeyFragment(location.hash.slice(1));
-}
-
 function render(state: OpenState): void {
-  clear(status);
-  status.className =
-    state.phase === "tampered" || state.phase === "missing_key"
-      ? "status error"
-      : "status";
-  textarea.classList.add("hidden");
-  copyButton.classList.add("hidden");
+  const reading = READINGS[state.phase];
+  showReading(reading);
+  paintTree(cycle, OPEN_STEPS, reading.step, reading.kind);
 
-  switch (state.phase) {
-    case "loading":
-      status.append("fetching…");
-      break;
-    case "revealed":
-      status.replaceChildren();
-      textarea.classList.remove("hidden");
-      copyButton.classList.remove("hidden");
-      break;
-    case "gone":
-      status.append("gone. expired, deleted, or never existed.");
-      break;
-    case "tampered":
-      status.append("couldn't decrypt. wrong link or corrupted data.");
-      break;
-    case "missing_key":
-      status.append(
-        "no key in the link. ask the sender for the full URL, including the part after #.",
-      );
-      break;
-  }
+  const revealed = state.phase === "revealed";
+  textarea.classList.toggle("is-out", !revealed);
+  copyButton.classList.toggle("is-out", !revealed);
 }
 
 copyButton.addEventListener("click", () => {
-  void navigator.clipboard.writeText(textarea.value);
+  void navigator.clipboard.writeText(textarea.value).then(() => {
+    showReading({ ...READINGS.revealed, note: "copied to clipboard" });
+  });
 });
 
 async function loadShare(): Promise<void> {
-  render({ phase: "loading" });
-
+  const token = ++openLoadToken;
   const rawId = shareIdFromPath();
   if (!rawId || !parseShareId(rawId)) {
     render({ phase: "gone" });
     return;
   }
 
-  const fragment = keyFromHash();
+  const fragment = parseKeyFragment(location.hash.slice(1));
   if (!fragment) {
     render({ phase: "missing_key" });
     return;
   }
 
+  render({ phase: "loading" });
   const response = await fetch(`/shares/${rawId}`);
-  if (response.status === 404) {
-    render({ phase: "gone" });
+  if (token !== openLoadToken) {
     return;
   }
   if (!response.ok) {
@@ -99,26 +111,24 @@ async function loadShare(): Promise<void> {
   }
 
   const envelope = new Uint8Array(await response.arrayBuffer());
+  if (token !== openLoadToken) {
+    return;
+  }
+  render({ phase: "unlocking" });
   try {
     const key = await importKeyFromFragment(fragment);
     const plaintext = await open(envelope, key);
+    if (token !== openLoadToken) {
+      return;
+    }
     textarea.value = new TextDecoder().decode(plaintext);
     render({ phase: "revealed" });
-  } catch (error) {
-    if (error instanceof EnvelopeError) {
-      render({ phase: "tampered" });
+  } catch {
+    if (token !== openLoadToken) {
       return;
     }
     render({ phase: "tampered" });
   }
 }
-
-clear(root);
-root.append(
-  el("header", {}, el("h1", {}, "env-share"), el("p", {}, "paste · encrypt · link")),
-  el("main", {}, el("label", { for: "env-output" }, "# decrypted .env"), textarea, copyButton),
-  status,
-  footer(),
-);
 
 void loadShare();

@@ -1,6 +1,8 @@
 # env-share
 
-Browser-encrypted `.env` sharing. Paste on the create page, get a link. The decryption key stays in the URL fragment (`#...`). The server stores only the encrypted blob and an expiry timestamp.
+Browser-encrypted `.env` sharing. The homepage is the paste form: paste, get a link. The decryption key stays in the URL fragment (`#...`). The server stores only the encrypted blob and an expiry timestamp.
+
+Routes are `/` and `/new` (the same compose console) and `/s/:id#key` (the open console).
 
 ## Run locally
 

@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   generateKey,
@@ -16,7 +15,7 @@ function makeApp(now = () => Date.now()) {
     app: createApp({
       store,
       publicOrigin: "http://localhost",
-      clientRoot: join(process.cwd(), "public"),
+      clientRoot: process.cwd(),
     }),
     store,
   };
@@ -148,6 +147,14 @@ describe("routes", () => {
       body: toArrayBuffer(envelope),
     });
     expect(response.status).toBe(403);
+  });
+
+  it("GET /new is the paste page", async () => {
+    const { app } = makeApp();
+    const response = await app.request("http://localhost/new");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("env-input");
   });
 
   it("GET /s/:id is always 200", async () => {

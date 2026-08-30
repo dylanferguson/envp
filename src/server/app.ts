@@ -179,6 +179,11 @@ export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
     return c.html(html);
   });
 
+  app.get("/new", (c) => {
+    const html = readFileSync(join(clientRoot, "index.html"), "utf8");
+    return c.html(html);
+  });
+
   app.get("/", async (c) => {
     return serveStatic({ root: clientRoot, path: "index.html" })(c, async () => {});
   });
