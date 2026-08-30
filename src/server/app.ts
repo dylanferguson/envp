@@ -1,0 +1,189 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { serveStatic } from "@hono/node-server/serve-static";
+import {
+  MAX_ENVELOPE_BYTES,
+  parseShareId,
+  parseTtlSeconds,
+  type TtlSeconds,
+} from "../shared/limits.js";
+import type { ShareStore } from "./store.js";
+
+type RateBucket = {
+  count: number;
+  resetAt: number;
+};
+
+type RateLimiter = {
+  check(key: string, limit: number, windowMs: number): boolean;
+};
+
+function createRateLimiter(): RateLimiter {
+  const buckets = new Map<string, RateBucket>();
+  return {
+    check(key: string, limit: number, windowMs: number): boolean {
+      const now = Date.now();
+      const bucket = buckets.get(key);
+      if (!bucket || now >= bucket.resetAt) {
+        buckets.set(key, { count: 1, resetAt: now + windowMs });
+        return true;
+      }
+      if (bucket.count >= limit) {
+        return false;
+      }
+      bucket.count += 1;
+      return true;
+    },
+  };
+}
+
+export type AppDeps = {
+  store: ShareStore;
+  publicOrigin?: string;
+  trustProxy?: boolean;
+  clientRoot?: string;
+  rateLimiter?: RateLimiter;
+};
+
+function clientIp(
+  req: Request,
+  trustProxy: boolean,
+): string {
+  if (trustProxy) {
+    const forwarded = req.headers.get("x-forwarded-for");
+    if (forwarded) {
+      const first = forwarded.split(",")[0]?.trim();
+      if (first) {
+        return first;
+      }
+    }
+  }
+  return "local";
+}
+
+function expectedOrigin(req: Request, publicOrigin?: string): string | null {
+  if (publicOrigin) {
+    return publicOrigin;
+  }
+  const host = req.headers.get("host");
+  if (!host) {
+    return null;
+  }
+  const proto = req.headers.get("x-forwarded-proto") ?? "http";
+  return `${proto}://${host}`;
+}
+
+function securityHeaders(): Record<string, string> {
+  return {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy":
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  };
+}
+
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(securityHeaders())) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+type AppVariables = {
+  ttl: TtlSeconds;
+};
+
+export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>();
+  const limiter = deps.rateLimiter ?? createRateLimiter();
+  const clientRoot = deps.clientRoot ?? "dist/client";
+  const trustProxy = deps.trustProxy ?? process.env.TRUST_PROXY === "true";
+
+  app.use("*", async (c, next) => {
+    await next();
+    const secured = withSecurityHeaders(c.res);
+    c.res = secured;
+  });
+
+  app.post("/shares", async (c, next) => {
+    const ttl = parseTtlSeconds(c.req.query("ttl"));
+    if (ttl === null) {
+      return c.body(null, 400);
+    }
+
+    const origin = c.req.header("origin");
+    if (origin) {
+      const expected = expectedOrigin(c.req.raw, deps.publicOrigin);
+      if (!expected || origin !== expected) {
+        return c.body(null, 403);
+      }
+    }
+
+    const ip = clientIp(c.req.raw, trustProxy);
+    if (!limiter.check(`post:${ip}`, 15, 5 * 60 * 1000)) {
+      return c.body(null, 429);
+    }
+
+    c.set("ttl", ttl);
+    await next();
+  });
+
+  app.post(
+    "/shares",
+    bodyLimit({
+      maxSize: MAX_ENVELOPE_BYTES,
+      onError: (c) => c.body(null, 413),
+    }),
+    async (c) => {
+      const ttl = c.get("ttl");
+      const body = await c.req.arrayBuffer();
+      if (body.byteLength === 0) {
+        return c.body(null, 400);
+      }
+
+      const record = deps.store.create(new Uint8Array(body), ttl);
+      return c.json({ id: record.id, expiresAt: record.expiresAt }, 201);
+    },
+  );
+
+  app.get("/shares/:id", async (c) => {
+    const id = parseShareId(c.req.param("id"));
+    if (!id) {
+      return c.body(null, 404);
+    }
+
+    const ip = clientIp(c.req.raw, trustProxy);
+    if (!limiter.check(`get:${ip}`, 120, 60 * 1000)) {
+      return c.body(null, 429);
+    }
+
+    const blob = deps.store.read(id);
+    if (!blob) {
+      return c.body(null, 404);
+    }
+
+    c.header("Content-Type", "application/octet-stream");
+    c.header("Cache-Control", "no-store");
+    return c.newResponse(Buffer.from(blob));
+  });
+
+  app.get("/s/:id", (c) => {
+    const html = readFileSync(join(clientRoot, "open.html"), "utf8");
+    return c.html(html);
+  });
+
+  app.get("/", async (c) => {
+    return serveStatic({ root: clientRoot, path: "index.html" })(c, async () => {});
+  });
+
+  app.use("/*", serveStatic({ root: clientRoot }));
+
+  return app;
+}
