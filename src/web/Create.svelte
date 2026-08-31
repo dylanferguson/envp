@@ -4,7 +4,6 @@
     DEFAULT_TTL_SECONDS,
     MAX_PLAINTEXT_BYTES,
     formatExpiryLabel,
-    parseTtlSeconds,
   } from "../shared/limits.js";
   import {
     EnvelopeError,
@@ -15,6 +14,7 @@
   import Chrome from "./Chrome.svelte";
   import Intro from "./Intro.svelte";
   import StepTree from "./StepTree.svelte";
+  import TtlSlider from "./TtlSlider.svelte";
   import { fade } from "svelte/transition";
   import { ShareApiError, createShare } from "./shares.js";
 
@@ -139,15 +139,6 @@
     }
   });
 
-  function onTtlInput(event: Event): void {
-    const target = event.currentTarget as HTMLInputElement;
-    const parsed = parseTtlSeconds(target.value);
-    if (parsed === null) {
-      return;
-    }
-    ttlSeconds = parsed;
-  }
-
   async function onShare(): Promise<void> {
     const encoded = new TextEncoder().encode(envInput);
     if (encoded.length > MAX_PLAINTEXT_BYTES) {
@@ -255,15 +246,7 @@
 
       <div class="controls">
         <label class="control-label" for="ttl">ttl</label>
-        <input
-          id="ttl"
-          type="range"
-          min="60"
-          max="86400"
-          value={ttlSeconds}
-          disabled={isBusy}
-          oninput={onTtlInput}
-        />
+        <TtlSlider id="ttl" bind:value={ttlSeconds} disabled={isBusy} />
         <span class="readout">{formatExpiryLabel(ttlSeconds)}</span>
         <button
           type="button"
@@ -455,12 +438,6 @@
     margin: 0 0 1.25rem;
   }
 
-  input[type="range"] {
-    flex: 1;
-    min-width: 10rem;
-    accent-color: var(--phosphor);
-  }
-
   button {
     padding: 0.45rem 1.1rem;
     background: var(--teal);
@@ -528,11 +505,6 @@
 
   .status.error {
     color: var(--coral);
-  }
-
-  input[type="range"]:disabled {
-    opacity: 0.45;
-    cursor: default;
   }
 
   .done-title {
