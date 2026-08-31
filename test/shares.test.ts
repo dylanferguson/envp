@@ -1,29 +1,38 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { API_V1_SHARES } from "../src/shared/api.js";
+import { base64urlEncode } from "../src/shared/envelope.js";
 import { createShare, getShare, ShareApiError } from "../src/web/shares.js";
+
+const TEST_SHARE_ID = "share_abcdefghijklmnopqrstuv";
+const EXPIRES_AT = 1_735_689_600_000;
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("shares client", () => {
-  it("createShare posts ciphertext and returns a validated id", async () => {
+  it("createShare posts JSON and returns id with expiresAt", async () => {
     const envelope = new Uint8Array([1, 2, 3]);
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: "abcdefghijklmnopqrstuv" }), {
-        status: 201,
-      }),
+      new Response(
+        JSON.stringify({ id: TEST_SHARE_ID, expires_at: EXPIRES_AT }),
+        { status: 201 },
+      ),
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const id = await createShare(envelope, 3600 as never);
+    const created = await createShare(envelope, 3600 as never);
 
-    expect(id).toBe("abcdefghijklmnopqrstuv");
+    expect(created).toEqual({ id: TEST_SHARE_ID, expiresAt: EXPIRES_AT });
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/shares?ttl=3600");
+    expect(url).toBe(API_V1_SHARES);
     expect(init.method).toBe("POST");
-    expect(init.headers).toEqual({ "Content-Type": "application/octet-stream" });
-    expect(new Uint8Array(init.body as ArrayBuffer)).toEqual(envelope);
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      ttl_seconds: 3600,
+      envelope: base64urlEncode(envelope),
+    });
   });
 
   it("createShare throws ShareApiError on HTTP failure", async () => {
@@ -57,16 +66,24 @@ describe("shares client", () => {
       vi.fn().mockResolvedValue(new Response(null, { status: 404 })),
     );
 
-    await expect(getShare("abcdefghijklmnopqrstuv")).resolves.toBeNull();
+    await expect(getShare(TEST_SHARE_ID)).resolves.toBeNull();
   });
 
   it("getShare returns ciphertext bytes", async () => {
     const bytes = new Uint8Array([9, 8, 7]);
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(bytes)),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: TEST_SHARE_ID,
+            expires_at: EXPIRES_AT,
+            envelope: base64urlEncode(bytes),
+          }),
+        ),
+      ),
     );
 
-    await expect(getShare("abcdefghijklmnopqrstuv")).resolves.toEqual(bytes);
+    await expect(getShare(TEST_SHARE_ID)).resolves.toEqual(bytes);
   });
 });

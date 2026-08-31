@@ -14,7 +14,7 @@ export const MIN_TTL_SECONDS = 60;
 export const MAX_TTL_SECONDS = 86400;
 export const DEFAULT_TTL_SECONDS = 3600 as TtlSeconds;
 
-const SHARE_ID_RE = /^[A-Za-z0-9_-]{22}$/;
+const SHARE_ID_RE = /^share_[A-Za-z0-9_-]{22}$/;
 const KEY_FRAGMENT_RE = /^[A-Za-z0-9_-]{43}$/;
 
 export function parseTtlSeconds(value: string | null | undefined): TtlSeconds | null {
@@ -52,4 +52,12 @@ export function formatExpiryLabel(ttlSeconds: number): string {
     return `expires in ${hours}h`;
   }
   return "expires in 24h";
+}
+
+export function formatExpiresAtLabel(
+  expiresAt: UnixMillis,
+  now = Date.now(),
+): string {
+  const seconds = Math.max(0, Math.round((expiresAt - now) / 1000));
+  return formatExpiryLabel(seconds);
 }

@@ -6,7 +6,7 @@ import {
   type EnvelopeBytes,
   type KeyFragment,
 } from "./limits.js";
-import { toArrayBuffer } from "./bytes.js";
+import { toArrayBuffer, base64urlDecode, base64urlEncode } from "./bytes.js";
 
 export class EnvelopeError extends Error {
   constructor(message = "envelope error") {
@@ -19,29 +19,7 @@ const MAGIC = new Uint8Array([0x45, 0x4e, 0x56, 0x53]); // "ENVS"
 const VERSION = 0x01;
 const SUITE = 0x01;
 
-export function base64urlEncode(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-export function base64urlDecode(value: string): Uint8Array {
-  try {
-    const padded =
-      value.replace(/-/g, "+").replace(/_/g, "/") +
-      "=".repeat((4 - (value.length % 4)) % 4);
-    const binary = atob(padded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  } catch {
-    throw new EnvelopeError();
-  }
-}
+export { base64urlDecode, base64urlEncode };
 
 export async function generateKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
@@ -61,7 +39,12 @@ export async function exportKeyFragment(key: CryptoKey): Promise<KeyFragment> {
 export async function importKeyFromFragment(
   fragment: KeyFragment,
 ): Promise<CryptoKey> {
-  const raw = base64urlDecode(fragment);
+  let raw: Uint8Array;
+  try {
+    raw = base64urlDecode(fragment);
+  } catch {
+    throw new EnvelopeError();
+  }
   if (raw.length !== 32) {
     throw new EnvelopeError();
   }

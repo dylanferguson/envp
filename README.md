@@ -12,7 +12,7 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://127.0.0.1:5173` for the UI. Vite proxies `/shares` to the API on port 8080.
+Open `http://127.0.0.1:5173` for the UI. Vite proxies `/api` to the API on port 8080.
 
 `mise.toml` pins Node 24.16.0 and pnpm 11.22.0. `mise install` in this directory uses those versions.
 
@@ -31,8 +31,24 @@ Serves the built UI and API from one Node process on port 8080 (override with `P
 | --- | --- | --- |
 | `PORT` | `8080` | HTTP listen port |
 | `DB_PATH` | `./data/shares.db` | SQLite file path |
-| `PUBLIC_ORIGIN` | derived from `Host` | Origin check for `POST /shares` |
+| `PUBLIC_ORIGIN` | derived from `Host` | Origin check for `POST /api/v1/shares` |
 | `TRUST_PROXY` | unset | Set `true` to trust first `X-Forwarded-For` hop |
+
+## API
+
+```
+POST /api/v1/shares
+  Content-Type: application/json
+  { "ttl_seconds": 3600, "envelope": "<base64url>" }
+
+→ 201 { "id": "share_…", "expires_at": 1735689600000 }
+
+GET /api/v1/shares/share_…
+
+→ 200 { "id": "share_…", "expires_at": 1735689600000, "envelope": "<base64url>" }
+```
+
+Share links use `/s/share_…#key`, not the API path.
 
 ## Encryption
 

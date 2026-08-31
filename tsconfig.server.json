@@ -9,5 +9,11 @@
     "rootDir": "src",
     "types": ["node"]
   },
-  "include": ["src/server/**/*.ts", "src/shared/limits.ts"]
+  "include": [
+    "src/server/**/*.ts",
+    "src/shared/api.ts",
+    "src/shared/bytes.ts",
+    "src/shared/limits.ts",
+    "src/shared/share-api.ts"
+  ]
 }

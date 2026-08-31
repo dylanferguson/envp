@@ -10,7 +10,7 @@ describe("ShareStore", () => {
     const envelope = new Uint8Array([1, 2, 3]);
     const created = store.create(envelope, 3600 as never);
     const read = store.read(created.id);
-    expect(read).toEqual(envelope);
+    expect(read?.envelope).toEqual(envelope);
   });
 
   it("returns null for expired rows", () => {
@@ -53,7 +53,7 @@ describe("ShareStore", () => {
       const writer = openStore(path, () => 42);
       const created = writer.create(new Uint8Array([4, 5]), 3600 as never);
       const reader = openStore(path, () => 42);
-      expect(reader.read(created.id)).toEqual(new Uint8Array([4, 5]));
+      expect(reader.read(created.id)?.envelope).toEqual(new Uint8Array([4, 5]));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

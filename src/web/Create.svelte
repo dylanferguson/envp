@@ -3,6 +3,7 @@
   import {
     DEFAULT_TTL_SECONDS,
     MAX_PLAINTEXT_BYTES,
+    formatExpiresAtLabel,
     formatExpiryLabel,
   } from "../shared/limits.js";
   import {
@@ -36,7 +37,7 @@
     | { phase: "idle" }
     | { phase: "encrypting" }
     | { phase: "uploading"; bytes: number }
-    | { phase: "done"; url: string; copied: boolean }
+    | { phase: "done"; url: string; copied: boolean; expiresAt: number }
     | { phase: "too_large" }
     | { phase: "error"; at: "encrypt" | "send" | "link"; message: string };
 
@@ -129,7 +130,7 @@
   );
   const doneUrl = $derived(isDone ? state.url : "");
   const doneExpiry = $derived(
-    isDone ? formatExpiryLabel(ttlSeconds) : "",
+    isDone ? formatExpiresAtLabel(state.expiresAt) : "",
   );
 
   $effect(() => {
@@ -155,8 +156,8 @@
 
       at = "send";
       state = { phase: "uploading", bytes: envelope.length };
-      const id = await createShare(envelope, ttlSeconds);
-      const url = `${location.origin}/s/${id}#${fragment}`;
+      const created = await createShare(envelope, ttlSeconds);
+      const url = `${location.origin}/s/${created.id}#${fragment}`;
       at = "link";
       let copied = false;
       try {
@@ -165,7 +166,7 @@
       } catch {
         copied = false;
       }
-      state = { phase: "done", url, copied };
+      state = { phase: "done", url, copied, expiresAt: created.expiresAt };
     } catch (error) {
       if (error instanceof EnvelopeError) {
         state = { phase: "error", at: "encrypt", message: "encryption failed" };

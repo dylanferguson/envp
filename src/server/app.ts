@@ -3,12 +3,14 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { API_V1_SHARES } from "../shared/api.js";
+import { parseShareId } from "../shared/limits.js";
 import {
-  MAX_ENVELOPE_BYTES,
-  parseShareId,
-  parseTtlSeconds,
-  type TtlSeconds,
-} from "../shared/limits.js";
+  encodeCreateShareResponse,
+  encodeGetShareResponse,
+  MAX_CREATE_JSON_BYTES,
+  parseCreateShareRequest,
+} from "../shared/share-api.js";
 import type { ShareStore } from "./store.js";
 
 type RateBucket = {
@@ -96,12 +98,8 @@ function withSecurityHeaders(response: Response): Response {
   });
 }
 
-type AppVariables = {
-  ttl: TtlSeconds;
-};
-
-export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
-  const app = new Hono<{ Variables: AppVariables }>();
+export function createApp(deps: AppDeps): Hono {
+  const app = new Hono();
   const limiter = deps.rateLimiter ?? createRateLimiter();
   const clientRoot = deps.clientRoot ?? "dist/client";
   const trustProxy = deps.trustProxy ?? process.env.TRUST_PROXY === "true";
@@ -112,48 +110,44 @@ export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
     c.res = secured;
   });
 
-  app.post("/shares", async (c, next) => {
-    const ttl = parseTtlSeconds(c.req.query("ttl"));
-    if (ttl === null) {
-      return c.body(null, 400);
-    }
-
-    const origin = c.req.header("origin");
-    if (origin) {
-      const expected = expectedOrigin(c.req.raw, deps.publicOrigin);
-      if (!expected || origin !== expected) {
-        return c.body(null, 403);
-      }
-    }
-
-    const ip = clientIp(c.req.raw, trustProxy);
-    if (!limiter.check(`post:${ip}`, 15, 5 * 60 * 1000)) {
-      return c.body(null, 429);
-    }
-
-    c.set("ttl", ttl);
-    await next();
-  });
-
   app.post(
-    "/shares",
+    API_V1_SHARES,
     bodyLimit({
-      maxSize: MAX_ENVELOPE_BYTES,
+      maxSize: MAX_CREATE_JSON_BYTES,
       onError: (c) => c.body(null, 413),
     }),
     async (c) => {
-      const ttl = c.get("ttl");
-      const body = await c.req.arrayBuffer();
-      if (body.byteLength === 0) {
+      const origin = c.req.header("origin");
+      if (origin) {
+        const expected = expectedOrigin(c.req.raw, deps.publicOrigin);
+        if (!expected || origin !== expected) {
+          return c.body(null, 403);
+        }
+      }
+
+      const ip = clientIp(c.req.raw, trustProxy);
+      if (!limiter.check(`post:${ip}`, 15, 5 * 60 * 1000)) {
+        return c.body(null, 429);
+      }
+
+      let json: unknown;
+      try {
+        json = await c.req.json();
+      } catch {
         return c.body(null, 400);
       }
 
-      const record = deps.store.create(new Uint8Array(body), ttl);
-      return c.json({ id: record.id, expiresAt: record.expiresAt }, 201);
+      const request = parseCreateShareRequest(json);
+      if (!request) {
+        return c.body(null, 400);
+      }
+
+      const record = deps.store.create(request.envelope, request.ttl);
+      return c.json(encodeCreateShareResponse(record), 201);
     },
   );
 
-  app.get("/shares/:id", async (c) => {
+  app.get(`${API_V1_SHARES}/:id`, async (c) => {
     const id = parseShareId(c.req.param("id"));
     if (!id) {
       return c.body(null, 404);
@@ -164,14 +158,13 @@ export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
       return c.body(null, 429);
     }
 
-    const blob = deps.store.read(id);
-    if (!blob) {
+    const share = deps.store.read(id);
+    if (!share) {
       return c.body(null, 404);
     }
 
-    c.header("Content-Type", "application/octet-stream");
     c.header("Cache-Control", "no-store");
-    return c.newResponse(Buffer.from(blob));
+    return c.json(encodeGetShareResponse(id, share));
   });
 
   app.get("/s/:id", (c) => {
