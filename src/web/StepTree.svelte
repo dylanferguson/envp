@@ -81,14 +81,32 @@
     color: var(--phosphor);
   }
 
+  .tree-node.is-now {
+    animation: step-live 1.3s ease-in-out infinite;
+  }
+
   .tree-node.is-error {
     color: var(--coral);
+  }
+
+  @keyframes step-live {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .tree-node,
     .tree-twig {
       transition: none;
+    }
+
+    .tree-node.is-now {
+      animation: none;
     }
   }
 </style>

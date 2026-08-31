@@ -13,7 +13,9 @@
     seal,
   } from "../shared/envelope.js";
   import Chrome from "./Chrome.svelte";
+  import Intro from "./Intro.svelte";
   import StepTree from "./StepTree.svelte";
+  import { fade } from "svelte/transition";
   import { ShareApiError, createShare } from "./shares.js";
 
   const STEPS = ["paste", "encrypt", "send", "link"] as const;
@@ -111,9 +113,10 @@
   });
 
   const isDone = $derived(state.phase === "done");
-  const shareDisabled = $derived(
+  const isBusy = $derived(
     state.phase === "encrypting" || state.phase === "uploading",
   );
+  const shareDisabled = $derived(isBusy);
   const doneTitle = $derived(
     isDone && state.copied
       ? "copied. send this link."
@@ -219,28 +222,32 @@
 </script>
 
 <Chrome activeOp="new" word={reading.word} tone={reading.tone}>
+  <Intro />
+
+  <div class="console">
   <StepTree steps={STEPS} lines={TREE} at={reading.step} kind={reading.kind} />
 
   <div class="swap-stage">
     <div class="swap-pane" class:is-out={isDone}>
-      <section>
+      <section class:has-busy={isBusy}>
         <label for="env-input">paste your .env</label>
-        <div class="rail" aria-hidden="true">
+        <div class="rail" class:is-busy={isBusy} aria-hidden="true">
           <span>┌─ cat .env </span>
           <span class="rail-fill"></span>
           <span> 16 KiB max ─┐</span>
         </div>
-        <div class="panel">
+        <div class="panel" class:is-busy={isBusy}>
           <textarea
             id="env-input"
             bind:this={envTextarea}
             bind:value={envInput}
+            disabled={isBusy}
             spellcheck={false}
             autocomplete="off"
           ></textarea>
         </div>
-        <div class="rail" aria-hidden="true">
-          <span>└─ key stays after # </span>
+        <div class="rail" class:is-busy={isBusy} aria-hidden="true">
+          <span>└─ </span>
           <span class="rail-fill"></span>
           <span>─┘</span>
         </div>
@@ -254,16 +261,31 @@
           min="60"
           max="86400"
           value={ttlSeconds}
+          disabled={isBusy}
           oninput={onTtlInput}
         />
         <span class="readout">{formatExpiryLabel(ttlSeconds)}</span>
-        <button type="button" disabled={shareDisabled} onclick={onShare}>
+        <button
+          type="button"
+          class:is-busy={isBusy}
+          disabled={shareDisabled}
+          onclick={onShare}
+        >
           share
         </button>
       </div>
 
-      <div class="status" class:error={reading.tone === "error"}>
-        {reading.note}
+      <div
+        class="status"
+        class:error={reading.tone === "error"}
+        class:has-note={reading.note.length > 0}
+        aria-live="polite"
+      >
+        {#key reading.note}
+          {#if reading.note}
+            <span class="status-text" in:fade={{ duration: 220 }}>{reading.note}</span>
+          {/if}
+        {/key}
       </div>
     </div>
 
@@ -274,7 +296,7 @@
       <div class="rail" aria-hidden="true">
         <span>┌─ url </span>
         <span class="rail-fill"></span>
-        <span> includes #key ─┐</span>
+        <span>─┐</span>
       </div>
       <div class="panel">
         <input
@@ -291,29 +313,14 @@
         <span class="rail-fill"></span>
         <span>─┘</span>
       </div>
-      <p class="done-hint">
-        Send the whole URL. The key is the part after #. Cut that off and it
-        will not open.
-      </p>
       <div class="done-actions">
         <button type="button" onclick={onCopyLink}>copy again</button>
         <button class="ghost" type="button" onclick={onAgain}>share another</button>
       </div>
     </div>
   </div>
+  </div>
 
-  <figure class="fig">
-    <figcaption>
-      <span>Fig. 1</span>
-      <span>Key stays in the link</span>
-    </figcaption>
-    <pre aria-hidden="true">      this tab                server               their tab
-   ┌────────────┐          ┌──────────┐          ┌────────────┐
-   │ .env       │ --seal-> │ ▒▒▒▒▒▒▒▒ │ --get--> │ .env       │
-   │ #key       │          │ no key   │          │ #key       │
-   └─────┬──────┘          └──────────┘          └──────┬─────┘
-         └──────────── the link carries #key ───────────┘</pre>
-  </figure>
 </Chrome>
 
 <style>
@@ -336,7 +343,11 @@
   }
 
   .readout {
-    color: var(--fg);
+    font-size: var(--tick);
+    letter-spacing: var(--track);
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
   }
 
   .rail {
@@ -357,6 +368,7 @@
   .panel {
     border-inline: 1px solid var(--hairline);
     background: var(--surface);
+    transition: border-color 0.35s ease;
   }
 
   textarea {
@@ -372,9 +384,48 @@
     resize: vertical;
     caret-color: var(--phosphor);
     transition:
-      opacity 0.4s ease,
+      opacity 0.35s ease,
       min-height 0.4s ease,
       padding 0.4s ease;
+  }
+
+  textarea:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .panel.is-busy {
+    animation: seal-pulse 1.4s ease-in-out infinite;
+  }
+
+  .rail.is-busy {
+    color: var(--phosphor);
+    transition: color 0.35s ease;
+  }
+
+  .rail.is-busy .rail-fill {
+    border-bottom-color: var(--phosphor);
+    animation: rail-flow 1.4s ease-in-out infinite;
+  }
+
+  @keyframes seal-pulse {
+    0%,
+    100% {
+      border-inline-color: var(--hairline);
+    }
+    50% {
+      border-inline-color: var(--phosphor);
+    }
+  }
+
+  @keyframes rail-flow {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 
   textarea:focus,
@@ -422,6 +473,25 @@
     letter-spacing: var(--track);
     text-transform: uppercase;
     cursor: pointer;
+    transition:
+      background 0.2s ease,
+      opacity 0.25s ease;
+  }
+
+  button.is-busy:disabled {
+    opacity: 0.7;
+    animation: btn-busy 1.1s steps(1, end) infinite;
+  }
+
+  @keyframes btn-busy {
+    0%,
+    49% {
+      border-color: var(--phosphor);
+    }
+    50%,
+    100% {
+      border-color: var(--hairline-lit);
+    }
   }
 
   button:hover:not(:disabled) {
@@ -445,14 +515,24 @@
   }
 
   .status {
+    display: grid;
     min-height: 1.5rem;
     margin: 0 0 1.5rem;
     color: var(--muted);
     font-size: 0.85rem;
   }
 
+  .status-text {
+    grid-area: 1 / 1;
+  }
+
   .status.error {
     color: var(--coral);
+  }
+
+  input[type="range"]:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 
   .done-title {
@@ -476,54 +556,11 @@
     font: inherit;
   }
 
-  .done-hint {
-    margin: 1.25rem 0 0;
-    color: var(--muted);
-    font-size: 0.85rem;
-  }
-
   .done-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
     margin: 1.25rem 0 0;
-  }
-
-  .fig {
-    margin: 2.5rem 0 0;
-    border: 1px solid var(--hairline);
-  }
-
-  .fig figcaption {
-    display: grid;
-    grid-template-columns: 5.5rem 1fr;
-    min-height: 2.25rem;
-    border-bottom: 1px solid var(--hairline);
-    color: var(--muted);
-    font-size: var(--tick);
-    letter-spacing: var(--track);
-    text-transform: uppercase;
-  }
-
-  .fig figcaption span {
-    display: flex;
-    align-items: center;
-    padding: 0 0.85rem;
-  }
-
-  .fig figcaption span + span {
-    border-left: 1px solid var(--hairline);
-  }
-
-  .fig pre {
-    margin: 0;
-    padding: 1.25rem 1rem;
-    overflow-x: auto;
-    color: var(--hairline-lit);
-    font: inherit;
-    font-size: 0.7rem;
-    line-height: 1.3;
-    user-select: none;
   }
 
   .swap-stage {
@@ -532,26 +569,31 @@
 
   .swap-pane {
     grid-area: 1 / 1;
+    transition:
+      opacity 0.38s ease,
+      transform 0.38s ease,
+      visibility 0.38s;
+  }
+
+  .swap-pane:not(.is-out) {
+    z-index: 1;
   }
 
   .swap-pane.is-out {
-    display: none;
-  }
-
-  @media (max-width: 720px) {
-    .fig figcaption {
-      grid-template-columns: 1fr;
-    }
-
-    .fig figcaption span + span {
-      border-top: 1px solid var(--hairline);
-      border-left: 0;
-    }
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0.4rem);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    textarea {
+    textarea,
+    .swap-pane,
+    .panel.is-busy,
+    .rail.is-busy .rail-fill,
+    button.is-busy:disabled {
       transition: none;
+      animation: none;
     }
   }
 </style>

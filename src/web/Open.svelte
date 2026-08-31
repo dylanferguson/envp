@@ -168,7 +168,7 @@
       ></textarea>
     </div>
     <div class="rail" aria-hidden="true">
-      <span>└─ never innerHTML </span>
+      <span>└─ </span>
       <span class="rail-fill"></span>
       <span>─┘</span>
     </div>

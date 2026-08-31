@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { fade } from "svelte/transition";
 
   type SignalTone = "idle" | "live" | "ok" | "error";
 
@@ -20,34 +21,17 @@
       <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
       <span data-op="open" class:is-active={activeOp === "open"}>open</span>
     </nav>
-    <span class="signal" data-tone={tone} role="status">{word}</span>
+    <span class="signal" data-tone={tone} role="status">
+      {#key word}
+        <span class="signal-word" in:fade={{ duration: 220 }}>{word}</span>
+      {/key}
+    </span>
   </div>
 </header>
 
 <main class="page">
   {@render children()}
 </main>
-
-<footer class="chrome-foot">
-  <dl class="facts">
-    <div>
-      <dt>key</dt>
-      <dd>Lives after the # in the URL. Your browser keeps it. It never reaches us.</dd>
-    </div>
-    <div>
-      <dt>stored</dt>
-      <dd>The encrypted blob, the share id, when you uploaded, and your IP.</dd>
-    </div>
-    <div>
-      <dt>access</dt>
-      <dd>We cannot read your variables. Anyone with the full link can, until it expires.</dd>
-    </div>
-    <div>
-      <dt>abuse</dt>
-      <dd><a href="mailto:abuse@localhost">abuse@localhost</a></dd>
-    </div>
-  </dl>
-</footer>
 
 <style>
   .chrome {
@@ -59,7 +43,6 @@
   }
 
   .chrome-row,
-  .facts,
   .page {
     width: min(var(--col), 100%);
     margin: 0 auto;
@@ -115,6 +98,11 @@
     text-transform: uppercase;
     color: var(--muted);
     white-space: nowrap;
+    transition: color 0.35s ease;
+  }
+
+  .signal-word {
+    display: inline-block;
   }
 
   .signal::before {
@@ -122,6 +110,7 @@
     width: 0.4rem;
     height: 0.4rem;
     background: var(--hairline-lit);
+    transition: background 0.35s ease;
   }
 
   .signal[data-tone="live"],
@@ -162,47 +151,6 @@
     padding-block: 2rem 3.5rem;
   }
 
-  .chrome-foot {
-    border-top: 1px solid var(--hairline);
-    padding-block: 1.5rem 2.5rem;
-  }
-
-  .facts {
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 6rem 1fr;
-    gap: 0.5rem 1rem;
-    font-size: 0.8rem;
-  }
-
-  .facts > div {
-    display: contents;
-  }
-
-  .facts dt {
-    font-size: var(--tick);
-    letter-spacing: var(--track);
-    text-transform: uppercase;
-    color: var(--muted);
-    line-height: 1.7;
-  }
-
-  .facts dd {
-    margin: 0;
-    color: var(--muted);
-  }
-
-  .facts a {
-    color: var(--fg);
-    text-decoration: none;
-    border-bottom: 1px solid var(--hairline-lit);
-  }
-
-  .facts a:hover {
-    color: var(--phosphor);
-    border-bottom-color: var(--phosphor);
-  }
-
   @media (max-width: 720px) {
     .chrome-row {
       gap: 0.75rem;
@@ -210,15 +158,6 @@
 
     .chrome-name {
       letter-spacing: 0.12em;
-    }
-
-    .facts {
-      grid-template-columns: 1fr;
-    }
-
-    .facts > div {
-      display: grid;
-      gap: 0.2rem;
     }
   }
 
