@@ -1,11 +1,13 @@
 <script lang="ts">
   import "../../app.css";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { parseShareLink } from "../../../shared/limits.js";
   import Chrome from "../../components/Chrome.svelte";
+  import OpenIntro from "../../components/OpenIntro.svelte";
   import StepTree from "../../components/StepTree.svelte";
   import Toast from "../../components/Toast.svelte";
   import StatusLine from "../../ui/StatusLine.svelte";
+  import SwapStage from "../../ui/SwapStage.svelte";
   import {
     decryptShareEnvelope,
     fetchShareEnvelope,
@@ -32,11 +34,30 @@
   let linkInput = $state("");
   let openLoadToken = 0;
   let copyToast = $state<Toast | null>(null);
+  let openForm = $state<OpenForm | null>(null);
+  let openResult = $state<OpenResult | null>(null);
 
   const reading = $derived(deriveOpenReading(state));
   const revealed = $derived(state.phase === "revealed");
   const showForm = $derived(showOpenForm(state, isManual));
   const statusText = $derived(statusNote || reading.note);
+
+  $effect(() => {
+    if (!revealed || envOutput.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    void tick().then(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) {
+          openResult?.selectOutput();
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  });
 
   async function loadShare(
     shareId?: string,
@@ -103,28 +124,62 @@
     void loadShare(parsed.shareId, parsed.keyFragment);
   }
 
+  function onAgain(): void {
+    copyToast?.dismiss();
+    openLoadToken++;
+    linkInput = "";
+    envOutput = "";
+    if (!isManual) {
+      location.assign("/open");
+      return;
+    }
+    state = { phase: "idle" };
+    void tick().then(() => {
+      openForm?.focusInput();
+    });
+  }
+
   onMount(() => {
     if (!isManual) {
       void loadShare();
+      return;
     }
+    void tick().then(() => {
+      openForm?.focusInput();
+    });
   });
 </script>
 
 <Chrome activeOp="open" word={reading.word} tone={reading.tone}>
-  <StepTree
-    steps={OPEN_STEPS}
-    lines={OPEN_TREE}
-    at={reading.step}
-    kind={reading.kind}
-  />
+  <OpenIntro />
 
-  {#if showForm}
-    <OpenForm bind:linkInput onOpen={onOpenLink} />
-  {:else}
-    <OpenResult {envOutput} {revealed} onCopy={onCopy} />
-  {/if}
+  <div class="console">
+    <StepTree
+      steps={OPEN_STEPS}
+      lines={OPEN_TREE}
+      at={reading.step}
+      kind={reading.kind}
+    />
 
-  <StatusLine text={statusText} error={reading.tone === "error"} />
+    <SwapStage showAlt={!showForm}>
+      {#snippet primary()}
+        <OpenForm bind:this={openForm} bind:linkInput onOpen={onOpenLink} />
+      {/snippet}
+      {#snippet alt()}
+        {#if !showForm}
+          <OpenResult
+            bind:this={openResult}
+            {envOutput}
+            {revealed}
+            onCopy={onCopy}
+            onAgain={onAgain}
+          />
+        {/if}
+      {/snippet}
+    </SwapStage>
+  </div>
+
+  <StatusLine text={statusText} error={reading.tone === "error"} animated />
 </Chrome>
 
 <Toast bind:this={copyToast} message="copied to clipboard" />

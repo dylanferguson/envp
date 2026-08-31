@@ -1,5 +1,6 @@
 <script lang="ts">
   import "../../app.css";
+  import { onMount, tick } from "svelte";
   import { DEFAULT_TTL_SECONDS, MAX_PLAINTEXT_BYTES } from "../../../shared/limits.js";
   import Chrome from "../../components/Chrome.svelte";
   import Intro from "../../components/Intro.svelte";
@@ -86,6 +87,12 @@
     state = { phase: "idle" };
     createForm?.focusInput();
   }
+
+  onMount(() => {
+    void tick().then(() => {
+      createForm?.focusInput();
+    });
+  });
 </script>
 
 <Chrome activeOp="new" word={reading.word} tone={reading.tone}>

@@ -19,7 +19,7 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     tone: "idle",
     step: "key",
     kind: "hold",
-    note: "",
+    note: "paste the link you received",
   },
   loading: {
     word: "fetching",
@@ -61,19 +61,19 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     tone: "error",
     step: "key",
     kind: "error",
-    note: "missing #key. paste the full URL or share_id#key.",
+    note: "missing #key.",
   },
   invalid_link: {
     word: "bad link",
     tone: "error",
     step: "key",
     kind: "error",
-    note: "couldn't parse that. use a full URL or share_id#key.",
+    note: "couldn't parse that.",
   },
 };
 
 export const OPEN_TREE: readonly TreeLine<OpenStep>[] = [
-  { step: "key", twig: "├── ", label: "enter full URL or share_id#key" },
+  { step: "key", twig: "├── ", label: "enter shared link" },
   { step: "fetch", twig: "│   ├── ", label: "fetch ciphertext" },
   { step: "unlock", twig: "│   ├── ", label: "decrypt locally" },
   { step: "env", twig: "│   └── ", label: ".env is ready" },

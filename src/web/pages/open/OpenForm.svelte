@@ -9,16 +9,22 @@
   };
 
   let { linkInput = $bindable(), onOpen }: Props = $props();
+
+  let linkInputEl = $state<HTMLInputElement | null>(null);
+
+  export function focusInput(): void {
+    linkInputEl?.focus();
+  }
 </script>
 
 <section>
-  <FieldLabel for="share-link">paste full URL or share_id#key</FieldLabel>
+  <FieldLabel for="share-link">paste shared link</FieldLabel>
   <Frame>
     <input
       id="share-link"
+      bind:this={linkInputEl}
       type="text"
       bind:value={linkInput}
-      placeholder="https://…/s/share_…#… or share_…#…"
       spellcheck={false}
       autocomplete="off"
       onkeydown={(e) => {
