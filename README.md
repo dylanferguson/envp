@@ -80,7 +80,23 @@ We cannot read your variables. Questions or abuse: `abuse@localhost` (placeholde
 
 ## Deploy
 
-Out of scope for v1. Target shape is a single Node process plus one SQLite file on disk. Fly, Workers, and other hosting come later.
+Production artifact is a single Node process plus one SQLite file on disk. A distroless image packages both the built UI and API.
+
+```bash
+pnpm docker:build
+docker image inspect env-share:node-distroless --format '{{.Size}}'
+pnpm docker:run
+```
+
+The current Node distroless baseline is about 184 MB uncompressed. Pass a commit label at build time when you want the UI footer to show a real hash instead of `unknown`:
+
+```bash
+docker build -t env-share:node-distroless --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) .
+```
+
+Open `http://127.0.0.1:8080`. SQLite persists in the `env-share-data` Docker volume at `/data/shares.db`.
+
+Behind a reverse proxy, set `TRUST_PROXY=true` and `PUBLIC_ORIGIN=https://your-host.example`.
 
 ## Tests
 

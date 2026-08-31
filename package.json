@@ -10,7 +10,9 @@
     "test": "vp test run",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps --only-shell",
-    "check": "vp check"
+    "check": "vp check",
+    "docker:build": "docker build -t env-share:node-distroless .",
+    "docker:run": "docker run --rm -p 8080:8080 -v env-share-data:/data env-share:node-distroless"
   },
   "dependencies": {
     "@hono/node-server": "1.14.3",
@@ -28,6 +30,7 @@
     "lefthook": "^1.11.12",
     "svelte": "^5.57.0",
     "tsx": "^4.19.4",
+    "typescript": "^5.9.3",
     "vite-plus": "catalog:"
   },
   "engines": {
