@@ -16,11 +16,10 @@
   import Chrome from "./Chrome.svelte";
   import Intro from "./Intro.svelte";
   import StepTree from "./StepTree.svelte";
+  import Toast from "./Toast.svelte";
   import TtlSlider from "./TtlSlider.svelte";
   import { fade } from "svelte/transition";
   import { ShareApiError, createShare } from "./shares.js";
-
-  type CopyToastPhase = "hidden" | "shown" | "hiding";
 
   const STEPS = ["paste", "encrypt", "send", "link"] as const;
   type Step = (typeof STEPS)[number];
@@ -106,9 +105,7 @@
   let ttlSeconds = $state(DEFAULT_TTL_SECONDS);
   let shareUrlInput = $state<HTMLInputElement | null>(null);
   let envTextarea = $state<HTMLTextAreaElement | null>(null);
-  let copyToastPhase = $state<CopyToastPhase>("hidden");
-  let copyToastSeq = $state(0);
-  let copyToastTimer: ReturnType<typeof setTimeout> | undefined;
+  let copyToast = $state<Toast | null>(null);
 
   const reading = $derived.by((): Reading => {
     const base = READINGS[state.phase];
@@ -181,7 +178,7 @@
       }
       state = { phase: "done", url, copied, expiresAt: created.expiresAt };
       if (copied) {
-        showCopyToast();
+        copyToast?.show();
       }
     } catch (error) {
       if (error instanceof EnvelopeError) {
@@ -207,34 +204,6 @@
     }
   }
 
-  function scheduleCopyToastHide(): void {
-    clearTimeout(copyToastTimer);
-    copyToastTimer = setTimeout(() => {
-      hideCopyToast();
-    }, 2800);
-  }
-
-  function showCopyToast(): void {
-    copyToastSeq += 1;
-    copyToastPhase = "shown";
-    scheduleCopyToastHide();
-  }
-
-  function hideCopyToast(): void {
-    if (copyToastPhase === "shown") {
-      copyToastPhase = "hiding";
-    }
-  }
-
-  function onCopyToastAnimationEnd(event: AnimationEvent): void {
-    if (event.animationName !== "copy-toast-out") {
-      return;
-    }
-    if (copyToastPhase === "hiding") {
-      copyToastPhase = "hidden";
-    }
-  }
-
   function copyShareLink(): void {
     if (state.phase !== "done") {
       return;
@@ -242,7 +211,7 @@
     void navigator.clipboard.writeText(state.url).then(
       () => {
         state = { ...state, copied: true };
-        showCopyToast();
+        copyToast?.show();
         shareUrlInput?.focus();
         shareUrlInput?.select();
       },
@@ -255,12 +224,7 @@
   }
 
   function onAgain(): void {
-    clearTimeout(copyToastTimer);
-    if (copyToastPhase === "shown") {
-      copyToastPhase = "hiding";
-    } else {
-      copyToastPhase = "hidden";
-    }
+    copyToast?.dismiss();
     envInput = "";
     state = { phase: "idle" };
     envTextarea?.focus();
@@ -369,30 +333,7 @@
 
 </Chrome>
 
-{#if copyToastPhase !== "hidden"}
-  {#key copyToastSeq}
-    <p
-      class="copy-toast"
-      class:is-hiding={copyToastPhase === "hiding"}
-      role="status"
-      aria-live="polite"
-      onanimationend={onCopyToastAnimationEnd}
-    >
-      <svg class="copy-toast-mark" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.25" />
-        <path
-          d="M5 8.25 7 10.25 11 5.75"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.25"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-      link copied to clipboard
-    </p>
-  {/key}
-{/if}
+<Toast bind:this={copyToast} message="link copied to clipboard" />
 
 <style>
   section {
@@ -623,61 +564,6 @@
     color: var(--phosphor);
   }
 
-  .copy-toast {
-    position: fixed;
-    right: 1.25rem;
-    bottom: 1.25rem;
-    z-index: 4;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    margin: 0;
-    padding: 0.75rem 1rem;
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-radius: 0.375rem;
-    color: var(--fg);
-    font-size: 0.85rem;
-    box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
-    pointer-events: none;
-    transform-origin: bottom right;
-    overflow: hidden;
-    animation: copy-toast-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  .copy-toast.is-hiding {
-    animation: copy-toast-out 400ms cubic-bezier(0.4, 0, 1, 1) both;
-  }
-
-  @keyframes copy-toast-in {
-    from {
-      opacity: 0;
-      transform: translate3d(0, 100%, 0);
-    }
-
-    to {
-      opacity: 1;
-      transform: translate3d(0, 0, 0);
-    }
-  }
-
-  @keyframes copy-toast-out {
-    from {
-      opacity: 1;
-      transform: translate3d(0, 0, 0);
-    }
-
-    to {
-      opacity: 0;
-      transform: translate3d(calc(100% + 0.75rem), 0, 0);
-    }
-  }
-
-  .copy-toast-mark {
-    flex-shrink: 0;
-    color: var(--phosphor);
-  }
-
   .done-actions {
     display: flex;
     flex-wrap: wrap;
@@ -715,34 +601,6 @@
     button.is-busy:disabled {
       transition: none;
       animation: none;
-    }
-
-    .copy-toast {
-      animation: copy-toast-in-reduced 150ms ease both;
-    }
-
-    .copy-toast.is-hiding {
-      animation: copy-toast-out-reduced 150ms ease both;
-    }
-  }
-
-  @keyframes copy-toast-in-reduced {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes copy-toast-out-reduced {
-    from {
-      opacity: 1;
-    }
-
-    to {
-      opacity: 0;
     }
   }
 </style>

@@ -5,6 +5,7 @@
   import { importKeyFromFragment, open } from "../shared/envelope.js";
   import Chrome from "./Chrome.svelte";
   import StepTree from "./StepTree.svelte";
+  import Toast from "./Toast.svelte";
   import { getShare } from "./shares.js";
 
   const STEPS = ["key", "fetch", "unlock", "env"] as const;
@@ -104,6 +105,7 @@
   let statusNote = $state("");
   let linkInput = $state("");
   let openLoadToken = 0;
+  let copyToast = $state<Toast | null>(null);
 
   const reading = $derived(READINGS[state.phase]);
   const revealed = $derived(state.phase === "revealed");
@@ -119,7 +121,7 @@
 
   function onCopy(): void {
     void navigator.clipboard.writeText(envOutput).then(() => {
-      statusNote = "copied to clipboard";
+      copyToast?.show();
     });
   }
 
@@ -230,6 +232,8 @@
     {statusText}
   </div>
 </Chrome>
+
+<Toast bind:this={copyToast} message="copied to clipboard" />
 
 <style>
   section {
