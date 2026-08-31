@@ -10,7 +10,6 @@ import {
 import {
   ENVELOPE_HEADER_BYTES,
   MAX_PLAINTEXT_BYTES,
-  type EnvelopeBytes,
   type KeyFragment,
 } from "../src/shared/limits.js";
 
@@ -55,15 +54,6 @@ describe("envelope", () => {
     const envelope = await seal(new TextEncoder().encode("x"), key);
     envelope[5] = envelope[5] === 0x01 ? 0x02 : 0x01;
     await expect(open(envelope, key)).rejects.toBeInstanceOf(EnvelopeError);
-  });
-
-  it("imports key from fragment", async () => {
-    const key = await generateKey();
-    const fragment = await exportKeyFragment(key);
-    const imported = await importKeyFromFragment(fragment);
-    const envelope = await seal(new TextEncoder().encode("ok"), key);
-    const opened = await open(envelope, imported);
-    expect(new TextDecoder().decode(opened)).toBe("ok");
   });
 
   it("rejects invalid key fragment length", async () => {

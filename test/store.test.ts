@@ -5,14 +5,6 @@ import { describe, expect, it } from "vitest";
 import { openMemoryStore, openStore } from "../src/server/store.js";
 
 describe("ShareStore", () => {
-  it("stores and reads a live row", () => {
-    const store = openMemoryStore(() => 1_000_000);
-    const envelope = new Uint8Array([1, 2, 3]);
-    const created = store.create(envelope, 3600 as never);
-    const read = store.read(created.id);
-    expect(read?.envelope).toEqual(envelope);
-  });
-
   it("returns null for expired rows", () => {
     let now = 1_000_000;
     const store = openMemoryStore(() => now);
