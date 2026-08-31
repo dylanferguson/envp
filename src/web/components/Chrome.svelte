@@ -162,7 +162,7 @@
   }
 
   .chrome-repo-mark {
-    color: var(--phosphor);
+    color: inherit;
     letter-spacing: 0;
   }
 
