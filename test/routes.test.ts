@@ -6,7 +6,7 @@ import { buildCreateShareBody, MAX_CREATE_JSON_BYTES } from "../src/shared/share
 import { createApp } from "../src/server/app.js";
 import { openMemoryStore } from "../src/server/store.js";
 
-const UNKNOWN_SHARE_ID = "share_aaaaaaaaaaaaaaaaaaaaaa";
+const UNKNOWN_SHARE_ID = "share_00000000000000000000000000";
 
 function makeApp(now = () => Date.now()) {
   const store = openMemoryStore(now);

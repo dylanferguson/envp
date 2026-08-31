@@ -1,3 +1,7 @@
+import { typeid, TypeID } from "typeid-js";
+
+export const SHARE_TYPE_PREFIX = "share";
+
 export type ShareId = string & { readonly __brand: "ShareId" };
 export type TtlSeconds = number & { readonly __brand: "TtlSeconds" };
 export type UnixMillis = number & { readonly __brand: "UnixMillis" };
@@ -14,8 +18,11 @@ export const MIN_TTL_SECONDS = 60;
 export const MAX_TTL_SECONDS = 86400;
 export const DEFAULT_TTL_SECONDS = 3600 as TtlSeconds;
 
-const SHARE_ID_RE = /^share_[A-Za-z0-9_-]{22}$/;
 const KEY_FRAGMENT_RE = /^[A-Za-z0-9_-]{43}$/;
+
+export function mintShareId(): ShareId {
+  return typeid(SHARE_TYPE_PREFIX).toString() as ShareId;
+}
 
 export function parseTtlSeconds(value: string | null | undefined): TtlSeconds | null {
   if (value === null || value === undefined || value === "") {
@@ -29,10 +36,11 @@ export function parseTtlSeconds(value: string | null | undefined): TtlSeconds | 
 }
 
 export function parseShareId(value: string): ShareId | null {
-  if (!SHARE_ID_RE.test(value)) {
+  try {
+    return TypeID.fromString(value, SHARE_TYPE_PREFIX).toString() as ShareId;
+  } catch {
     return null;
   }
-  return value as ShareId;
 }
 
 export function parseKeyFragment(value: string): KeyFragment | null {

@@ -1,19 +1,5 @@
-import { randomBytes } from "node:crypto";
 import Database from "better-sqlite3";
-import { SHARE_ID_PREFIX } from "../shared/api.js";
-import { type ShareId, type TtlSeconds, type UnixMillis } from "../shared/limits.js";
-
-function base64urlEncode(bytes: Uint8Array): string {
-  return Buffer.from(bytes)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function mintShareId(): ShareId {
-  return `${SHARE_ID_PREFIX}${base64urlEncode(randomBytes(16))}` as ShareId;
-}
+import { mintShareId, type ShareId, type TtlSeconds, type UnixMillis } from "../shared/limits.js";
 
 export type ShareRecord = {
   id: ShareId;

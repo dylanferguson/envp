@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { formatExpiryLabel, parseShareLink } from "../src/shared/limits.js";
 
-const SHARE_ID = "share_abcdefghijklmnopqrstuv";
+const SHARE_ID = "share_01h2xcejqtf2nbrexx3vqjhp41";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
 
 describe("formatExpiryLabel", () => {
@@ -34,6 +34,9 @@ describe("parseShareLink", () => {
   it("rejects invalid links", () => {
     expect(parseShareLink(`/s/${SHARE_ID}`)).toBeNull();
     expect(parseShareLink(SHARE_ID)).toBeNull();
+    expect(
+      parseShareLink("share_abcdefghijklmnopqrstuv#ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"),
+    ).toBeNull();
     expect(parseShareLink("")).toBeNull();
     expect(parseShareLink("not-a-share-link")).toBeNull();
     expect(parseShareLink(`https://env-share.example/open#${KEY_FRAGMENT}`)).toBeNull();
