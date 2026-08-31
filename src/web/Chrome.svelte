@@ -33,6 +33,15 @@
   {@render children()}
 </main>
 
+<footer class="verify">
+  <div class="verify-row">
+    <span class="verify-label">verify</span>
+    <p class="verify-copy">
+      DevTools → Network. we send ciphertext only. #key stays after #, never in the request.
+    </p>
+  </div>
+</footer>
+
 <style>
   .chrome {
     position: sticky;
@@ -43,7 +52,8 @@
   }
 
   .chrome-row,
-  .page {
+  .page,
+  .verify-row {
     width: min(var(--col), 100%);
     margin: 0 auto;
     padding-inline: 1.25rem;
@@ -151,6 +161,33 @@
     padding-block: 2rem 3.5rem;
   }
 
+  .verify {
+    border-top: 1px solid var(--hairline);
+    padding-block: 0.65rem 0.85rem;
+  }
+
+  .verify-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+  }
+
+  .verify-label {
+    flex-shrink: 0;
+    font-size: var(--tick);
+    letter-spacing: var(--track);
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .verify-copy {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
   @media (max-width: 720px) {
     .chrome-row {
       gap: 0.75rem;
@@ -158,6 +195,10 @@
 
     .chrome-name {
       letter-spacing: 0.12em;
+    }
+
+    .verify-row {
+      flex-wrap: wrap;
     }
   }
 
