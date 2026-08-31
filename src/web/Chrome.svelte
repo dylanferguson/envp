@@ -12,6 +12,8 @@
   };
 
   let { activeOp, word, tone, children }: Props = $props();
+
+  const REPO_URL = "https://github.com/dylanferguson/env-share";
 </script>
 
 <header class="chrome">
@@ -21,11 +23,21 @@
       <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
       <span data-op="open" class:is-active={activeOp === "open"}>open</span>
     </nav>
-    <span class="signal" data-tone={tone} role="status">
-      {#key word}
-        <span class="signal-word" in:fade={{ duration: 220 }}>{word}</span>
-      {/key}
-    </span>
+    <div class="chrome-end">
+      <a
+        class="chrome-source"
+        href={REPO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        source
+      </a>
+      <span class="signal" data-tone={tone} role="status">
+        {#key word}
+          <span class="signal-word" in:fade={{ duration: 220 }}>{word}</span>
+        {/key}
+      </span>
+    </div>
   </div>
 </header>
 
@@ -88,11 +100,30 @@
     border-bottom-color: var(--hairline-lit);
   }
 
+  .chrome-end {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+  }
+
+  .chrome-source {
+    font-size: var(--tick);
+    letter-spacing: var(--track);
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .chrome-source:hover {
+    color: var(--fg);
+  }
+
   .signal {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-left: auto;
     font-size: var(--tick);
     letter-spacing: var(--track);
     text-transform: uppercase;
