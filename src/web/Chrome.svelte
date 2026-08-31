@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { crossfade } from "svelte/transition";
+  import { BUILD_META, buildCommitUrl } from "../shared/build-meta.js";
 
   type SignalTone = "idle" | "live" | "ok" | "error";
 
@@ -15,6 +16,7 @@
 
   const REPO_URL = "https://github.com/dylanferguson/env-share";
   const SIGNAL_WIDTH_WORD = "uploading";
+  const commitHref = buildCommitUrl(REPO_URL, BUILD_META.commit);
   const [send, receive] = crossfade({ duration: 260 });
 </script>
 
@@ -28,17 +30,28 @@
       <a data-op="open" href="/open" class:is-active={activeOp === "open"}>open</a>
     </nav>
     <div class="chrome-end">
-      <a
-        class="chrome-source"
-        href={REPO_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="View source on GitHub"
-        aria-label="View source code on GitHub"
-      >
-        <span class="chrome-source-mark" aria-hidden="true">&lt;/&gt;</span>
-        source
-      </a>
+      <span class="chrome-build">
+        <a
+          class="chrome-repo"
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View source on GitHub"
+          aria-label="View source on GitHub"
+        >
+          <span class="chrome-repo-mark" aria-hidden="true">&lt;/&gt;</span>
+        </a>
+        <a
+          class="chrome-commit"
+          href={commitHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View deployed build on GitHub"
+          aria-label="Deployed build {BUILD_META.commit}"
+        >
+          {BUILD_META.commit}
+        </a>
+      </span>
       <span class="signal" data-tone={tone} role="status">
         <span class="signal-slot">
           <span class="signal-sizer" aria-hidden="true">{SIGNAL_WIDTH_WORD}</span>
@@ -133,26 +146,33 @@
     margin-left: auto;
   }
 
-  .chrome-source {
+  .chrome-build {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .chrome-repo,
+  .chrome-commit {
     font-size: var(--tick);
-    letter-spacing: var(--track);
-    text-transform: uppercase;
     color: var(--muted);
     text-decoration: none;
-    white-space: nowrap;
     transition: color 0.2s ease;
   }
 
-  .chrome-source-mark {
+  .chrome-repo-mark {
     color: var(--phosphor);
     letter-spacing: 0;
   }
 
-  .chrome-source:hover {
+  .chrome-repo:hover,
+  .chrome-commit:hover {
     color: var(--phosphor);
+  }
+
+  .chrome-commit {
+    font-variant-numeric: tabular-nums;
   }
 
   .signal {

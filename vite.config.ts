@@ -1,6 +1,20 @@
+import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig, type Plugin } from "vite";
+
+function resolveGitCommit(): string {
+  if (process.env.GIT_COMMIT) {
+    return process.env.GIT_COMMIT.trim().slice(0, 7);
+  }
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+const buildCommit = resolveGitCommit();
 
 function shareOpenPage(): Plugin {
   return {
@@ -24,6 +38,9 @@ function shareOpenPage(): Plugin {
 
 export default defineConfig({
   plugins: [svelte(), shareOpenPage()],
+  define: {
+    __BUILD_COMMIT__: JSON.stringify(buildCommit),
+  },
   build: {
     outDir: "dist/client",
     emptyOutDir: true,
