@@ -96,7 +96,8 @@
   .diagram :global(.dia-plain),
   .diagram :global(.dia-cipher) {
     animation-duration: 14s;
-    animation-iteration-count: infinite;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards;
     animation-timing-function: ease-in-out;
   }
 
@@ -126,7 +127,7 @@
 
   .diagram :global(.dia-key-path) {
     color: var(--hairline-lit);
-    animation: dia-key-path 14s ease-in-out infinite;
+    animation: dia-key-path 14s ease-in-out 1 forwards;
   }
 
   .diagram :global(.dia-plain) {
@@ -150,38 +151,42 @@
   }
 
   @keyframes dia-you {
-    0%,
-    100% {
+    0% {
       color: var(--hairline-lit);
     }
     5%,
     35% {
       color: var(--fg);
     }
+    40%,
+    100% {
+      color: var(--hairline-lit);
+    }
   }
 
   @keyframes dia-server {
     0%,
-    20%,
-    62%,
-    100% {
+    20% {
       color: var(--hairline-lit);
     }
     24%,
-    58% {
+    100% {
       color: var(--fg);
     }
   }
 
   @keyframes dia-them {
     0%,
-    58%,
-    100% {
+    58% {
       color: var(--hairline-lit);
     }
     62%,
     82% {
       color: var(--fg);
+    }
+    86%,
+    100% {
+      color: var(--hairline-lit);
     }
   }
 
@@ -213,30 +218,22 @@
 
   @keyframes dia-key {
     0%,
-    34%,
-    58%,
-    100% {
+    34% {
       color: var(--hairline-lit);
     }
     38%,
-    54% {
-      color: var(--phosphor);
-    }
-    62%,
-    80% {
+    100% {
       color: var(--phosphor);
     }
   }
 
   @keyframes dia-key-path {
     0%,
-    36%,
-    58%,
-    100% {
+    36% {
       color: var(--hairline-lit);
     }
     42%,
-    54% {
+    100% {
       color: var(--fg);
     }
   }
@@ -290,13 +287,9 @@
       opacity: 0;
     }
     72%,
-    82% {
+    100% {
       opacity: 1;
       color: var(--fg);
-    }
-    92%,
-    100% {
-      opacity: 0;
     }
   }
 
@@ -305,12 +298,25 @@
       animation: none;
     }
 
+    .diagram :global(.dia-server) {
+      color: var(--fg);
+    }
+
     .diagram :global(.dia-key-path) {
       color: var(--fg);
     }
 
     .diagram :global(.dia-key) {
       color: var(--phosphor);
+    }
+
+    .diagram :global(.dia-slot-right .dia-plain) {
+      opacity: 1;
+      color: var(--fg);
+    }
+
+    .diagram :global(.dia-slot-right .dia-cipher) {
+      opacity: 0;
     }
   }
 </style>
