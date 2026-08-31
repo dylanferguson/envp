@@ -22,7 +22,7 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     tone: "idle",
     step: "key",
     kind: "hold",
-    note: "paste the link you received",
+    note: "",
   },
   loading: {
     word: "fetching",
