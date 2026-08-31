@@ -29,6 +29,23 @@ test.describe("create share", () => {
     expect(envelope.length).toBeGreaterThan(SAMPLE_ENV.length);
   });
 
+  test("selects share link after creation", async ({ page }) => {
+    await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
+    await page.getByRole("button", { name: "share" }).click();
+    const shareLink = page.getByRole("textbox", { name: "share link" });
+    await expect(shareLink).toBeVisible();
+    await expect(shareLink).toBeFocused();
+
+    const selection = await shareLink.evaluate((el: HTMLTextAreaElement) => ({
+      start: el.selectionStart,
+      end: el.selectionEnd,
+      length: el.value.length,
+    }));
+    expect(selection.start).toBe(0);
+    expect(selection.end).toBe(selection.length);
+    expect(selection.length).toBeGreaterThan(0);
+  });
+
   test("starts a new share from the done screen", async ({ page }) => {
     await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
     await page.getByRole("button", { name: "share" }).click();

@@ -44,7 +44,11 @@
 <div class="tree" aria-hidden="true">
   {#if root}
     <div class="tree-line">
-      <span class="tree-node tree-root" class:is-lit={isFirstStep && lit}>{root}</span>
+      <span
+        class="tree-node tree-root"
+        class:is-lit={isFirstStep && lit && kind !== "error"}
+        class:is-error={isFirstStep && lit && kind === "error"}
+      >{root}</span>
     </div>
   {/if}
   {#each lines as line (line.step)}
@@ -53,7 +57,11 @@
     {@const twigParts = line.twig ? splitTwig(line.twig) : null}
     <div class="tree-line">
       {#if twigParts}
-        <span class="tree-twig-wrap"><span class="tree-twig-spine">{twigParts.spine}</span><span class="tree-twig" class:is-lit={isActive && !isFirstStep}>{twigParts.connector}</span></span>
+        <span class="tree-twig-wrap"><span class="tree-twig-spine">{twigParts.spine}</span><span
+            class="tree-twig"
+            class:is-lit={isActive && !isFirstStep && kind !== "error"}
+            class:is-error={isActive && !isFirstStep && kind === "error"}
+          >{twigParts.connector}</span></span>
       {/if}
       <span
         class="tree-node"
@@ -91,7 +99,13 @@
   }
 
   .tree-twig.is-lit {
-    animation: tree-twig-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    color: var(--phosphor);
+    animation: tree-twig-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tree-twig.is-error {
+    color: var(--coral);
+    animation: tree-twig-error-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .tree-node {
@@ -103,15 +117,23 @@
   }
 
   .tree-root.is-lit {
-    animation: tree-node-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    color: var(--phosphor);
+    animation: tree-node-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tree-root.is-error {
+    color: var(--coral);
+    animation: tree-node-error-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .tree-node.is-active {
-    animation: tree-node-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    color: var(--phosphor);
+    animation: tree-node-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .tree-node.is-error {
-    animation: tree-node-error-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    color: var(--coral);
+    animation: tree-node-error-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @keyframes tree-node-in {
@@ -129,6 +151,15 @@
     }
     to {
       color: #48d597;
+    }
+  }
+
+  @keyframes tree-twig-error-in {
+    from {
+      color: #23262b;
+    }
+    to {
+      color: #ff6a80;
     }
   }
 
@@ -150,6 +181,11 @@
     .tree-twig.is-lit {
       animation: none;
       color: var(--phosphor);
+    }
+
+    .tree-twig.is-error {
+      animation: none;
+      color: var(--coral);
     }
 
     .tree-root.is-lit {

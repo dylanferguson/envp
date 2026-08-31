@@ -1,6 +1,7 @@
 import { parseKeyFragment, parseShareId } from "../../../shared/limits.js";
 import { importKeyFromFragment, open } from "../../../shared/envelope.js";
-import { getShare } from "../../api/shares.js";
+import { getShare, ShareApiError } from "../../api/shares.js";
+import { formatHttpError } from "../../lib/http-error.js";
 import type { OpenState } from "./state.js";
 
 export function resolveShareTarget(
@@ -34,15 +35,37 @@ export type DecryptOutcome =
   | { kind: "tampered" }
   | { kind: "revealed"; envOutput: string };
 
+export type FetchShareOutcome =
+  | { kind: "envelope"; envelope: Uint8Array }
+  | { kind: "missing" }
+  | { kind: "http_error"; message: string }
+  | { kind: "stale" };
+
 export async function fetchShareEnvelope(
   shareId: string,
   isStale: () => boolean,
-): Promise<Uint8Array | null | "stale"> {
-  const envelope = await getShare(shareId);
-  if (isStale()) {
-    return "stale";
+): Promise<FetchShareOutcome> {
+  try {
+    const envelope = await getShare(shareId);
+    if (isStale()) {
+      return { kind: "stale" };
+    }
+    if (!envelope) {
+      return { kind: "missing" };
+    }
+    return { kind: "envelope", envelope };
+  } catch (error) {
+    if (isStale()) {
+      return { kind: "stale" };
+    }
+    if (error instanceof ShareApiError) {
+      return {
+        kind: "http_error",
+        message: formatHttpError(error.status, error.statusText),
+      };
+    }
+    throw error;
   }
-  return envelope;
 }
 
 export async function decryptShareEnvelope(

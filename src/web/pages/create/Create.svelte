@@ -39,12 +39,6 @@
     isBusy || isOverLimit || envInput.length === 0,
   );
 
-  $effect(() => {
-    if (isDone) {
-      createDone?.focusLink();
-    }
-  });
-
   async function onShare(): Promise<void> {
     const outcome = await runShareFlow(
       envInput,
@@ -71,7 +65,7 @@
       () => {
         state = { ...state, copied: true };
         copyToast?.show();
-        createDone?.focusLink();
+        createDone?.selectLink();
       },
       () => {
         if (isCreateDone(state)) {

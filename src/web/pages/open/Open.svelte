@@ -82,33 +82,34 @@
     }
 
     state = { phase: "loading" };
-    const envelope = await fetchShareEnvelope(resolved.shareId, isStale);
-    if (isStale()) {
+    const outcome = await fetchShareEnvelope(resolved.shareId, isStale);
+    if (isStale() || outcome.kind === "stale") {
       return;
     }
-    if (envelope === "stale") {
-      return;
-    }
-    if (!envelope) {
+    if (outcome.kind === "missing") {
       state = { phase: "gone" };
+      return;
+    }
+    if (outcome.kind === "http_error") {
+      state = { phase: "fetch_error", message: outcome.message };
       return;
     }
 
     state = { phase: "unlocking" };
-    const outcome = await decryptShareEnvelope(
-      envelope,
+    const decryptOutcome = await decryptShareEnvelope(
+      outcome.envelope,
       resolved.fragment,
       isStale,
     );
-    if (isStale() || outcome.kind === "stale") {
+    if (isStale() || decryptOutcome.kind === "stale") {
       return;
     }
-    if (outcome.kind === "revealed") {
-      envOutput = outcome.envOutput;
+    if (decryptOutcome.kind === "revealed") {
+      envOutput = decryptOutcome.envOutput;
       state = { phase: "revealed" };
       return;
     }
-    state = { phase: outcome.kind };
+    state = { phase: decryptOutcome.kind };
   }
 
   function onCopy(): void {

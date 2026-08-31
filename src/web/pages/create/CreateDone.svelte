@@ -9,7 +9,6 @@
     copied: boolean;
     onCopy: () => void;
     onAgain: () => void;
-    bindShareUrlInput?: (el: HTMLInputElement) => void;
   };
 
   let {
@@ -20,11 +19,34 @@
     onAgain,
   }: Props = $props();
 
-  let shareUrlInput = $state<HTMLInputElement | null>(null);
+  let shareUrlInput = $state<HTMLTextAreaElement | null>(null);
 
-  export function focusLink(): void {
-    shareUrlInput?.focus();
-    shareUrlInput?.select();
+  function focusLinkField(node: HTMLTextAreaElement): { update?: (value: string) => void } {
+    const selectAll = (): void => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          node.focus({ preventScroll: true });
+          node.setSelectionRange(0, node.value.length);
+        });
+      });
+    };
+    selectAll();
+    return {
+      update(value: string) {
+        if (value.length > 0) {
+          selectAll();
+        }
+      },
+    };
+  }
+
+  export function selectLink(): void {
+    const el = shareUrlInput;
+    if (!el) {
+      return;
+    }
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(0, el.value.length);
   }
 
   const title = $derived(!copied ? "copy, then send." : "");
@@ -38,16 +60,17 @@
   <div class="done-result">
     <p class="done-expiry readout">{expiry}</p>
     <div class="frame link-frame">
-      <input
+      <textarea
         id="share-url"
         bind:this={shareUrlInput}
-        class="link-input"
-        type="text"
+        use:focusLinkField={url}
+        class="link-output"
         readonly
+        rows={1}
         value={url}
         spellcheck={false}
         aria-label="share link"
-      />
+      ></textarea>
       <button
         type="button"
         class="link-copy"
@@ -97,20 +120,26 @@
     align-items: stretch;
   }
 
-  .link-input {
+  .link-output {
     display: block;
     flex: 1;
     min-width: 0;
+    min-height: 0;
     padding: 0.85rem 1rem;
     padding-right: 0.65rem;
     background: transparent;
     color: var(--fg);
     border: 0;
+    border-radius: 0;
     font: inherit;
     caret-color: var(--phosphor);
+    resize: none;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    field-sizing: content;
   }
 
-  .link-input:focus {
+  .link-output:focus {
     outline: none;
   }
 

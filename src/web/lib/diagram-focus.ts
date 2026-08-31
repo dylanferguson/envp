@@ -8,6 +8,7 @@ export const OPEN_DIAGRAM_FOCUS: Record<OpenState["phase"], DiagramFocus> = {
   missing_key: "key",
   loading: "fetch",
   gone: "fetch",
+  fetch_error: "fetch",
   unlocking: "unlock",
   tampered: "unlock",
   revealed: "revealed",

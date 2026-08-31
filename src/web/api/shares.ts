@@ -7,13 +7,17 @@ import {
 } from "../../shared/share-api.js";
 import { type ShareId, type TtlSeconds } from "../../shared/limits.js";
 
+import { formatHttpError } from "../lib/http-error.js";
+
 export class ShareApiError extends Error {
   readonly status: number;
+  readonly statusText: string;
 
-  constructor(status: number) {
-    super(status > 0 ? `share request failed (${status})` : "share request failed");
+  constructor(status: number, statusText = "") {
+    super(formatHttpError(status, statusText));
     this.name = "ShareApiError";
     this.status = status;
+    this.statusText = statusText;
   }
 }
 
@@ -28,7 +32,7 @@ export async function createShare(
   });
 
   if (!response.ok) {
-    throw new ShareApiError(response.status);
+    throw new ShareApiError(response.status, response.statusText);
   }
 
   const parsed = parseCreateShareResponse(await response.json());
@@ -41,8 +45,11 @@ export async function createShare(
 
 export async function getShare(id: string): Promise<Uint8Array | null> {
   const response = await fetch(`${API_V1_SHARES}/${id}`);
-  if (!response.ok) {
+  if (response.status === 404) {
     return null;
+  }
+  if (!response.ok) {
+    throw new ShareApiError(response.status, response.statusText);
   }
 
   const parsed = parseGetShareResponse(await response.json());

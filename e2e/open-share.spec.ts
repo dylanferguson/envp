@@ -7,6 +7,14 @@ import {
 } from "./helpers.js";
 
 test.describe("open share", () => {
+  test("selects decrypted output after open", async ({ page }) => {
+    const url = await createShare(page);
+    await page.goto(url);
+    const output = page.getByRole("textbox", { name: "decrypted .env" });
+    await expect(output).toBeVisible();
+    await expect(output).toBeFocused();
+  });
+
   test("roundtrips create → open via share URL", async ({ page }) => {
     const url = await createShare(page);
     await page.goto(url);
@@ -28,18 +36,18 @@ test.describe("open share", () => {
     await page.getByRole("textbox", { name: "paste shared link" }).fill("not-a-share-link");
     await page.getByRole("button", { name: "open" }).click();
 
-    await expect(page.getByText("couldn't parse that.")).toBeVisible();
+    await expect(page.getByText("Couldn't parse that.")).toBeVisible();
   });
 
   test("reports a missing key fragment", async ({ page }) => {
     await page.goto(`/s/${UNKNOWN_SHARE_ID}`);
 
-    await expect(page.getByText("missing #key.")).toBeVisible();
+    await expect(page.getByText("Missing #key.")).toBeVisible();
   });
 
   test("reports a share that does not exist", async ({ page }) => {
     await page.goto(`/s/${UNKNOWN_SHARE_ID}#${VALID_KEY_FRAGMENT}`);
 
-    await expect(page.getByText("gone. expired, deleted, or never existed.")).toBeVisible();
+    await expect(page.getByText("Not found. Expired, deleted, or never existed.")).toBeVisible();
   });
 });

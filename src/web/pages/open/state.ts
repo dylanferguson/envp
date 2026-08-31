@@ -9,6 +9,7 @@ export type OpenState =
   | { phase: "unlocking" }
   | { phase: "revealed" }
   | { phase: "gone" }
+  | { phase: "fetch_error"; message: string }
   | { phase: "tampered" }
   | { phase: "missing_key" }
   | { phase: "invalid_link" };
@@ -43,32 +44,39 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     note: "",
   },
   gone: {
-    word: "gone",
+    word: "not found",
     tone: "error",
     step: "fetch",
     kind: "error",
-    note: "gone. expired, deleted, or never existed.",
+    note: "Not found. Expired, deleted, or never existed.",
+  },
+  fetch_error: {
+    word: "fault",
+    tone: "error",
+    step: "fetch",
+    kind: "error",
+    note: "",
   },
   tampered: {
     word: "fault",
     tone: "error",
     step: "unlock",
     kind: "error",
-    note: "couldn't decrypt. wrong link or corrupted data.",
+    note: "Couldn't decrypt. Wrong link or corrupted data.",
   },
   missing_key: {
     word: "no key",
     tone: "error",
     step: "key",
     kind: "error",
-    note: "missing #key.",
+    note: "Missing #key.",
   },
   invalid_link: {
     word: "bad link",
     tone: "error",
     step: "key",
     kind: "error",
-    note: "couldn't parse that.",
+    note: "Couldn't parse that.",
   },
 };
 
@@ -80,7 +88,11 @@ export const OPEN_TREE: readonly TreeLine<OpenStep>[] = [
 ];
 
 export function deriveOpenReading(state: OpenState): Reading<OpenStep> {
-  return OPEN_READINGS[state.phase];
+  const base = OPEN_READINGS[state.phase];
+  if (state.phase === "fetch_error") {
+    return { ...base, note: state.message };
+  }
+  return base;
 }
 
 export function showOpenForm(state: OpenState, isManual: boolean): boolean {
