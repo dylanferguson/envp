@@ -133,11 +133,7 @@
     isBusy || isOverLimit || envInput.length === 0,
   );
   const doneTitle = $derived(
-    isDone && state.copied
-      ? "send this link."
-      : isDone
-        ? "copy this link, then send it."
-        : "",
+    isDone && !state.copied ? "copy, then send." : "",
   );
   const doneUrl = $derived(isDone ? state.url : "");
   const doneExpiry = $derived(
@@ -285,9 +281,12 @@
     </div>
 
     <div class="done swap-pane" class:is-out={!isDone}>
-      <p class="done-title" aria-live="polite">{doneTitle}</p>
-      <p class="done-expiry readout">{doneExpiry}</p>
-      <div class="frame link-frame">
+      {#if doneTitle}
+        <p class="done-title" aria-live="polite">{doneTitle}</p>
+      {/if}
+      <div class="done-result">
+        <p class="done-expiry readout">{doneExpiry}</p>
+        <div class="frame link-frame">
         <input
           id="share-url"
           bind:this={shareUrlInput}
@@ -323,6 +322,7 @@
             />
           </svg>
         </button>
+      </div>
       </div>
       <div class="done-actions">
         <button type="button" onclick={onAgain}>new</button>
@@ -516,14 +516,18 @@
   }
 
   .done-title {
-    margin: 0 0 0.35rem;
+    margin: 0 0 0.65rem;
     font-size: 1rem;
     font-weight: 500;
     color: var(--fg);
   }
 
+  .done-result {
+    margin: 0;
+  }
+
   .done-expiry {
-    margin: 0 0 1.25rem;
+    margin: 0 0 0.65rem;
   }
 
   .done .link-frame {

@@ -3,7 +3,8 @@
 
   /** Inner width between └ and ┘; must match diagram column geometry. */
   const KEY_PATH_INNER = 47;
-  const KEY_PATH_LABEL = " share link over secure channel ";
+  const KEY_PATH_PREFIX = " share link";
+  const KEY_PATH_SUFFIX = "#key";
 
   function keyPathDashes(labelLen: number): [string, string] {
     const pad = KEY_PATH_INNER - labelLen;
@@ -11,7 +12,9 @@
     return ["─".repeat(left), "─".repeat(pad - left)];
   }
 
-  const [keyPathLeft, keyPathRight] = keyPathDashes(KEY_PATH_LABEL.length);
+  const [keyPathLeft, keyPathRight] = keyPathDashes(
+    KEY_PATH_PREFIX.length + KEY_PATH_SUFFIX.length,
+  );
 
   let paused = $state(false);
 
@@ -38,7 +41,7 @@
    <span class="dia-you">│ </span><span class="dia-slot"><span class="dia-plain">.env        </span><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span></span><span class="dia-you">│</span> <span class="dia-flow-a">--seal-></span> <span class="dia-server">│ </span><span class="dia-cipher">▒▒▒▒▒▒▒▒  </span><span class="dia-server">│</span> <span class="dia-flow-b">--get--></span> <span class="dia-them">│ </span><span class="dia-slot dia-slot-right"><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span><span class="dia-plain">.env        </span></span><span class="dia-them">│</span>
    <span class="dia-you">│ </span><span class="dia-key">#key        </span><span class="dia-you">│</span>          <span class="dia-server">│  no key   │</span>          <span class="dia-them">│ </span><span class="dia-key">#key        </span><span class="dia-them">│</span>
    <span class="dia-you">╰──────┬──────╯</span>          <span class="dia-server">└───────────┘</span>          <span class="dia-them">╰──────┬──────╯</span>
-          <span class="dia-key-path">└{keyPathLeft}{KEY_PATH_LABEL}{keyPathRight}┘</span></pre
+          <span class="dia-key-path">└{keyPathLeft}{KEY_PATH_PREFIX}</span><span class="dia-key">{KEY_PATH_SUFFIX}</span><span class="dia-key-path">{keyPathRight}┘</span></pre
 >
 
 <style>
@@ -172,11 +175,11 @@
 
   @keyframes dia-them {
     0%,
-    50%,
+    58%,
     100% {
       color: var(--hairline-lit);
     }
-    54%,
+    62%,
     82% {
       color: var(--fg);
     }
@@ -197,13 +200,13 @@
 
   @keyframes dia-flow-b {
     0%,
-    48%,
-    68%,
+    54%,
+    72%,
     100% {
       color: var(--hairline-lit);
     }
-    52%,
-    64% {
+    58%,
+    68% {
       color: var(--phosphor);
     }
   }
@@ -211,28 +214,30 @@
   @keyframes dia-key {
     0%,
     34%,
-    80%,
+    58%,
     100% {
       color: var(--hairline-lit);
     }
     38%,
-    76% {
+    54% {
+      color: var(--phosphor);
+    }
+    62%,
+    80% {
       color: var(--phosphor);
     }
   }
 
   @keyframes dia-key-path {
     0%,
-    36% {
+    36%,
+    58%,
+    100% {
       color: var(--hairline-lit);
     }
     42%,
-    72% {
+    54% {
       color: var(--fg);
-    }
-    78%,
-    100% {
-      color: var(--hairline-lit);
     }
   }
 
@@ -266,14 +271,14 @@
 
   @keyframes dia-cipher-right {
     0%,
-    54% {
+    58% {
       opacity: 0;
     }
-    58%,
-    66% {
+    62%,
+    70% {
       opacity: 1;
     }
-    72%,
+    76%,
     100% {
       opacity: 0;
     }
@@ -302,6 +307,10 @@
 
     .diagram :global(.dia-key-path) {
       color: var(--fg);
+    }
+
+    .diagram :global(.dia-key) {
+      color: var(--phosphor);
     }
   }
 </style>
