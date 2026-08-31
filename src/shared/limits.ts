@@ -87,16 +87,18 @@ export function parseShareLink(input: string): ParsedShareLink | null {
 }
 
 export function formatExpiryLabel(ttlSeconds: number): string {
-  if (ttlSeconds < 3600) {
-    const minutes = Math.round(ttlSeconds / 60);
-    return `expires in ${minutes}m`;
+  if (ttlSeconds >= 86400) {
+    return "expires in 24h";
   }
-  if (ttlSeconds < 86400) {
+  const minutes = Math.round(ttlSeconds / 60);
+  if (minutes >= 60) {
     const hours = Math.round(ttlSeconds / 3600);
     return `expires in ${hours}h`;
   }
-  return "expires in 24h";
+  return `expires in ${minutes}m`;
 }
+
+export const LONGEST_EXPIRY_LABEL = formatExpiryLabel(MAX_TTL_SECONDS);
 
 export function formatExpiresAtLabel(
   expiresAt: UnixMillis,

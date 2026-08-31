@@ -34,8 +34,8 @@
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    flex: 1;
-    min-width: 10rem;
+    width: 100%;
+    min-width: 0;
     color: var(--hairline-lit);
     transition: color 0.2s ease;
   }

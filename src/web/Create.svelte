@@ -6,6 +6,7 @@
     MAX_PLAINTEXT_KIB,
     formatExpiresAtLabel,
     formatExpiryLabel,
+    LONGEST_EXPIRY_LABEL,
   } from "../shared/limits.js";
   import {
     EnvelopeError,
@@ -255,7 +256,10 @@
       <div class="controls">
         <label class="control-label" for="ttl">ttl</label>
         <TtlSlider id="ttl" bind:value={ttlSeconds} disabled={isBusy} />
-        <span class="readout">{formatExpiryLabel(ttlSeconds)}</span>
+        <span class="readout ttl-readout">
+          <span class="ttl-readout-sizer" aria-hidden="true">{LONGEST_EXPIRY_LABEL}</span>
+          <span class="ttl-readout-value">{formatExpiryLabel(ttlSeconds)}</span>
+        </span>
         <button
           type="button"
           class:is-busy={isBusy}
@@ -378,6 +382,24 @@
     color: var(--coral);
   }
 
+  .ttl-readout {
+    display: inline-grid;
+    justify-self: end;
+  }
+
+  .ttl-readout-sizer,
+  .ttl-readout-value {
+    grid-area: 1 / 1;
+  }
+
+  .ttl-readout-sizer {
+    visibility: hidden;
+  }
+
+  .ttl-readout-value {
+    justify-self: end;
+  }
+
   .frame {
     border: 1px solid var(--hairline);
     background: var(--surface);
@@ -439,8 +461,8 @@
   }
 
   .controls {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(10rem, 1fr) auto auto;
     align-items: center;
     gap: 1rem;
     margin: 0 0 1.25rem;
