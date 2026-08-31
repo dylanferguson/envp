@@ -1,6 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
+  /** Inner width between └ and ┘; must match diagram column geometry. */
+  const KEY_PATH_INNER = 47;
+  const KEY_PATH_LABEL = " share link over secure channel ";
+
+  function keyPathDashes(labelLen: number): [string, string] {
+    const pad = KEY_PATH_INNER - labelLen;
+    const left = Math.floor(pad / 2);
+    return ["─".repeat(left), "─".repeat(pad - left)];
+  }
+
+  const [keyPathLeft, keyPathRight] = keyPathDashes(KEY_PATH_LABEL.length);
+
   let paused = $state(false);
 
   onMount(() => {
@@ -26,7 +38,7 @@
    <span class="dia-you">│ </span><span class="dia-slot"><span class="dia-plain">.env        </span><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span></span><span class="dia-you">│</span> <span class="dia-flow-a">--seal-></span> <span class="dia-server">│ </span><span class="dia-cipher">▒▒▒▒▒▒▒▒  </span><span class="dia-server">│</span> <span class="dia-flow-b">--get--></span> <span class="dia-them">│ </span><span class="dia-slot dia-slot-right"><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span><span class="dia-plain">.env        </span></span><span class="dia-them">│</span>
    <span class="dia-you">│ </span><span class="dia-key">#key        </span><span class="dia-you">│</span>          <span class="dia-server">│  no key   │</span>          <span class="dia-them">│ </span><span class="dia-key">#key        </span><span class="dia-them">│</span>
    <span class="dia-you">╰──────┬──────╯</span>          <span class="dia-server">└───────────┘</span>          <span class="dia-them">╰──────┬──────╯</span>
-          <span class="dia-key-path">└───────────────────────────────────────────────┘</span></pre
+          <span class="dia-key-path">└{keyPathLeft}{KEY_PATH_LABEL}{keyPathRight}┘</span></pre
 >
 
 <style>
@@ -78,7 +90,6 @@
   .diagram :global(.dia-flow-a),
   .diagram :global(.dia-flow-b),
   .diagram :global(.dia-key),
-  .diagram :global(.dia-key-path),
   .diagram :global(.dia-plain),
   .diagram :global(.dia-cipher) {
     animation-duration: 14s;
@@ -111,7 +122,8 @@
   }
 
   .diagram :global(.dia-key-path) {
-    animation-name: dia-key-path;
+    color: var(--hairline-lit);
+    animation: dia-key-path 14s ease-in-out infinite;
   }
 
   .diagram :global(.dia-plain) {
@@ -139,20 +151,20 @@
     100% {
       color: var(--hairline-lit);
     }
-    6%,
-    38% {
+    5%,
+    35% {
       color: var(--fg);
     }
   }
 
   @keyframes dia-server {
     0%,
-    22%,
-    72%,
+    20%,
+    62%,
     100% {
       color: var(--hairline-lit);
     }
-    32%,
+    24%,
     58% {
       color: var(--fg);
     }
@@ -160,75 +172,77 @@
 
   @keyframes dia-them {
     0%,
-    48%,
+    50%,
     100% {
       color: var(--hairline-lit);
     }
-    58%,
-    86% {
+    54%,
+    82% {
       color: var(--fg);
     }
   }
 
   @keyframes dia-flow-a {
     0%,
-    16%,
-    44%,
+    18%,
+    38%,
     100% {
       color: var(--hairline-lit);
     }
-    24%,
-    36% {
+    22%,
+    34% {
       color: var(--phosphor);
     }
   }
 
   @keyframes dia-flow-b {
     0%,
-    46%,
-    78%,
+    48%,
+    68%,
     100% {
       color: var(--hairline-lit);
     }
-    54%,
-    68% {
+    52%,
+    64% {
       color: var(--phosphor);
     }
   }
 
   @keyframes dia-key {
     0%,
-    20%,
-    90%,
+    34%,
+    80%,
     100% {
       color: var(--hairline-lit);
     }
-    30%,
-    82% {
+    38%,
+    76% {
       color: var(--phosphor);
     }
   }
 
   @keyframes dia-key-path {
     0%,
-    26%,
-    92%,
-    100% {
+    36% {
       color: var(--hairline-lit);
     }
-    36%,
-    84% {
-      color: var(--phosphor);
+    42%,
+    72% {
+      color: var(--fg);
+    }
+    78%,
+    100% {
+      color: var(--hairline-lit);
     }
   }
 
   @keyframes dia-plain {
     0%,
-    12% {
+    8% {
       opacity: 1;
       color: var(--fg);
     }
-    22%,
+    18%,
     100% {
       opacity: 0;
     }
@@ -236,47 +250,58 @@
 
   @keyframes dia-cipher-block {
     0%,
-    18%,
-    62%,
-    100% {
+    14% {
       opacity: 0.2;
     }
-    28%,
-    52% {
+    20%,
+    56% {
       opacity: 1;
       color: var(--fg);
+    }
+    66%,
+    100% {
+      opacity: 0.2;
     }
   }
 
   @keyframes dia-cipher-right {
     0%,
-    52%,
-    74%,
-    100% {
+    54% {
       opacity: 0;
     }
-    60%,
-    68% {
+    58%,
+    66% {
       opacity: 1;
+    }
+    72%,
+    100% {
+      opacity: 0;
     }
   }
 
   @keyframes dia-plain-right {
     0%,
-    66%,
-    100% {
+    66% {
       opacity: 0;
     }
-    74%,
-    88% {
+    72%,
+    82% {
       opacity: 1;
       color: var(--fg);
+    }
+    92%,
+    100% {
+      opacity: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .diagram :global(*) {
       animation: none;
+    }
+
+    .diagram :global(.dia-key-path) {
+      color: var(--fg);
     }
   }
 </style>
