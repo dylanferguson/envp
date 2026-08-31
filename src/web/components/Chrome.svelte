@@ -36,21 +36,21 @@
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          title="View source on GitHub"
           aria-label="View source on GitHub"
         >
           <span class="chrome-repo-mark" aria-hidden="true">&lt;/&gt;</span>
         </a>
-        <a
-          class="chrome-commit"
-          href={commitHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="View deployed build on GitHub"
-          aria-label="Deployed build {BUILD_META.commit}"
-        >
-          {BUILD_META.commit}
-        </a>
+        <span class="chrome-commit-wrap">
+          <a
+            class="chrome-commit"
+            href={commitHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Deployed build {BUILD_META.commit}"
+          >
+            {BUILD_META.commit}
+          </a>
+        </span>
       </span>
       <span class="signal" data-tone={tone} role="status">
         <span class="signal-slot">
@@ -149,8 +149,13 @@
   .chrome-build {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
     white-space: nowrap;
+  }
+
+  .chrome-commit-wrap {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: 0;
   }
 
   .chrome-repo,
@@ -172,7 +177,50 @@
   }
 
   .chrome-commit {
+    min-width: 0;
+    padding-left: 0.35rem;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  @media (hover: hover) {
+    .chrome-commit-wrap {
+      grid-template-columns: 0fr;
+      transition: grid-template-columns 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .chrome-commit {
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-0.4rem);
+      transition:
+        color 0.2s ease,
+        opacity 0.18s ease,
+        transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .chrome-build:hover .chrome-commit-wrap,
+    .chrome-build:focus-within .chrome-commit-wrap {
+      grid-template-columns: 1fr;
+    }
+
+    .chrome-build:hover .chrome-commit,
+    .chrome-build:focus-within .chrome-commit {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chrome-commit-wrap {
+      transition: none;
+    }
+
+    .chrome-commit {
+      transition: color 0.2s ease;
+    }
   }
 
   .signal {

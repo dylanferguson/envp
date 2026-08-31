@@ -60,29 +60,27 @@
   {#if title}
     <p class="done-title" aria-live="polite">{title}</p>
   {/if}
-  <div class="done-result">
-    <p class="done-expiry readout">{expiry}</p>
-    <div class="frame link-frame">
-      <textarea
-        id="share-url"
-        bind:this={shareUrlInput}
-        use:focusLinkField={url}
-        class="link-output"
-        readonly
-        rows={1}
-        value={url}
-        spellcheck={false}
-        aria-label="share link"
-      ></textarea>
-      <button
-        type="button"
-        class="link-copy"
-        onclick={onCopy}
-        aria-label="Copy link to clipboard"
-      >
-        <CopyIcon />
-      </button>
-    </div>
+  <p class="done-expiry readout">{expiry}</p>
+  <div class="frame">
+    <textarea
+      id="share-url"
+      bind:this={shareUrlInput}
+      use:focusLinkField={url}
+      class="link-output"
+      readonly
+      rows={1}
+      value={url}
+      spellcheck={false}
+      aria-label="share link"
+    ></textarea>
+    <button
+      type="button"
+      class="field-copy"
+      onclick={onCopy}
+      aria-label="Copy link to clipboard"
+    >
+      <CopyIcon />
+    </button>
   </div>
   <div class="done-actions">
     <Button onclick={onAgain}>new</Button>
@@ -105,31 +103,23 @@
     color: var(--fg);
   }
 
-  .done-result {
-    margin: 0;
-  }
-
   .done-expiry {
     margin: 0 0 0.65rem;
   }
 
   .frame {
+    position: relative;
     border: 1px solid var(--hairline);
     background: var(--surface);
   }
 
-  .link-frame {
-    display: flex;
-    align-items: stretch;
-  }
-
   .link-output {
     display: block;
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     min-height: 0;
     padding: 0.85rem 1rem;
-    padding-right: 0.65rem;
+    padding-right: 2.75rem;
+    padding-bottom: 2.75rem;
     background: transparent;
     color: var(--fg);
     border: 0;
@@ -150,29 +140,29 @@
     border-color: var(--phosphor);
   }
 
-  .link-copy {
+  .field-copy {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.35rem;
     display: flex;
-    flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
     margin: 0;
     padding: 0;
-    background: transparent;
+    background: var(--surface);
     color: var(--muted);
     border: 0;
-    border-left: 1px solid var(--hairline);
     border-radius: 0;
     font: inherit;
-    letter-spacing: 0;
-    text-transform: none;
     cursor: pointer;
     transition:
       color 0.2s ease,
       background 0.2s ease;
   }
 
-  .link-copy:hover {
+  .field-copy:hover {
     background: var(--teal);
     color: var(--phosphor);
   }
