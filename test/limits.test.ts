@@ -1,8 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { parseShareLink } from "../src/shared/limits.js";
+import {
+  formatExpiresAtLabel,
+  formatExpiryLabel,
+  parseShareLink,
+  type UnixMillis,
+} from "../src/shared/limits.js";
 
 const SHARE_ID = "share_abcdefghijklmnopqrstuv";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
+
+describe("formatExpiryLabel", () => {
+  it("shows hours for exact and near-hour durations", () => {
+    expect(formatExpiryLabel(3600)).toBe("expires in 1h");
+    expect(formatExpiryLabel(3599)).toBe("expires in 1h");
+    expect(formatExpiryLabel(3570)).toBe("expires in 1h");
+  });
+
+  it("shows minutes below one hour", () => {
+    expect(formatExpiryLabel(1800)).toBe("expires in 30m");
+    expect(formatExpiryLabel(3569)).toBe("expires in 59m");
+  });
+
+  it("shows 24h at the max ttl", () => {
+    expect(formatExpiryLabel(86400)).toBe("expires in 24h");
+  });
+});
+
+describe("formatExpiresAtLabel", () => {
+  it("matches formatExpiryLabel after upload delay", () => {
+    const now = 1_700_000_000_000;
+    const expiresAt = (now + 3599_000) as UnixMillis;
+    expect(formatExpiresAtLabel(expiresAt, now)).toBe("expires in 1h");
+  });
+});
 
 describe("parseShareLink", () => {
   it("parses absolute share URLs", () => {
