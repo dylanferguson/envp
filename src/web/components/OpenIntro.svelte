@@ -12,8 +12,7 @@
 <header class="hero">
   <h2 class="lead">Open a shared <span class="mark">.env</span></h2>
   <p class="deck">
-    Paste the shared env-share link, and decrypt the sender's env, without the
-    server ever seeing the key.
+    Decrypt the sender's env, without the server having seen the key.
   </p>
 </header>
 
