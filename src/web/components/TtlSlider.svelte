@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MAX_TTL_SECONDS, MIN_TTL_SECONDS } from "../shared/limits.js";
+  import { MAX_TTL_SECONDS, MIN_TTL_SECONDS } from "../../shared/limits.js";
 
   type Props = {
     id: string;

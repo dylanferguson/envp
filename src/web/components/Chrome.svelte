@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { crossfade } from "svelte/transition";
-  import { BUILD_META, buildCommitUrl } from "../shared/build-meta.js";
+  import { BUILD_META, buildCommitUrl } from "../../shared/build-meta.js";
 
   type SignalTone = "idle" | "live" | "ok" | "error";
 

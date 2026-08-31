@@ -1,11 +1,11 @@
-import { API_V1_SHARES } from "../shared/api.js";
+import { API_V1_SHARES } from "../../shared/api.js";
 import {
   buildCreateShareBody,
   parseCreateShareResponse,
   parseGetShareResponse,
   type CreateShareResponse,
-} from "../shared/share-api.js";
-import { type ShareId, type TtlSeconds } from "../shared/limits.js";
+} from "../../shared/share-api.js";
+import { type ShareId, type TtlSeconds } from "../../shared/limits.js";
 
 export class ShareApiError extends Error {
   readonly status: number;

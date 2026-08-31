@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API_V1_SHARES } from "../src/shared/api.js";
 import { base64urlEncode } from "../src/shared/envelope.js";
-import { createShare, getShare, ShareApiError } from "../src/web/shares.js";
+import { createShare, getShare, ShareApiError } from "../src/web/api/shares.js";
 
 const TEST_SHARE_ID = "share_abcdefghijklmnopqrstuv";
 const EXPIRES_AT = 1_735_689_600_000;

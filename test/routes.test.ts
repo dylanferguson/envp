@@ -166,7 +166,7 @@ describe("routes", () => {
     const response = await app.request("http://localhost/new");
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain('import Create from "/src/web/Create.svelte"');
+    expect(html).toContain('import Create from "/src/web/pages/create/Create.svelte"');
     expect(html).toContain('id="app"');
   });
 
@@ -175,7 +175,7 @@ describe("routes", () => {
     const response = await app.request("http://localhost/open");
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain('import Open from "/src/web/Open.svelte"');
+    expect(html).toContain('import Open from "/src/web/pages/open/Open.svelte"');
     expect(html).toContain('id="app"');
   });
 
