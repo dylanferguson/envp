@@ -98,7 +98,7 @@ export const OPEN_TREE: readonly TreeLine<OpenStep>[] = [
   { step: "key", twig: "├── ", label: "enter shared link" },
   { step: "fetch", twig: "│   ├── ", label: "fetch ciphertext" },
   { step: "unlock", twig: "│   ├── ", label: "decrypt locally" },
-  { step: "env", twig: "│   └── ", label: ".env is ready" },
+  { step: "env", twig: "│   └── ", label: "copy .env" },
 ];
 
 export function deriveOpenReading(state: OpenState): Reading<OpenStep> {

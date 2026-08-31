@@ -22,51 +22,53 @@
 
 <header class="chrome">
   <div class="chrome-row">
-    <h1 class="chrome-name">
-      <a href="/">env-share</a>
-    </h1>
-    <nav class="chrome-ops" aria-label="console modes">
-      <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
-      <a data-op="open" href="/open" class:is-active={activeOp === "open"}>open</a>
-    </nav>
-    <div class="chrome-end">
-      <span class="chrome-build">
-        <a
-          class="chrome-repo"
-          href={REPO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View source on GitHub"
-        >
-          <span class="chrome-repo-mark" aria-hidden="true">&lt;/&gt;</span>
-        </a>
-        <span class="chrome-commit-wrap">
+    <div class="chrome-start">
+      <h1 class="chrome-name">
+        <a href="/">env-share</a>
+      </h1>
+      <div class="chrome-menu">
+        <nav class="chrome-ops" aria-label="console modes">
+          <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
+          <a data-op="open" href="/open" class:is-active={activeOp === "open"}>open</a>
+        </nav>
+        <span class="chrome-build">
           <a
-            class="chrome-commit"
-            href={commitHref}
+            class="chrome-repo"
+            href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Deployed build {BUILD_META.commit}"
+            aria-label="View source on GitHub"
           >
-            {BUILD_META.commit}
+            <span class="chrome-repo-mark" aria-hidden="true">&lt;/&gt;</span>
           </a>
-        </span>
-      </span>
-      <span class="signal" data-tone={tone} role="status">
-        <span class="signal-slot">
-          <span class="signal-sizer" aria-hidden="true">{SIGNAL_WIDTH_WORD}</span>
-          {#key word}
-            <span
-              class="signal-word"
-              in:receive={{ key: word }}
-              out:send={{ key: word }}
+          <span class="chrome-commit-wrap">
+            <a
+              class="chrome-commit"
+              href={commitHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Deployed build {BUILD_META.commit}"
             >
-              {word}
-            </span>
-          {/key}
+              {BUILD_META.commit}
+            </a>
+          </span>
         </span>
-      </span>
+      </div>
     </div>
+    <span class="signal" data-tone={tone} role="status">
+      <span class="signal-slot">
+        <span class="signal-sizer" aria-hidden="true">{SIGNAL_WIDTH_WORD}</span>
+        {#key word}
+          <span
+            class="signal-word"
+            in:receive={{ key: word }}
+            out:send={{ key: word }}
+          >
+            {word}
+          </span>
+        {/key}
+      </span>
+    </span>
   </div>
 </header>
 
@@ -93,8 +95,19 @@
   .chrome-row {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
     height: 2.75rem;
+  }
+
+  .chrome-start {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .chrome-menu {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 
   .chrome-name {
@@ -137,13 +150,6 @@
   .chrome-ops > :global(.is-active) {
     color: var(--phosphor);
     border-bottom-color: var(--phosphor);
-  }
-
-  .chrome-end {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-left: auto;
   }
 
   .chrome-build {
@@ -201,12 +207,12 @@
     }
 
     .chrome-build:hover .chrome-commit-wrap,
-    .chrome-build:focus-within .chrome-commit-wrap {
+    .chrome-build:has(:focus-visible) .chrome-commit-wrap {
       grid-template-columns: 1fr;
     }
 
     .chrome-build:hover .chrome-commit,
-    .chrome-build:focus-within .chrome-commit {
+    .chrome-build:has(:focus-visible) .chrome-commit {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
@@ -227,6 +233,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    margin-left: auto;
     font-size: var(--tick);
     letter-spacing: var(--track);
     text-transform: uppercase;
@@ -301,8 +308,16 @@
   }
 
   @media (max-width: 720px) {
-    .chrome-row {
+    .chrome-start {
       gap: 0.75rem;
+    }
+
+    .chrome-menu {
+      gap: 0.65rem;
+    }
+
+    .chrome-ops {
+      gap: 0.65rem;
     }
 
     .chrome-name {
