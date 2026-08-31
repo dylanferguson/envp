@@ -48,7 +48,6 @@ export default defineConfig({
       input: {
         index: resolve(__dirname, "index.html"),
         open: resolve(__dirname, "open.html"),
-        "fixtures/step-tree": resolve(__dirname, "fixtures/step-tree.html"),
       },
     },
   },

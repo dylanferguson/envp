@@ -96,9 +96,9 @@
 
   const TREE = [
     { step: "paste", twig: "├── ", label: "enter .env" },
-    { step: "encrypt", twig: "│   ├── ", label: "encrypting .env locally" },
-    { step: "send", twig: "│   ├── ", label: "sending ciphertext to server" },
-    { step: "link", twig: "│   └── ", label: "share link ready" },
+    { step: "encrypt", twig: "│   ├── ", label: "encrypt .env locally" },
+    { step: "send", twig: "│   ├── ", label: "send ciphertext to server" },
+    { step: "link", twig: "│   └── ", label: "share link" },
   ] as const;
 
   let state = $state<State>({ phase: "idle" });
