@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { fade } from "svelte/transition";
+  import { crossfade } from "svelte/transition";
 
   type SignalTone = "idle" | "live" | "ok" | "error";
 
@@ -14,11 +14,15 @@
   let { activeOp, word, tone, children }: Props = $props();
 
   const REPO_URL = "https://github.com/dylanferguson/env-share";
+  const SIGNAL_WIDTH_WORD = "uploading";
+  const [send, receive] = crossfade({ duration: 260 });
 </script>
 
 <header class="chrome">
   <div class="chrome-row">
-    <h1 class="chrome-name">env-share</h1>
+    <h1 class="chrome-name">
+      <a href="/">env-share</a>
+    </h1>
     <nav class="chrome-ops" aria-label="console modes">
       <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
       <span data-op="open" class:is-active={activeOp === "open"}>open</span>
@@ -29,13 +33,25 @@
         href={REPO_URL}
         target="_blank"
         rel="noopener noreferrer"
+        title="View source on GitHub"
+        aria-label="View source code on GitHub"
       >
+        <span class="chrome-source-mark" aria-hidden="true">&lt;/&gt;</span>
         source
       </a>
       <span class="signal" data-tone={tone} role="status">
-        {#key word}
-          <span class="signal-word" in:fade={{ duration: 220 }}>{word}</span>
-        {/key}
+        <span class="signal-slot">
+          <span class="signal-sizer" aria-hidden="true">{SIGNAL_WIDTH_WORD}</span>
+          {#key word}
+            <span
+              class="signal-word"
+              in:receive={{ key: word }}
+              out:send={{ key: word }}
+            >
+              {word}
+            </span>
+          {/key}
+        </span>
       </span>
     </div>
   </div>
@@ -74,7 +90,16 @@
     font-weight: 500;
     letter-spacing: 0.2em;
     text-transform: uppercase;
+  }
+
+  .chrome-name a {
     color: var(--fg);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .chrome-name a:hover {
+    color: var(--phosphor);
   }
 
   .chrome-ops {
@@ -89,15 +114,16 @@
     color: var(--muted);
     text-decoration: none;
     border-bottom: 1px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
   }
 
   .chrome-ops > a:hover {
-    color: var(--fg);
+    color: var(--phosphor);
   }
 
   .chrome-ops > :global(.is-active) {
-    color: var(--fg);
-    border-bottom-color: var(--hairline-lit);
+    color: var(--phosphor);
+    border-bottom-color: var(--phosphor);
   }
 
   .chrome-end {
@@ -108,16 +134,25 @@
   }
 
   .chrome-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: var(--tick);
     letter-spacing: var(--track);
     text-transform: uppercase;
     color: var(--muted);
     text-decoration: none;
     white-space: nowrap;
+    transition: color 0.2s ease;
+  }
+
+  .chrome-source-mark {
+    color: var(--phosphor);
+    letter-spacing: 0;
   }
 
   .chrome-source:hover {
-    color: var(--fg);
+    color: var(--phosphor);
   }
 
   .signal {
@@ -130,6 +165,21 @@
     color: var(--muted);
     white-space: nowrap;
     transition: color 0.35s ease;
+  }
+
+  .signal-slot {
+    display: inline-grid;
+    align-items: center;
+  }
+
+  .signal-slot > :global(*) {
+    grid-area: 1 / 1;
+  }
+
+  .signal-sizer {
+    visibility: hidden;
+    user-select: none;
+    pointer-events: none;
   }
 
   .signal-word {
