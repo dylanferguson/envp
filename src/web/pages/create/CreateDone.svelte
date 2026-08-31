@@ -21,6 +21,9 @@
 
   let shareUrlInput = $state<HTMLTextAreaElement | null>(null);
 
+  // Select-all must run from a textarea action, not the parent: CreateDone mounts
+  // inside SwapStage after share completes, and bind:this is not ready until then.
+  // Double rAF waits for field-sizing layout before setSelectionRange sticks.
   function focusLinkField(node: HTMLTextAreaElement): { update?: (value: string) => void } {
     const selectAll = (): void => {
       requestAnimationFrame(() => {

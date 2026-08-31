@@ -1,5 +1,7 @@
 import type { Reading, TreeLine } from "../../lib/signal.js";
 
+export type DiagramFocus = "link" | "key" | "fetch" | "unlock" | "revealed";
+
 export const OPEN_STEPS = ["key", "fetch", "unlock", "env"] as const;
 export type OpenStep = (typeof OPEN_STEPS)[number];
 
@@ -78,6 +80,18 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     kind: "error",
     note: "Couldn't parse that.",
   },
+};
+
+export const OPEN_DIAGRAM_FOCUS: Record<OpenState["phase"], DiagramFocus> = {
+  idle: "link",
+  invalid_link: "link",
+  missing_key: "key",
+  loading: "fetch",
+  gone: "fetch",
+  fetch_error: "fetch",
+  unlocking: "unlock",
+  tampered: "unlock",
+  revealed: "revealed",
 };
 
 export const OPEN_TREE: readonly TreeLine<OpenStep>[] = [

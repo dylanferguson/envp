@@ -1,7 +1,6 @@
 import { parseKeyFragment, parseShareId } from "../../../shared/limits.js";
 import { importKeyFromFragment, open } from "../../../shared/envelope.js";
 import { getShare, ShareApiError } from "../../api/shares.js";
-import { formatHttpError } from "../../lib/http-error.js";
 import type { OpenState } from "./state.js";
 
 export function resolveShareTarget(
@@ -59,10 +58,7 @@ export async function fetchShareEnvelope(
       return { kind: "stale" };
     }
     if (error instanceof ShareApiError) {
-      return {
-        kind: "http_error",
-        message: formatHttpError(error.status, error.statusText),
-      };
+      return { kind: "http_error", message: error.message };
     }
     throw error;
   }

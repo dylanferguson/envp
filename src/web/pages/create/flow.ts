@@ -1,7 +1,6 @@
 import { EnvelopeError, exportKeyFragment, generateKey, seal } from "../../../shared/envelope.js";
 import { MAX_PLAINTEXT_BYTES } from "../../../shared/limits.js";
 import { ShareApiError, createShare } from "../../api/shares.js";
-import { formatHttpError } from "../../lib/http-error.js";
 import type { CreateState } from "./state.js";
 
 export type ShareFlowOutcome =
@@ -54,11 +53,7 @@ export async function runShareFlow(
       return { kind: "error", at: "encrypt", message: "Encryption failed" };
     }
     if (error instanceof ShareApiError) {
-      return {
-        kind: "error",
-        at: "send",
-        message: formatHttpError(error.status, error.statusText),
-      };
+      return { kind: "error", at: "send", message: error.message };
     }
     return { kind: "error", at, message: "Something went wrong" };
   }

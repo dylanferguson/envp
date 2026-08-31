@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  type TreeKind = "now" | "hold" | "error";
+  import type { TreeKind } from "../lib/signal.js";
 
   type TreeLine = {
     step: string;
