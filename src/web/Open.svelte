@@ -1,7 +1,7 @@
 <script lang="ts">
   import "./app.css";
   import { onMount } from "svelte";
-  import { parseKeyFragment, parseShareId } from "../shared/limits.js";
+  import { parseKeyFragment, parseShareId, parseShareLink } from "../shared/limits.js";
   import { importKeyFromFragment, open } from "../shared/envelope.js";
   import Chrome from "./Chrome.svelte";
   import StepTree from "./StepTree.svelte";
@@ -22,14 +22,23 @@
   };
 
   type State =
+    | { phase: "idle" }
     | { phase: "loading" }
     | { phase: "unlocking" }
     | { phase: "revealed" }
     | { phase: "gone" }
     | { phase: "tampered" }
-    | { phase: "missing_key" };
+    | { phase: "missing_key" }
+    | { phase: "invalid_link" };
 
   const READINGS: Record<State["phase"], Reading> = {
+    idle: {
+      word: "ready",
+      tone: "idle",
+      step: "key",
+      kind: "hold",
+      note: "",
+    },
     loading: {
       word: "fetching",
       tone: "live",
@@ -70,24 +79,37 @@
       tone: "error",
       step: "key",
       kind: "error",
-      note: "no key in the link. ask the sender for the full URL, including the part after #.",
+      note: "missing #key. paste the full URL or share_id#key.",
+    },
+    invalid_link: {
+      word: "bad link",
+      tone: "error",
+      step: "key",
+      kind: "error",
+      note: "couldn't parse that. use a full URL or share_id#key.",
     },
   };
 
   const TREE = [
-    { step: "key", label: "#key from the URL" },
+    { step: "key", label: "full URL or share_id#key" },
     { step: "fetch", twig: "├── ", label: "fetch ciphertext" },
     { step: "unlock", twig: "│   └── ", label: "unlock in this tab" },
     { step: "env", twig: "│       └── ", label: ".env" },
   ] as const;
 
-  let state = $state<State>({ phase: "loading" });
+  const isManual = location.pathname === "/open" || location.pathname === "/open/";
+
+  let state = $state<State>(isManual ? { phase: "idle" } : { phase: "loading" });
   let envOutput = $state("");
   let statusNote = $state("");
+  let linkInput = $state("");
   let openLoadToken = 0;
 
   const reading = $derived(READINGS[state.phase]);
   const revealed = $derived(state.phase === "revealed");
+  const showForm = $derived(
+    isManual && !["loading", "unlocking", "revealed"].includes(state.phase),
+  );
   const statusText = $derived(statusNote || reading.note);
 
   function shareIdFromPath(): string | null {
@@ -101,16 +123,30 @@
     });
   }
 
-  async function loadShare(): Promise<void> {
+  function onOpenLink(): void {
+    const parsed = parseShareLink(linkInput);
+    if (!parsed) {
+      state = { phase: "invalid_link" };
+      return;
+    }
+    void loadShare(parsed.shareId, parsed.keyFragment);
+  }
+
+  async function loadShare(
+    shareId?: string,
+    keyFragment?: string,
+  ): Promise<void> {
     const token = ++openLoadToken;
     statusNote = "";
-    const rawId = shareIdFromPath();
+
+    const rawId = shareId ?? shareIdFromPath();
     if (!rawId || !parseShareId(rawId)) {
-      state = { phase: "gone" };
+      state = isManual ? { phase: "invalid_link" } : { phase: "gone" };
       return;
     }
 
-    const fragment = parseKeyFragment(location.hash.slice(1));
+    const fragment =
+      keyFragment ?? parseKeyFragment(location.hash.slice(1)) ?? null;
     if (!fragment) {
       state = { phase: "missing_key" };
       return;
@@ -144,36 +180,51 @@
   }
 
   onMount(() => {
-    void loadShare();
+    if (!isManual) {
+      void loadShare();
+    }
   });
 </script>
 
 <Chrome activeOp="open" word={reading.word} tone={reading.tone}>
   <StepTree steps={STEPS} lines={TREE} at={reading.step} kind={reading.kind} />
 
-  <section>
-    <label for="env-output">decrypted .env</label>
-    <div class="rail" aria-hidden="true">
-      <span>┌─ open </span>
-      <span class="rail-fill"></span>
-      <span> local decrypt ─┐</span>
-    </div>
-    <div class="panel">
-      <textarea
-        id="env-output"
-        class:is-out={!revealed}
-        readonly
-        value={envOutput}
-        spellcheck={false}
-      ></textarea>
-    </div>
-    <div class="rail" aria-hidden="true">
-      <span>└─ </span>
-      <span class="rail-fill"></span>
-      <span>─┘</span>
-    </div>
-    <button class:is-out={!revealed} type="button" onclick={onCopy}>copy</button>
-  </section>
+  {#if showForm}
+    <section>
+      <label for="share-link">paste share link</label>
+      <p class="hint">full URL or share_id#key</p>
+      <div class="frame">
+        <input
+          id="share-link"
+          type="text"
+          bind:value={linkInput}
+          placeholder="https://…/s/share_…#… or share_…#…"
+          spellcheck={false}
+          autocomplete="off"
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              onOpenLink();
+            }
+          }}
+        />
+      </div>
+      <button type="button" onclick={onOpenLink}>open</button>
+    </section>
+  {:else}
+    <section>
+      <label for="env-output">decrypted .env</label>
+      <div class="frame">
+        <textarea
+          id="env-output"
+          class:is-out={!revealed}
+          readonly
+          value={envOutput}
+          spellcheck={false}
+        ></textarea>
+      </div>
+      <button class:is-out={!revealed} type="button" onclick={onCopy}>copy</button>
+    </section>
+  {/if}
 
   <div class="status" class:error={reading.tone === "error"}>
     {statusText}
@@ -194,60 +245,54 @@
     color: var(--muted);
   }
 
-  .rail {
-    display: flex;
-    align-items: baseline;
-    color: var(--hairline-lit);
-    font-size: 0.8rem;
-    user-select: none;
+  .hint {
+    margin: -0.35rem 0 0.65rem;
+    font-size: var(--tick);
+    letter-spacing: var(--track);
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
-  .rail-fill {
-    flex: 1;
-    min-width: 1rem;
-    border-bottom: 1px solid var(--hairline);
-    margin: 0 0.35rem 0.3em;
-  }
-
-  .panel {
-    border-inline: 1px solid var(--hairline);
+  .frame {
+    border: 1px solid var(--hairline);
     background: var(--surface);
+    transition: border-color 0.35s ease;
   }
 
-  textarea {
+  textarea,
+  .frame input {
     display: block;
     width: 100%;
-    min-height: 16rem;
     padding: 0.85rem 1rem;
     background: transparent;
     color: var(--fg);
     border: 0;
     border-radius: 0;
     font: inherit;
-    resize: vertical;
     caret-color: var(--phosphor);
+  }
+
+  .frame input::placeholder {
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  textarea {
+    min-height: 16rem;
+    resize: vertical;
     transition:
       opacity 0.4s ease,
       min-height 0.4s ease,
       padding 0.4s ease;
   }
 
-  textarea:focus {
+  textarea:focus,
+  .frame input:focus {
     outline: none;
   }
 
-  .panel:focus-within {
-    border-inline-color: var(--phosphor);
-  }
-
-  .rail:has(+ .panel:focus-within),
-  .panel:focus-within + .rail {
-    color: var(--phosphor);
-  }
-
-  .rail:has(+ .panel:focus-within) .rail-fill,
-  .panel:focus-within + .rail .rail-fill {
-    border-bottom-color: var(--phosphor);
+  .frame:focus-within {
+    border-color: var(--phosphor);
   }
 
   button {

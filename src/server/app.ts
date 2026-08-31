@@ -167,6 +167,11 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(encodeGetShareResponse(id, share));
   });
 
+  app.get("/open", (c) => {
+    const html = readFileSync(join(clientRoot, "open.html"), "utf8");
+    return c.html(html);
+  });
+
   app.get("/s/:id", (c) => {
     const html = readFileSync(join(clientRoot, "open.html"), "utf8");
     return c.html(html);

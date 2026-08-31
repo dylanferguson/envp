@@ -4,7 +4,8 @@ export type UnixMillis = number & { readonly __brand: "UnixMillis" };
 export type KeyFragment = string & { readonly __brand: "KeyFragment" };
 export type EnvelopeBytes = Uint8Array & { readonly __brand: "EnvelopeBytes" };
 
-export const MAX_PLAINTEXT_BYTES = 16384;
+export const MAX_PLAINTEXT_BYTES = 65536;
+export const MAX_PLAINTEXT_KIB = MAX_PLAINTEXT_BYTES / 1024;
 export const ENVELOPE_HEADER_BYTES = 18;
 export const GCM_TAG_BYTES = 16;
 export const MAX_ENVELOPE_BYTES =
@@ -40,6 +41,49 @@ export function parseKeyFragment(value: string): KeyFragment | null {
     return null;
   }
   return value as KeyFragment;
+}
+
+export type ParsedShareLink = {
+  shareId: ShareId;
+  keyFragment: KeyFragment;
+};
+
+function parsedShareLink(
+  rawId: string,
+  rawFragment: string,
+): ParsedShareLink | null {
+  const shareId = parseShareId(rawId);
+  const keyFragment = parseKeyFragment(rawFragment);
+  if (!shareId || !keyFragment) {
+    return null;
+  }
+  return { shareId, keyFragment };
+}
+
+export function parseShareLink(input: string): ParsedShareLink | null {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (trimmed.startsWith("/") || trimmed.includes("://")) {
+    try {
+      const url = new URL(trimmed, "http://local");
+      const match = url.pathname.match(/^\/s\/([^/]+)$/);
+      if (!match?.[1]) {
+        return null;
+      }
+      return parsedShareLink(match[1], url.hash.slice(1));
+    } catch {
+      return null;
+    }
+  }
+
+  const hashIdx = trimmed.indexOf("#");
+  if (hashIdx === -1) {
+    return null;
+  }
+  return parsedShareLink(trimmed.slice(0, hashIdx), trimmed.slice(hashIdx + 1));
 }
 
 export function formatExpiryLabel(ttlSeconds: number): string {

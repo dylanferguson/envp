@@ -61,7 +61,7 @@ The server never sees the key or plaintext.
 
 ## Limits
 
-- Plaintext cap: 16 KiB (`16384` bytes)
+- Plaintext cap: 64 KiB (`65536` bytes)
 - TTL: 60 seconds to 86400 seconds (24 hours), default 1 hour
 - Rate limits (in-memory): 15 creates per 5 minutes per IP, 120 fetches per minute per IP
 

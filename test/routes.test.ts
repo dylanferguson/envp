@@ -170,6 +170,15 @@ describe("routes", () => {
     expect(html).toContain('id="app"');
   });
 
+  it("GET /open is the manual open page", async () => {
+    const { app } = makeApp();
+    const response = await app.request("http://localhost/open");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('import Open from "/src/web/Open.svelte"');
+    expect(html).toContain('id="app"');
+  });
+
   it("GET /s/:id is always 200", async () => {
     const { app } = makeApp();
     const response = await app.request(`http://localhost/s/${TEST_SHARE_ID}`);

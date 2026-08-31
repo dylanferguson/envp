@@ -3,6 +3,7 @@
   import {
     DEFAULT_TTL_SECONDS,
     MAX_PLAINTEXT_BYTES,
+    MAX_PLAINTEXT_KIB,
     formatExpiresAtLabel,
     formatExpiryLabel,
   } from "../shared/limits.js";
@@ -38,8 +39,20 @@
     | { phase: "encrypting" }
     | { phase: "uploading"; bytes: number }
     | { phase: "done"; url: string; copied: boolean; expiresAt: number }
-    | { phase: "too_large" }
     | { phase: "error"; at: "encrypt" | "send" | "link"; message: string };
+
+  function formatInputSize(bytes: number): { text: string; over: boolean } {
+    if (bytes > MAX_PLAINTEXT_BYTES) {
+      return { text: `over ${MAX_PLAINTEXT_KIB} KiB`, over: true };
+    }
+    if (bytes === 0) {
+      return { text: `${MAX_PLAINTEXT_KIB} KiB max`, over: false };
+    }
+    const kib = bytes / 1024;
+    const label =
+      kib >= 10 ? `${Math.round(kib)} KiB` : `${kib.toFixed(1)} KiB`;
+    return { text: label, over: false };
+  }
 
   const READINGS: Record<State["phase"], Reading> = {
     idle: {
@@ -69,13 +82,6 @@
       step: "link",
       kind: "hold",
       note: "",
-    },
-    too_large: {
-      word: "too large",
-      tone: "error",
-      step: "paste",
-      kind: "error",
-      note: "over 16 KiB. trim it or split the file.",
     },
     error: {
       word: "fault",
@@ -113,20 +119,21 @@
     return base;
   });
 
+  const inputBytes = $derived(new TextEncoder().encode(envInput).length);
+  const inputSize = $derived(formatInputSize(inputBytes));
+  const isOverLimit = $derived(inputBytes > MAX_PLAINTEXT_BYTES);
+
   const isDone = $derived(state.phase === "done");
   const isBusy = $derived(
     state.phase === "encrypting" || state.phase === "uploading",
   );
-  const shareDisabled = $derived(isBusy);
+  const shareDisabled = $derived(
+    isBusy || isOverLimit || envInput.length === 0,
+  );
   const doneTitle = $derived(
     isDone && state.copied
       ? "copied. send this link."
       : "copy this link, then send it.",
-  );
-  const doneRail = $derived(
-    isDone && state.copied
-      ? "already on your clipboard"
-      : "select and copy",
   );
   const doneUrl = $derived(isDone ? state.url : "");
   const doneExpiry = $derived(
@@ -143,7 +150,6 @@
   async function onShare(): Promise<void> {
     const encoded = new TextEncoder().encode(envInput);
     if (encoded.length > MAX_PLAINTEXT_BYTES) {
-      state = { phase: "too_large" };
       return;
     }
 
@@ -222,13 +228,11 @@
   <div class="swap-stage">
     <div class="swap-pane" class:is-out={isDone}>
       <section class:has-busy={isBusy}>
-        <label for="env-input">paste your .env</label>
-        <div class="rail" class:is-busy={isBusy} aria-hidden="true">
-          <span>┌─ cat .env </span>
-          <span class="rail-fill"></span>
-          <span> 16 KiB max ─┐</span>
+        <div class="field-head">
+          <label for="env-input">paste your .env</label>
+          <span class="readout" class:is-over={inputSize.over}>{inputSize.text}</span>
         </div>
-        <div class="panel" class:is-busy={isBusy}>
+        <div class="frame" class:is-busy={isBusy} class:is-over={isOverLimit}>
           <textarea
             id="env-input"
             bind:this={envTextarea}
@@ -237,11 +241,6 @@
             spellcheck={false}
             autocomplete="off"
           ></textarea>
-        </div>
-        <div class="rail" class:is-busy={isBusy} aria-hidden="true">
-          <span>└─ </span>
-          <span class="rail-fill"></span>
-          <span>─┘</span>
         </div>
       </section>
 
@@ -276,13 +275,7 @@
     <div class="done swap-pane" class:is-out={!isDone}>
       <p class="done-title" aria-live="polite">{doneTitle}</p>
       <p class="done-expiry readout">{doneExpiry}</p>
-      <label for="share-url">share link</label>
-      <div class="rail" aria-hidden="true">
-        <span>┌─ url </span>
-        <span class="rail-fill"></span>
-        <span>─┐</span>
-      </div>
-      <div class="panel">
+      <div class="frame">
         <input
           id="share-url"
           bind:this={shareUrlInput}
@@ -290,15 +283,13 @@
           readonly
           value={doneUrl}
           spellcheck={false}
+          aria-label="share link"
         />
       </div>
-      <div class="rail" aria-hidden="true">
-        <span>└─ </span><span>{doneRail}</span>
-        <span class="rail-fill"></span>
-        <span>─┘</span>
-      </div>
       <div class="done-actions">
-        <button type="button" onclick={onCopyLink}>copy again</button>
+        <button type="button" onclick={onCopyLink}>
+          {isDone && state.copied ? "copy again" : "copy link"}
+        </button>
         <button class="ghost" type="button" onclick={onAgain}>share another</button>
       </div>
     </div>
@@ -326,6 +317,18 @@
     margin-bottom: 0;
   }
 
+  .field-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .field-head label {
+    margin-bottom: 0;
+  }
+
   .readout {
     font-size: var(--tick);
     letter-spacing: var(--track);
@@ -334,39 +337,40 @@
     white-space: nowrap;
   }
 
-  .rail {
-    display: flex;
-    align-items: baseline;
-    color: var(--hairline-lit);
-    font-size: 0.8rem;
-    user-select: none;
+  .readout.is-over {
+    color: var(--coral);
   }
 
-  .rail-fill {
-    flex: 1;
-    min-width: 1rem;
-    border-bottom: 1px solid var(--hairline);
-    margin: 0 0.35rem 0.3em;
-  }
-
-  .panel {
-    border-inline: 1px solid var(--hairline);
+  .frame {
+    border: 1px solid var(--hairline);
     background: var(--surface);
     transition: border-color 0.35s ease;
   }
 
-  textarea {
+  .frame.is-busy {
+    animation: seal-pulse 1.4s ease-in-out infinite;
+  }
+
+  .frame.is-over {
+    border-color: var(--coral);
+  }
+
+  textarea,
+  .frame input {
     display: block;
     width: 100%;
-    min-height: 16rem;
     padding: 0.85rem 1rem;
     background: transparent;
     color: var(--fg);
     border: 0;
     border-radius: 0;
     font: inherit;
-    resize: vertical;
     caret-color: var(--phosphor);
+  }
+
+  textarea {
+    min-height: 16rem;
+    resize: vertical;
     transition:
       opacity 0.35s ease,
       min-height 0.4s ease,
@@ -378,57 +382,23 @@
     cursor: default;
   }
 
-  .panel.is-busy {
-    animation: seal-pulse 1.4s ease-in-out infinite;
-  }
-
-  .rail.is-busy {
-    color: var(--phosphor);
-    transition: color 0.35s ease;
-  }
-
-  .rail.is-busy .rail-fill {
-    border-bottom-color: var(--phosphor);
-    animation: rail-flow 1.4s ease-in-out infinite;
-  }
-
   @keyframes seal-pulse {
     0%,
     100% {
-      border-inline-color: var(--hairline);
+      border-color: var(--hairline);
     }
     50% {
-      border-inline-color: var(--phosphor);
-    }
-  }
-
-  @keyframes rail-flow {
-    0%,
-    100% {
-      opacity: 0.35;
-    }
-    50% {
-      opacity: 1;
+      border-color: var(--phosphor);
     }
   }
 
   textarea:focus,
-  .panel input:focus {
+  .frame input:focus {
     outline: none;
   }
 
-  .panel:focus-within {
-    border-inline-color: var(--phosphor);
-  }
-
-  .rail:has(+ .panel:focus-within),
-  .panel:focus-within + .rail {
-    color: var(--phosphor);
-  }
-
-  .rail:has(+ .panel:focus-within) .rail-fill,
-  .panel:focus-within + .rail .rail-fill {
-    border-bottom-color: var(--phosphor);
+  .frame:focus-within {
+    border-color: var(--phosphor);
   }
 
   .controls {
@@ -519,13 +489,7 @@
     margin: 0 0 1.25rem;
   }
 
-  .done .panel input {
-    display: block;
-    width: 100%;
-    padding: 0.85rem 1rem;
-    background: transparent;
-    color: var(--fg);
-    border: 0;
+  .done .frame input {
     font: inherit;
   }
 
@@ -562,8 +526,7 @@
   @media (prefers-reduced-motion: reduce) {
     textarea,
     .swap-pane,
-    .panel.is-busy,
-    .rail.is-busy .rail-fill,
+    .frame.is-busy,
     button.is-busy:disabled {
       transition: none;
       animation: none;

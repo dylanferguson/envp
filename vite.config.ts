@@ -7,6 +7,9 @@ function shareOpenPage(): Plugin {
     name: "share-open-page",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
+        if (req.url && /^\/open\/?(\?.*)?$/.test(req.url)) {
+          req.url = "/open.html";
+        }
         if (req.url && /^\/s\/[^/]+\/?(\?.*)?$/.test(req.url)) {
           req.url = "/open.html";
         }

@@ -25,7 +25,7 @@
     </h1>
     <nav class="chrome-ops" aria-label="console modes">
       <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
-      <span data-op="open" class:is-active={activeOp === "open"}>open</span>
+      <a data-op="open" href="/open" class:is-active={activeOp === "open"}>open</a>
     </nav>
     <div class="chrome-end">
       <a
