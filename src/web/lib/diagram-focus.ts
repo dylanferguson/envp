@@ -13,8 +13,6 @@ export const OPEN_DIAGRAM_FOCUS: Record<OpenState["phase"], DiagramFocus> = {
   revealed: "revealed",
 };
 
-export function deriveOpenDiagramFocus(
-  phase: OpenState["phase"],
-): DiagramFocus {
+export function deriveOpenDiagramFocus(phase: OpenState["phase"]): DiagramFocus {
   return OPEN_DIAGRAM_FOCUS[phase];
 }

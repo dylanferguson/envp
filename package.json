@@ -3,18 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
-    "dev": "concurrently -n web,api -c cyan,magenta \"vite\" \"tsx watch src/server/main.ts\"",
-    "build": "vite build && tsc -p tsconfig.server.json",
+    "dev": "concurrently -n web,api -c cyan,magenta \"vp dev\" \"tsx watch src/server/main.ts\"",
+    "build": "vp build && tsc -p tsconfig.server.json",
     "start": "node dist/server/main.js",
-    "test": "vitest run",
+    "test": "vp test run",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps --only-shell",
-    "check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit && vitest run"
+    "check": "vp check"
   },
   "dependencies": {
     "@fontsource/fira-code": "^5.3.0",
@@ -31,8 +27,10 @@
     "lefthook": "^1.11.12",
     "svelte": "^5.57.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "vitest": "^3.1.4"
-  }
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.22.0"
 }

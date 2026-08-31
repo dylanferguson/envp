@@ -29,13 +29,9 @@ export type GetShareResponse = {
   envelope: Uint8Array;
 };
 
-export const MAX_CREATE_JSON_BYTES =
-  64 + Math.ceil((MAX_ENVELOPE_BYTES * 4) / 3);
+export const MAX_CREATE_JSON_BYTES = 64 + Math.ceil((MAX_ENVELOPE_BYTES * 4) / 3);
 
-export function buildCreateShareBody(
-  ttlSeconds: TtlSeconds,
-  envelope: Uint8Array,
-): string {
+export function buildCreateShareBody(ttlSeconds: TtlSeconds, envelope: Uint8Array): string {
   return JSON.stringify({
     ttl_seconds: ttlSeconds,
     envelope: base64urlEncode(envelope),
@@ -49,17 +45,14 @@ export function toCreateShareResponse(record: {
   return { id: record.id, expiresAt: record.expiresAt };
 }
 
-export function toGetShareResponse(
-  id: ShareId,
-  read: ShareRead,
-): GetShareResponse {
+export function toGetShareResponse(id: ShareId, read: ShareRead): GetShareResponse {
   return { id, expiresAt: read.expiresAt, envelope: read.envelope };
 }
 
-export function encodeCreateShareResponse(record: {
-  id: ShareId;
-  expiresAt: UnixMillis;
-}): { id: string; expires_at: number } {
+export function encodeCreateShareResponse(record: { id: ShareId; expiresAt: UnixMillis }): {
+  id: string;
+  expires_at: number;
+} {
   const body = toCreateShareResponse(record);
   return { id: body.id, expires_at: body.expiresAt };
 }
@@ -81,18 +74,12 @@ export function parseCreateShareRequest(body: unknown): CreateShareRequest | nul
     return null;
   }
 
-  const ttl = parseTtlSeconds(
-    "ttl_seconds" in body ? String(body.ttl_seconds) : null,
-  );
+  const ttl = parseTtlSeconds("ttl_seconds" in body ? String(body.ttl_seconds) : null);
   if (ttl === null) {
     return null;
   }
 
-  if (
-    !("envelope" in body) ||
-    typeof body.envelope !== "string" ||
-    body.envelope.length === 0
-  ) {
+  if (!("envelope" in body) || typeof body.envelope !== "string" || body.envelope.length === 0) {
     return null;
   }
 

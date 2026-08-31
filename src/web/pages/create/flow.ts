@@ -1,9 +1,4 @@
-import {
-  EnvelopeError,
-  exportKeyFragment,
-  generateKey,
-  seal,
-} from "../../../shared/envelope.js";
+import { EnvelopeError, exportKeyFragment, generateKey, seal } from "../../../shared/envelope.js";
 import { MAX_PLAINTEXT_BYTES } from "../../../shared/limits.js";
 import { ShareApiError, createShare } from "../../api/shares.js";
 import type { CreateState } from "./state.js";
@@ -13,9 +8,7 @@ export type ShareFlowOutcome =
   | { kind: "done"; url: string; copied: boolean; expiresAt: number }
   | { kind: "error"; at: "encrypt" | "send" | "link"; message: string };
 
-export type ShareFlowProgress =
-  | { phase: "encrypting" }
-  | { phase: "uploading"; bytes: number };
+export type ShareFlowProgress = { phase: "encrypting" } | { phase: "uploading"; bytes: number };
 
 export async function runShareFlow(
   envInput: string,
@@ -63,10 +56,7 @@ export async function runShareFlow(
       return {
         kind: "error",
         at: "send",
-        message:
-          error.status > 0
-            ? `upload failed (${error.status})`
-            : "upload failed",
+        message: error.status > 0 ? `upload failed (${error.status})` : "upload failed",
       };
     }
     return { kind: "error", at, message: "something went wrong" };

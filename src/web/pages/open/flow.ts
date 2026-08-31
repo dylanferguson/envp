@@ -15,8 +15,7 @@ export function resolveShareTarget(
     return isManual ? { phase: "invalid_link" } : { phase: "gone" };
   }
 
-  const fragment =
-    keyFragment ?? parseKeyFragment(hash.slice(1)) ?? null;
+  const fragment = keyFragment ?? parseKeyFragment(hash.slice(1)) ?? null;
   if (!fragment) {
     return { phase: "missing_key" };
   }

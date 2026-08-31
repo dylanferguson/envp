@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { openMemoryStore, openStore } from "../src/server/store.js";
 
 describe("ShareStore", () => {

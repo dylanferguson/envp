@@ -8,8 +8,7 @@ export const MAX_PLAINTEXT_BYTES = 65536;
 export const MAX_PLAINTEXT_KIB = MAX_PLAINTEXT_BYTES / 1024;
 export const ENVELOPE_HEADER_BYTES = 18;
 export const GCM_TAG_BYTES = 16;
-export const MAX_ENVELOPE_BYTES =
-  ENVELOPE_HEADER_BYTES + MAX_PLAINTEXT_BYTES + GCM_TAG_BYTES;
+export const MAX_ENVELOPE_BYTES = ENVELOPE_HEADER_BYTES + MAX_PLAINTEXT_BYTES + GCM_TAG_BYTES;
 
 export const MIN_TTL_SECONDS = 60;
 export const MAX_TTL_SECONDS = 86400;
@@ -48,10 +47,7 @@ export type ParsedShareLink = {
   keyFragment: KeyFragment;
 };
 
-function parsedShareLink(
-  rawId: string,
-  rawFragment: string,
-): ParsedShareLink | null {
+function parsedShareLink(rawId: string, rawFragment: string): ParsedShareLink | null {
   const shareId = parseShareId(rawId);
   const keyFragment = parseKeyFragment(rawFragment);
   if (!shareId || !keyFragment) {
@@ -100,10 +96,7 @@ export function formatExpiryLabel(ttlSeconds: number): string {
 
 export const LONGEST_EXPIRY_LABEL = formatExpiryLabel(MAX_TTL_SECONDS);
 
-export function formatExpiresAtLabel(
-  expiresAt: UnixMillis,
-  now = Date.now(),
-): string {
+export function formatExpiresAtLabel(expiresAt: UnixMillis, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((expiresAt - now) / 1000));
   return formatExpiryLabel(seconds);
 }

@@ -1,9 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  ENVS_MAGIC,
-  SAMPLE_ENV,
-  decodeBase64Url,
-} from "./helpers.js";
+import { ENVS_MAGIC, SAMPLE_ENV, decodeBase64Url } from "./helpers.js";
 
 test.describe("create share", () => {
   test.beforeEach(async ({ page }) => {
@@ -18,8 +14,7 @@ test.describe("create share", () => {
 
   test("POSTs sealed envelope, not plaintext", async ({ page }) => {
     const post = page.waitForRequest(
-      (request) =>
-        request.method() === "POST" && request.url().includes("/api/v1/shares"),
+      (request) => request.method() === "POST" && request.url().includes("/api/v1/shares"),
     );
 
     await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);

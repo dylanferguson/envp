@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   EnvelopeError,
   exportKeyFragment,
@@ -57,9 +57,9 @@ describe("envelope", () => {
   });
 
   it("rejects invalid key fragment length", async () => {
-    await expect(
-      importKeyFromFragment("tooshort" as KeyFragment),
-    ).rejects.toBeInstanceOf(EnvelopeError);
+    await expect(importKeyFromFragment("tooshort" as KeyFragment)).rejects.toBeInstanceOf(
+      EnvelopeError,
+    );
   });
 
   it("exports a 43-character key fragment", async () => {

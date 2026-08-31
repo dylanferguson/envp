@@ -27,12 +27,12 @@ Serves the built UI and API from one Node process on port 8080 (override with `P
 
 ## Environment
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PORT` | `8080` | HTTP listen port |
-| `DB_PATH` | `./data/shares.db` | SQLite file path |
-| `PUBLIC_ORIGIN` | derived from `Host` | Origin check for `POST /api/v1/shares` |
-| `TRUST_PROXY` | unset | Set `true` to trust first `X-Forwarded-For` hop |
+| Variable        | Default             | Purpose                                         |
+| --------------- | ------------------- | ----------------------------------------------- |
+| `PORT`          | `8080`              | HTTP listen port                                |
+| `DB_PATH`       | `./data/shares.db`  | SQLite file path                                |
+| `PUBLIC_ORIGIN` | derived from `Host` | Origin check for `POST /api/v1/shares`          |
+| `TRUST_PROXY`   | unset               | Set `true` to trust first `X-Forwarded-For` hop |
 
 ## API
 

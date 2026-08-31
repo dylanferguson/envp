@@ -49,10 +49,7 @@ export type AppDeps = {
   rateLimiter?: RateLimiter;
 };
 
-function clientIp(
-  req: Request,
-  trustProxy: boolean,
-): string {
+function clientIp(req: Request, trustProxy: boolean): string {
   if (trustProxy) {
     const forwarded = req.headers.get("x-forwarded-for");
     if (forwarded) {

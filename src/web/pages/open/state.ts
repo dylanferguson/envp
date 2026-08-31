@@ -84,7 +84,5 @@ export function deriveOpenReading(state: OpenState): Reading<OpenStep> {
 }
 
 export function showOpenForm(state: OpenState, isManual: boolean): boolean {
-  return (
-    isManual && !["loading", "unlocking", "revealed"].includes(state.phase)
-  );
+  return isManual && !["loading", "unlocking", "revealed"].includes(state.phase);
 }

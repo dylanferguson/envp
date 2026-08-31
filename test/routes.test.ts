@@ -1,17 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { API_V1_SHARES } from "../src/shared/api.js";
-import {
-  generateKey,
-  seal,
-} from "../src/shared/envelope.js";
-import {
-  MAX_TTL_SECONDS,
-  type TtlSeconds,
-} from "../src/shared/limits.js";
-import {
-  buildCreateShareBody,
-  MAX_CREATE_JSON_BYTES,
-} from "../src/shared/share-api.js";
+import { generateKey, seal } from "../src/shared/envelope.js";
+import { MAX_TTL_SECONDS, type TtlSeconds } from "../src/shared/limits.js";
+import { buildCreateShareBody, MAX_CREATE_JSON_BYTES } from "../src/shared/share-api.js";
 import { createApp } from "../src/server/app.js";
 import { openMemoryStore } from "../src/server/store.js";
 
@@ -89,9 +80,7 @@ describe("routes", () => {
     const { id } = (await post.json()) as { id: string };
     now = 120_000;
 
-    const unknown = await app.request(
-      `http://localhost${API_V1_SHARES}/${UNKNOWN_SHARE_ID}`,
-    );
+    const unknown = await app.request(`http://localhost${API_V1_SHARES}/${UNKNOWN_SHARE_ID}`);
     const expired = await app.request(`http://localhost${API_V1_SHARES}/${id}`);
 
     expect(unknown.status).toBe(404);

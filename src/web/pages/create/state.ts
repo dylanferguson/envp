@@ -73,8 +73,6 @@ export function isCreateBusy(state: CreateState): boolean {
   return state.phase === "encrypting" || state.phase === "uploading";
 }
 
-export function isCreateDone(
-  state: CreateState,
-): state is Extract<CreateState, { phase: "done" }> {
+export function isCreateDone(state: CreateState): state is Extract<CreateState, { phase: "done" }> {
   return state.phase === "done";
 }

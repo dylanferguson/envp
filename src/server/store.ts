@@ -1,11 +1,7 @@
 import { randomBytes } from "node:crypto";
 import Database from "better-sqlite3";
 import { SHARE_ID_PREFIX } from "../shared/api.js";
-import {
-  type ShareId,
-  type TtlSeconds,
-  type UnixMillis,
-} from "../shared/limits.js";
+import { type ShareId, type TtlSeconds, type UnixMillis } from "../shared/limits.js";
 
 function base64urlEncode(bytes: Uint8Array): string {
   return Buffer.from(bytes)
@@ -51,21 +47,15 @@ export class ShareStore {
     const id = mintShareId();
     const expiresAt = (this.#now() + ttl * 1000) as UnixMillis;
     this.#db
-      .prepare(
-        "INSERT INTO shares (id, envelope, expires_at) VALUES (?, ?, ?)",
-      )
+      .prepare("INSERT INTO shares (id, envelope, expires_at) VALUES (?, ?, ?)")
       .run(id, Buffer.from(envelope), expiresAt);
     return { id, expiresAt };
   }
 
   read(id: ShareId): { envelope: Uint8Array; expiresAt: UnixMillis } | null {
     const row = this.#db
-      .prepare(
-        "SELECT envelope, expires_at FROM shares WHERE id = ? AND expires_at > ?",
-      )
-      .get(id, this.#now()) as
-      | { envelope: Buffer; expires_at: number }
-      | undefined;
+      .prepare("SELECT envelope, expires_at FROM shares WHERE id = ? AND expires_at > ?")
+      .get(id, this.#now()) as { envelope: Buffer; expires_at: number } | undefined;
     if (!row) {
       return null;
     }

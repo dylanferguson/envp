@@ -1,8 +1,5 @@
-import { describe, expect, it } from "vitest";
-import {
-  formatExpiryLabel,
-  parseShareLink,
-} from "../src/shared/limits.js";
+import { describe, expect, it } from "vite-plus/test";
+import { formatExpiryLabel, parseShareLink } from "../src/shared/limits.js";
 
 const SHARE_ID = "share_abcdefghijklmnopqrstuv";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
@@ -20,9 +17,10 @@ describe("formatExpiryLabel", () => {
 
 describe("parseShareLink", () => {
   it("parses supported link shapes", () => {
-    expect(
-      parseShareLink(`https://env-share.example/s/${SHARE_ID}#${KEY_FRAGMENT}`),
-    ).toEqual({ shareId: SHARE_ID, keyFragment: KEY_FRAGMENT });
+    expect(parseShareLink(`https://env-share.example/s/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
+      shareId: SHARE_ID,
+      keyFragment: KEY_FRAGMENT,
+    });
     expect(parseShareLink(`/s/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
       shareId: SHARE_ID,
       keyFragment: KEY_FRAGMENT,

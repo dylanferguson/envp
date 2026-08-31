@@ -5,8 +5,7 @@ export const SAMPLE_ENV = "API_KEY=e2e-secret\nDB_HOST=localhost\n";
 
 export const UNKNOWN_SHARE_ID = "share_aaaaaaaaaaaaaaaaaaaaaa";
 
-export const VALID_KEY_FRAGMENT =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
+export const VALID_KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
 
 export const SHARE_LINK_PATTERN = /\/s\/share_[A-Za-z0-9_-]{22}#[A-Za-z0-9_-]{43}$/;
 

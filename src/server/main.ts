@@ -14,9 +14,12 @@ mkdirSync(dirname(DB_PATH), { recursive: true });
 const store = openStore(DB_PATH);
 store.sweep();
 
-const sweepInterval = setInterval(() => {
-  store.sweep();
-}, 60 * 60 * 1000);
+const sweepInterval = setInterval(
+  () => {
+    store.sweep();
+  },
+  60 * 60 * 1000,
+);
 sweepInterval.unref();
 
 const app = createApp({

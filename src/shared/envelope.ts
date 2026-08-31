@@ -22,10 +22,7 @@ const SUITE = 0x01;
 export { base64urlDecode, base64urlEncode };
 
 export async function generateKey(): Promise<CryptoKey> {
-  return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
-    "encrypt",
-    "decrypt",
-  ]);
+  return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 }
 
 export async function exportKeyFragment(key: CryptoKey): Promise<KeyFragment> {
@@ -36,9 +33,7 @@ export async function exportKeyFragment(key: CryptoKey): Promise<KeyFragment> {
   return base64urlEncode(raw) as KeyFragment;
 }
 
-export async function importKeyFromFragment(
-  fragment: KeyFragment,
-): Promise<CryptoKey> {
+export async function importKeyFromFragment(fragment: KeyFragment): Promise<CryptoKey> {
   let raw: Uint8Array;
   try {
     raw = base64urlDecode(fragment);
@@ -68,10 +63,7 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-export async function seal(
-  plaintext: Uint8Array,
-  key: CryptoKey,
-): Promise<EnvelopeBytes> {
+export async function seal(plaintext: Uint8Array, key: CryptoKey): Promise<EnvelopeBytes> {
   if (plaintext.length > MAX_PLAINTEXT_BYTES) {
     throw new EnvelopeError();
   }
@@ -98,10 +90,7 @@ export async function seal(
   return envelope as EnvelopeBytes;
 }
 
-export async function open(
-  envelope: Uint8Array,
-  key: CryptoKey,
-): Promise<Uint8Array> {
+export async function open(envelope: Uint8Array, key: CryptoKey): Promise<Uint8Array> {
   if (
     envelope.length < ENVELOPE_HEADER_BYTES + GCM_TAG_BYTES ||
     envelope.length > MAX_ENVELOPE_BYTES

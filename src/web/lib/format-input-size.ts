@@ -1,7 +1,4 @@
-import {
-  MAX_PLAINTEXT_BYTES,
-  MAX_PLAINTEXT_KIB,
-} from "../../shared/limits.js";
+import { MAX_PLAINTEXT_BYTES, MAX_PLAINTEXT_KIB } from "../../shared/limits.js";
 
 export function formatInputSize(bytes: number): { text: string; over: boolean } {
   if (bytes > MAX_PLAINTEXT_BYTES) {
@@ -11,7 +8,6 @@ export function formatInputSize(bytes: number): { text: string; over: boolean } 
     return { text: `${MAX_PLAINTEXT_KIB} KiB max`, over: false };
   }
   const kib = bytes / 1024;
-  const label =
-    kib >= 10 ? `${Math.round(kib)} KiB` : `${kib.toFixed(1)} KiB`;
+  const label = kib >= 10 ? `${Math.round(kib)} KiB` : `${kib.toFixed(1)} KiB`;
   return { text: label, over: false };
 }
