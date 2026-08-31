@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  OPEN_DIAGRAM_FOCUS,
+  deriveOpenDiagramFocus,
+} from "../src/web/lib/diagram-focus.js";
+import {
   OPEN_READINGS,
   deriveOpenReading,
   showOpenForm,
@@ -31,5 +35,13 @@ describe("open state", () => {
 
   it("hides form on direct share links", () => {
     expect(showOpenForm({ phase: "idle" }, false)).toBe(false);
+  });
+
+  it("maps every open phase to a diagram focus", () => {
+    for (const [phase, focus] of Object.entries(OPEN_DIAGRAM_FOCUS)) {
+      expect(deriveOpenDiagramFocus(phase as keyof typeof OPEN_DIAGRAM_FOCUS)).toBe(
+        focus,
+      );
+    }
   });
 });

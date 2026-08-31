@@ -4,6 +4,7 @@
   import { parseShareLink } from "../../../shared/limits.js";
   import Chrome from "../../components/Chrome.svelte";
   import OpenIntro from "../../components/OpenIntro.svelte";
+  import { deriveOpenDiagramFocus } from "../../lib/diagram-focus.js";
   import StepTree from "../../components/StepTree.svelte";
   import Toast from "../../components/Toast.svelte";
   import StatusLine from "../../ui/StatusLine.svelte";
@@ -38,6 +39,7 @@
   let openResult = $state<OpenResult | null>(null);
 
   const reading = $derived(deriveOpenReading(state));
+  const diagramFocus = $derived(deriveOpenDiagramFocus(state.phase));
   const revealed = $derived(state.phase === "revealed");
   const showForm = $derived(showOpenForm(state, isManual));
   const statusText = $derived(statusNote || reading.note);
@@ -151,7 +153,7 @@
 </script>
 
 <Chrome activeOp="open" word={reading.word} tone={reading.tone}>
-  <OpenIntro />
+  <OpenIntro focus={diagramFocus} />
 
   <div class="console">
     <StepTree

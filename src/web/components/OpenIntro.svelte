@@ -1,9 +1,23 @@
+<script lang="ts">
+  import type { DiagramFocus } from "../lib/diagram-focus.js";
+  import ShareDiagram from "./ShareDiagram.svelte";
+
+  type Props = {
+    focus: DiagramFocus;
+  };
+
+  let { focus }: Props = $props();
+</script>
+
 <header class="hero">
   <h2 class="lead">Open a shared <span class="mark">.env</span></h2>
   <p class="deck">
-    Paste the shared env-share link, and decrypt the sender's env.
+    Paste the shared env-share link, and decrypt the sender's env, without the
+    server ever seeing the key.
   </p>
 </header>
+
+<ShareDiagram {focus} />
 
 <style>
   .hero {
