@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@fontsource/intel-one-mono':
+      '@fontsource/fira-code':
         specifier: ^5.3.0
         version: 5.3.0
       '@hono/node-server':
@@ -366,8 +366,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fontsource/intel-one-mono@5.3.0':
-    resolution: {integrity: sha512-L9lZRv7C20zJ9Jz61aS7L3Lc4Z5laQ+CJIkGmGjwTtYKddMmR6R+tPg6anwlBQnsJNHn2E0hKLeTjSLLoq62eA==}
+  '@fontsource/fira-code@5.3.0':
+    resolution: {integrity: sha512-EJL968RJRkakubAj/coU8pSUaeTE5UNoRjtzAr6kGiSZ3jWuN8/AKWHwym/PFUaQL1q7IL/H+EXs4358YhrTBQ==}
 
   '@hono/node-server@1.14.3':
     resolution: {integrity: sha512-KuDMwwghtFYSmIpr4WrKs1VpelTrptvJ+6x6mbUcZnFcc213cumTF5BdqfHyW93B19TNI4Vaev14vOI2a0Ie3w==}
@@ -1329,7 +1329,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@fontsource/intel-one-mono@5.3.0': {}
+  '@fontsource/fira-code@5.3.0': {}
 
   '@hono/node-server@1.14.3(hono@4.13.5)':
     dependencies:

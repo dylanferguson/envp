@@ -1,5 +1,5 @@
-@import "@fontsource/intel-one-mono/400.css";
-@import "@fontsource/intel-one-mono/500.css";
+@import "@fontsource/fira-code/400.css";
+@import "@fontsource/fira-code/500.css";
 
 :root {
   --bg: #08090b;
@@ -13,7 +13,8 @@
   --teal-hover: #123d30;
   --coral: #ff6a80;
   --col: 44rem;
-  --font: "Intel One Mono", ui-monospace, monospace;
+  --font: "Fira Code", ui-monospace, monospace;
+  --font-features: "liga" 1, "calt" 1;
   --tick: 0.68rem;
   --track: 0.16em;
 }
@@ -36,7 +37,7 @@ body {
   font-family: var(--font);
   font-size: 15px;
   line-height: 1.55;
-  font-feature-settings: "ss01" on;
+  font-feature-settings: var(--font-features);
 }
 
 #app {
