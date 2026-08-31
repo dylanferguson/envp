@@ -92,10 +92,10 @@
   };
 
   const TREE = [
-    { step: "key", label: "full URL or share_id#key" },
-    { step: "fetch", twig: "├── ", label: "fetch ciphertext" },
-    { step: "unlock", twig: "│   └── ", label: "unlock in this tab" },
-    { step: "env", twig: "│       └── ", label: ".env" },
+    { step: "key", twig: "├── ", label: "enter full URL or share_id#key" },
+    { step: "fetch", twig: "│   ├── ", label: "fetch ciphertext" },
+    { step: "unlock", twig: "│   ├── ", label: "decrypt locally" },
+    { step: "env", twig: "│   └── ", label: ".env is ready" },
   ] as const;
 
   const isManual = location.pathname === "/open" || location.pathname === "/open/";

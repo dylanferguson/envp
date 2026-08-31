@@ -17,7 +17,7 @@
 <header class="hero">
   <h2 class="lead">Securely share your <span class="mark">.env</span></h2>
   <p class="deck">
-    Encrypt with the browser, and share a link with the key the server never sees.
+    Encrypt with the browser, and share a link with a key the server never sees.
   </p>
 </header>
 
@@ -26,7 +26,7 @@
    <span class="dia-you">│ </span><span class="dia-slot"><span class="dia-plain">.env        </span><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span></span><span class="dia-you">│</span> <span class="dia-flow-a">--seal-></span> <span class="dia-server">│ </span><span class="dia-cipher">▒▒▒▒▒▒▒▒  </span><span class="dia-server">│</span> <span class="dia-flow-b">--get--></span> <span class="dia-them">│ </span><span class="dia-slot dia-slot-right"><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span><span class="dia-plain">.env        </span></span><span class="dia-them">│</span>
    <span class="dia-you">│ </span><span class="dia-key">#key        </span><span class="dia-you">│</span>          <span class="dia-server">│  no key   │</span>          <span class="dia-them">│ </span><span class="dia-key">#key        </span><span class="dia-them">│</span>
    <span class="dia-you">╰──────┬──────╯</span>          <span class="dia-server">└───────────┘</span>          <span class="dia-them">╰──────┬──────╯</span>
-          <span class="dia-key-path">└──────────── the link carries #key ────────────┘</span></pre
+          <span class="dia-key-path">└───────────────────────────────────────────────┘</span></pre
 >
 
 <style>
