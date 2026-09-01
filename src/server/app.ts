@@ -12,6 +12,7 @@ import {
   parseCreateShareRequest,
 } from "../shared/share-api.js";
 import type { ShareStore } from "./store.js";
+import { cacheControlForPath } from "./cache.js";
 
 type RateBucket = {
   count: number;
@@ -103,8 +104,11 @@ export function createApp(deps: AppDeps): Hono {
 
   app.use("*", async (c, next) => {
     await next();
-    const secured = withSecurityHeaders(c.res);
-    c.res = secured;
+    const cache = cacheControlForPath(c.req.path, c.res.headers.get("content-type"));
+    if (cache) {
+      c.res.headers.set("Cache-Control", cache);
+    }
+    c.res = withSecurityHeaders(c.res);
   });
 
   app.post(

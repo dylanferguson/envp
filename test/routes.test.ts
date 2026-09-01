@@ -1,8 +1,11 @@
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { API_V1_SHARES } from "../src/shared/api.js";
 import { generateKey, seal } from "../src/shared/envelope.js";
 import { MAX_TTL_SECONDS, type TtlSeconds } from "../src/shared/limits.js";
 import { buildCreateShareBody, MAX_CREATE_JSON_BYTES } from "../src/shared/share-api.js";
+import { IMMUTABLE_ASSET_CACHE } from "../src/server/cache.js";
 import { createApp } from "../src/server/app.js";
 import { openMemoryStore } from "../src/server/store.js";
 
@@ -113,5 +116,26 @@ describe("routes", () => {
     const get = await app.request(`http://localhost${API_V1_SHARES}/${id}`);
     expect(get.headers.get("x-content-type-options")).toBe("nosniff");
     expect(get.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("GET /assets/* sets immutable cache when dist is present", async () => {
+    const clientRoot = "dist/client";
+    const assetsDir = join(process.cwd(), clientRoot, "assets");
+    if (!existsSync(assetsDir)) {
+      return;
+    }
+    const file = readdirSync(assetsDir).find((name) => name.endsWith(".js"));
+    if (!file) {
+      return;
+    }
+    const store = openMemoryStore();
+    const app = createApp({
+      store,
+      publicOrigin: "http://localhost",
+      clientRoot,
+    });
+    const get = await app.request(`http://localhost/assets/${file}`);
+    expect(get.status).toBe(200);
+    expect(get.headers.get("cache-control")).toBe(IMMUTABLE_ASSET_CACHE);
   });
 });
