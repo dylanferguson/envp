@@ -3,13 +3,14 @@
     text: string;
     over?: boolean;
     sizer?: string;
+    align?: "start" | "end";
   };
 
-  let { text, over = false, sizer }: Props = $props();
+  let { text, over = false, sizer, align = "end" }: Props = $props();
 </script>
 
 {#if sizer}
-  <span class="readout-grid">
+  <span class="readout-grid" class:align-start={align === "start"}>
     <span class="readout-sizer" aria-hidden="true">{sizer}</span>
     <span class="readout" class:is-over={over}>{text}</span>
   </span>
@@ -20,12 +21,22 @@
 <style>
   .readout-grid {
     display: inline-grid;
+    align-items: center;
     justify-self: end;
+  }
+
+  .readout-grid.align-start {
+    justify-self: start;
+  }
+
+  .readout-grid.align-start .readout {
+    justify-self: start;
   }
 
   .readout-sizer,
   .readout {
     grid-area: 1 / 1;
+    line-height: 1;
   }
 
   .readout-sizer {

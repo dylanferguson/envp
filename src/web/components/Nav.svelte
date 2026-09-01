@@ -122,25 +122,55 @@
     gap: 1rem;
   }
 
-  .nav-ops > :global(*) {
+  .nav-ops :global(a) {
+    position: relative;
     font-size: var(--tick);
     letter-spacing: var(--track);
     text-transform: uppercase;
     color: var(--muted);
     text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition:
-      color 0.2s ease,
-      border-color 0.2s ease;
+    transition: color 0.2s ease;
   }
 
-  .nav-ops > a:hover {
+  .nav-ops :global(a)::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.15rem;
+    height: 1px;
+    background: var(--phosphor);
+    transform: scaleX(0);
+  }
+
+  .nav-ops :global(a[data-op="share"])::after {
+    transform-origin: left;
+  }
+
+  .nav-ops :global(a[data-op="open"])::after {
+    transform-origin: right;
+  }
+
+  .nav-ops :global(a.is-active) {
     color: var(--phosphor);
   }
 
-  .nav-ops > :global(.is-active) {
+  .nav-ops :global(a.is-active)::after {
+    animation: nav-underline-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .nav-ops :global(a:hover) {
     color: var(--phosphor);
-    border-bottom-color: var(--phosphor);
+  }
+
+  @keyframes nav-underline-in {
+    from {
+      transform: scaleX(0);
+    }
+
+    to {
+      transform: scaleX(1);
+    }
   }
 
   .nav-build {
@@ -217,6 +247,15 @@
 
     .nav-commit {
       transition: color 0.2s ease;
+    }
+
+    .nav-ops :global(a.is-active)::after {
+      animation: none;
+      transform: scaleX(1);
+    }
+
+    .signal[data-tone="live"]::before {
+      animation: none;
     }
   }
 
@@ -308,12 +347,6 @@
 
     .nav-name {
       letter-spacing: 0.12em;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .signal[data-tone="live"]::before {
-      animation: none;
     }
   }
 </style>

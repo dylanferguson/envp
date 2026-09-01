@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { SignalTone } from "../lib/signal.js";
+  import Toast from "../ui/Toast.svelte";
   import Nav from "./Nav.svelte";
 
   type Props = {
@@ -18,6 +19,8 @@
 <main class="layout-main">
   {@render children()}
 </main>
+
+<Toast />
 
 <style>
   .layout-main {

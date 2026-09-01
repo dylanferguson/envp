@@ -51,7 +51,7 @@ test.describe("create share", () => {
     await page.getByRole("button", { name: "share" }).click();
     await expect(page.getByRole("textbox", { name: "share link" })).toBeVisible();
 
-    await page.getByRole("button", { name: "start over" }).click();
+    await page.getByRole("button", { name: "share again" }).click();
 
     await expect(page.getByRole("textbox", { name: "paste your .env" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "paste your .env" })).toHaveValue("");

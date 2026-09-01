@@ -20,7 +20,6 @@
   let { steps, lines, at, kind, root = "." }: Props = $props();
 
   const atIdx = $derived(steps.indexOf(at));
-  const isFirstStep = $derived(atIdx === 0);
   let lit = $state(false);
 
   function splitTwig(twig: string): { spine: string; connector: string } {
@@ -44,11 +43,7 @@
 <div class="tree" aria-hidden="true">
   {#if root}
     <div class="tree-line">
-      <span
-        class="tree-node tree-root"
-        class:is-lit={isFirstStep && lit && kind !== "error"}
-        class:is-error={isFirstStep && lit && kind === "error"}
-      >{root}</span>
+      <span class="tree-node tree-root">{root}</span>
     </div>
   {/if}
   {#each lines as line (line.step)}
@@ -59,8 +54,8 @@
       {#if twigParts}
         <span class="tree-twig-wrap"><span class="tree-twig-spine">{twigParts.spine}</span><span
             class="tree-twig"
-            class:is-lit={isActive && !isFirstStep && kind !== "error"}
-            class:is-error={isActive && !isFirstStep && kind === "error"}
+            class:is-lit={isActive && kind !== "error"}
+            class:is-error={isActive && kind === "error"}
           >{twigParts.connector}</span></span>
       {/if}
       <span
@@ -113,17 +108,7 @@
   }
 
   .tree-root {
-    color: var(--muted);
-  }
-
-  .tree-root.is-lit {
-    color: var(--phosphor);
-    animation: tree-node-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .tree-root.is-error {
-    color: var(--coral);
-    animation: tree-node-error-in var(--tree-fade-in) cubic-bezier(0.22, 1, 0.36, 1);
+    color: var(--hairline);
   }
 
   .tree-node.is-active {
@@ -186,11 +171,6 @@
     .tree-twig.is-error {
       animation: none;
       color: var(--coral);
-    }
-
-    .tree-root.is-lit {
-      animation: none;
-      color: var(--phosphor);
     }
 
     .tree-node.is-error {

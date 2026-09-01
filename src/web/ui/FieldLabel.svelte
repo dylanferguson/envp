@@ -21,6 +21,9 @@
   }
 
   label.compact {
+    display: inline-flex;
+    align-items: center;
     margin-bottom: 0;
+    line-height: 1;
   }
 </style>

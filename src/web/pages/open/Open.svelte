@@ -5,7 +5,7 @@
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
-  import Toast from "../../ui/Toast.svelte";
+  import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import StatusLine from "../../ui/StatusLine.svelte";
   import SwapStage from "../../ui/SwapStage.svelte";
   import {
@@ -34,7 +34,6 @@
   let statusNote = $state("");
   let linkInput = $state("");
   let openLoadToken = 0;
-  let copyToast = $state<Toast | null>(null);
   let openForm = $state<OpenForm | null>(null);
   let openResult = $state<OpenResult | null>(null);
 
@@ -114,7 +113,7 @@
 
   function onCopy(): void {
     void navigator.clipboard.writeText(envOutput).then(() => {
-      copyToast?.show();
+      showToast("copied to clipboard");
     });
   }
 
@@ -128,7 +127,7 @@
   }
 
   function onAgain(): void {
-    copyToast?.dismiss();
+    dismissToast();
     openLoadToken++;
     linkInput = "";
     envOutput = "";
@@ -188,5 +187,3 @@
 
   <StatusLine text={statusText} error={reading.tone === "error"} animated />
 </Layout>
-
-<Toast bind:this={copyToast} message="copied to clipboard" />

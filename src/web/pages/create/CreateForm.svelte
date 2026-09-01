@@ -71,7 +71,11 @@
     step={60}
     disabled={busy}
   />
-  <Readout text={formatExpiryLabel(ttlSeconds)} sizer={LONGEST_EXPIRY_LABEL} />
+  <Readout
+    text={formatExpiryLabel(ttlSeconds)}
+    sizer={LONGEST_EXPIRY_LABEL}
+    align="start"
+  />
   <Button busy={busy} disabled={shareDisabled} onclick={onShare}>share</Button>
 </div>
 
@@ -95,10 +99,26 @@
   }
 
   .controls {
+    --controls-band: 0.85rem;
     display: grid;
-    grid-template-columns: auto minmax(10rem, 1fr) auto auto;
+    grid-template-columns: auto 1fr auto auto;
     align-items: center;
     gap: 1rem;
     margin: 0 0 1.25rem;
+  }
+
+  .controls :global(label.compact),
+  .controls :global(.readout-grid) {
+    min-height: var(--controls-band);
+    line-height: 1;
+  }
+
+  .controls :global(.slider) {
+    min-width: 0;
+    height: var(--controls-band);
+  }
+
+  .controls :global(button) {
+    line-height: 1;
   }
 </style>

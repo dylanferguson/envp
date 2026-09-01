@@ -1,49 +1,19 @@
 <script lang="ts">
-  type Phase = "hidden" | "shown" | "hiding";
-
-  let { message }: { message: string } = $props();
-
-  let phase = $state<Phase>("hidden");
-  let seq = $state(0);
-  let hideTimer: ReturnType<typeof setTimeout> | undefined;
-
-  function scheduleHide(): void {
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => {
-      dismiss();
-    }, 2800);
-  }
-
-  export function show(): void {
-    seq += 1;
-    phase = "shown";
-    scheduleHide();
-  }
-
-  export function dismiss(): void {
-    clearTimeout(hideTimer);
-    if (phase === "shown") {
-      phase = "hiding";
-    } else {
-      phase = "hidden";
-    }
-  }
+  import { finishHide, toast } from "../lib/toast.svelte.js";
 
   function onAnimationEnd(event: AnimationEvent): void {
     if (!event.animationName.endsWith("toast-out")) {
       return;
     }
-    if (phase === "hiding") {
-      phase = "hidden";
-    }
+    finishHide();
   }
 </script>
 
-{#if phase !== "hidden"}
-  {#key seq}
+{#if toast.phase !== "hidden"}
+  {#key toast.seq}
     <p
       class="toast"
-      class:is-hiding={phase === "hiding"}
+      class:is-hiding={toast.phase === "hiding"}
       role="status"
       aria-live="polite"
       onanimationend={onAnimationEnd}
@@ -59,7 +29,7 @@
           stroke-linejoin="round"
         />
       </svg>
-      {message}
+      {toast.message}
     </p>
   {/key}
 {/if}

@@ -5,7 +5,7 @@
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
-  import Toast from "../../ui/Toast.svelte";
+  import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import SwapStage from "../../ui/SwapStage.svelte";
   import CreateDone from "./CreateDone.svelte";
   import CreateForm from "./CreateForm.svelte";
@@ -26,7 +26,6 @@
   let state = $state<CreateState>({ phase: "idle" });
   let envInput = $state("");
   let ttlSeconds = $state(DEFAULT_TTL_SECONDS);
-  let copyToast = $state<Toast | null>(null);
   let createForm = $state<CreateForm | null>(null);
   let createDone = $state<CreateDone | null>(null);
 
@@ -52,8 +51,12 @@
       return;
     }
     state = applyShareOutcome(outcome);
-    if (outcome.kind === "done" && outcome.copied) {
-      copyToast?.show();
+    if (outcome.kind === "done") {
+      if (outcome.copied) {
+        showToast("link copied to clipboard");
+      }
+      await tick();
+      createDone?.selectLink();
     }
   }
 
@@ -64,7 +67,7 @@
     void navigator.clipboard.writeText(state.url).then(
       () => {
         state = { ...state, copied: true };
-        copyToast?.show();
+        showToast("link copied to clipboard");
         createDone?.selectLink();
       },
       () => {
@@ -76,7 +79,7 @@
   }
 
   function onAgain(): void {
-    copyToast?.dismiss();
+    dismissToast();
     envInput = "";
     state = { phase: "idle" };
     createForm?.focusInput();
@@ -131,5 +134,3 @@
     </SwapStage>
   </div>
 </Layout>
-
-<Toast bind:this={copyToast} message="link copied to clipboard" />

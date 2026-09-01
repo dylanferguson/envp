@@ -37,11 +37,13 @@
 
 <style>
   .slider {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 0.35rem;
+    column-gap: 0.35rem;
     width: 100%;
     min-width: 0;
+    height: 0.85rem;
     color: var(--hairline-lit);
     transition: color 0.2s ease;
   }
@@ -57,13 +59,15 @@
   }
 
   input[type="range"] {
-    flex: 1;
-    height: 1.25rem;
+    width: 100%;
+    height: 0.85rem;
     margin: 0;
+    padding: 0;
     background: transparent;
     cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
+    align-self: center;
   }
 
   input[type="range"]:disabled {
@@ -102,7 +106,7 @@
   input[type="range"]::-webkit-slider-thumb {
     width: 0.45rem;
     height: 0.85rem;
-    margin-top: -0.18rem;
+    margin-top: calc((0.55rem - 0.85rem) / 2);
     border: 1px solid var(--phosphor);
     border-radius: 0;
     background: var(--phosphor);

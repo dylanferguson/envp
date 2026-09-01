@@ -25,36 +25,53 @@
 
   let field = $state<HTMLTextAreaElement | null>(null);
 
+  const SWAP_SELECT_DELAY_MS = 420;
+
+  function applySelect(node: HTMLTextAreaElement): void {
+    if (node.value.length === 0) {
+      return;
+    }
+    node.focus({ preventScroll: true });
+    node.setSelectionRange(0, node.value.length);
+  }
+
+  function scheduleSelect(node: HTMLTextAreaElement): () => void {
+    applySelect(node);
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => applySelect(node));
+    });
+    const timer = setTimeout(() => applySelect(node), SWAP_SELECT_DELAY_MS);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }
+
   export function selectAll(): void {
     const el = field;
     if (!el) {
       return;
     }
-    el.focus({ preventScroll: true });
-    el.setSelectionRange(0, el.value.length);
+    scheduleSelect(el);
   }
 
   function mountSelect(
     node: HTMLTextAreaElement,
     mountValue: string | undefined,
-  ): { update?: (next: string) => void } {
+  ): { update?: (next: string) => void; destroy?: () => void } {
     if (mountValue === undefined) {
       return {};
     }
-    const run = (): void => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          node.focus({ preventScroll: true });
-          node.setSelectionRange(0, node.value.length);
-        });
-      });
-    };
-    run();
+    let cancel = scheduleSelect(node);
     return {
       update(next: string) {
         if (next.length > 0) {
-          run();
+          cancel();
+          cancel = scheduleSelect(node);
         }
+      },
+      destroy() {
+        cancel();
       },
     };
   }
