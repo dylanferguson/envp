@@ -91,6 +91,20 @@
     grid-area: 1 / 1;
   }
 
+  .diagram.is-animate :global(.dia-plain) {
+    opacity: 1;
+    color: var(--fg);
+  }
+
+  .diagram.is-animate :global(.dia-cipher) {
+    opacity: 0;
+  }
+
+  .diagram.is-animate :global(.dia-slot-right .dia-plain),
+  .diagram.is-animate :global(.dia-slot-right .dia-cipher) {
+    opacity: 0;
+  }
+
   .diagram.is-animate.is-lit :global(.dia-you),
   .diagram.is-animate.is-lit :global(.dia-server),
   .diagram.is-animate.is-lit :global(.dia-them),
@@ -101,7 +115,7 @@
   .diagram.is-animate.is-lit :global(.dia-cipher) {
     animation-duration: 14s;
     animation-iteration-count: 1;
-    animation-fill-mode: forwards;
+    animation-fill-mode: both;
     animation-timing-function: ease-in-out;
     animation-delay: var(--dia-fade-in);
   }
@@ -337,7 +351,7 @@
   @keyframes dia-cipher-block {
     0%,
     14% {
-      opacity: 0.2;
+      opacity: 0;
     }
     20%,
     56% {
