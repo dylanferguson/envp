@@ -39,7 +39,7 @@
     selectOnMount
   />
   <div class="done-actions">
-    <Button onclick={onAgain}>again</Button>
+    <Button onclick={onAgain}>start over</Button>
   </div>
 </div>
 
