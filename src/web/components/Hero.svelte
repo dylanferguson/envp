@@ -3,13 +3,13 @@
   import type { DiagramFocus } from "../lib/diagram-focus.js";
 
   type Props = {
-    /** Set for open: static highlight. Omit for create: one-shot animation. */
+    lead: string;
+    deck: string;
     focus?: DiagramFocus;
   };
 
-  let { focus }: Props = $props();
+  let { lead, deck, focus }: Props = $props();
 
-  /** Inner width between └ and ┘; must match diagram column geometry. */
   const KEY_PATH_INNER = 47;
   const KEY_PATH_PREFIX = " share link";
   const KEY_PATH_SUFFIX = "#key";
@@ -51,6 +51,11 @@
   });
 </script>
 
+<header class="hero">
+  <h2 class="lead">{lead} <span class="mark">.env</span></h2>
+  <p class="deck">{deck}</p>
+</header>
+
 <pre
   class="diagram"
   class:is-animate={isAnimated}
@@ -67,6 +72,30 @@
 >
 
 <style>
+  .hero {
+    margin: 0 0 1.75rem;
+  }
+
+  .lead {
+    margin: 0 0 0.65rem;
+    font-size: clamp(1.2rem, 3.5vw, 1.55rem);
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--fg);
+  }
+
+  .deck {
+    margin: 0;
+    max-width: 34rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .mark {
+    color: var(--phosphor);
+  }
+
   .diagram {
     margin: 0 0 2rem;
     overflow-x: auto;

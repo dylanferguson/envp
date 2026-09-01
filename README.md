@@ -2,7 +2,7 @@
 
 Browser-encrypted `.env` sharing. The homepage is the paste form: paste, get a link. The decryption key stays in the URL fragment (`#...`). The server stores only the encrypted blob and an expiry timestamp.
 
-Routes are `/` and `/new` (the same compose console) and `/s/:id#key` (the open console).
+Routes are `/` (compose), `/open` (paste a link), and `/s/:id#key` (direct share link).
 
 ## Run locally
 
@@ -74,7 +74,6 @@ Anyone with the full link (path + `#key`) can decrypt until expiry. Fragments ar
 - Share id (random, opaque)
 - Encrypted blob
 - Expiry timestamp
-- Your IP at upload time (for abuse response)
 
 We cannot read your variables. Questions or abuse: `abuse@localhost` (placeholder for v1).
 

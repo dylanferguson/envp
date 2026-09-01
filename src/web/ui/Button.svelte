@@ -3,23 +3,19 @@
 
   type Props = {
     busy?: boolean;
-    ghost?: boolean;
     disabled?: boolean;
     type?: "button" | "submit";
     onclick?: (event: MouseEvent) => void;
     ariaLabel?: string;
-    hidden?: boolean;
     children: Snippet;
   };
 
   let {
     busy = false,
-    ghost = false,
     disabled = false,
     type = "button",
     onclick,
     ariaLabel,
-    hidden = false,
     children,
   }: Props = $props();
 </script>
@@ -27,8 +23,6 @@
 <button
   {type}
   class:is-busy={busy}
-  class:ghost
-  class:is-out={hidden}
   {disabled}
   {onclick}
   aria-label={ariaLabel}
@@ -77,21 +71,6 @@
   button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-
-  button.ghost {
-    background: transparent;
-    color: var(--muted);
-    border-color: var(--hairline-lit);
-  }
-
-  button.ghost:hover:not(:disabled) {
-    background: var(--surface);
-    color: var(--fg);
-  }
-
-  button.is-out {
-    display: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

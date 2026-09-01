@@ -1,27 +1,33 @@
 <script lang="ts">
-  import { MAX_TTL_SECONDS, MIN_TTL_SECONDS } from "../../shared/limits.js";
-
   type Props = {
     id: string;
     value: number;
+    min: number;
+    max: number;
+    step?: number;
     disabled?: boolean;
   };
 
-  let { id, value = $bindable(), disabled = false }: Props = $props();
+  let {
+    id,
+    value = $bindable(),
+    min,
+    max,
+    step = 1,
+    disabled = false,
+  }: Props = $props();
 
-  const fillPct = $derived(
-    ((value - MIN_TTL_SECONDS) / (MAX_TTL_SECONDS - MIN_TTL_SECONDS)) * 100,
-  );
+  const fillPct = $derived(((value - min) / (max - min)) * 100);
 </script>
 
-<div class="ttl-slider">
+<div class="slider">
   <span class="bracket" aria-hidden="true">[</span>
   <input
     {id}
     type="range"
-    min={MIN_TTL_SECONDS}
-    max={MAX_TTL_SECONDS}
-    step="60"
+    {min}
+    {max}
+    {step}
     bind:value
     {disabled}
     style="--fill: {fillPct}%"
@@ -30,7 +36,7 @@
 </div>
 
 <style>
-  .ttl-slider {
+  .slider {
     display: flex;
     align-items: center;
     gap: 0.35rem;
@@ -40,7 +46,7 @@
     transition: color 0.2s ease;
   }
 
-  .ttl-slider:focus-within {
+  .slider:focus-within {
     color: var(--phosphor);
   }
 
@@ -124,13 +130,13 @@
     outline-offset: 2px;
   }
 
-  .ttl-slider:focus-within input[type="range"]::-webkit-slider-runnable-track,
-  .ttl-slider:focus-within input[type="range"]::-moz-range-track {
+  .slider:focus-within input[type="range"]::-webkit-slider-runnable-track,
+  .slider:focus-within input[type="range"]::-moz-range-track {
     border-color: var(--phosphor);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ttl-slider,
+    .slider,
     input[type="range"]::-webkit-slider-runnable-track,
     input[type="range"]::-moz-range-track {
       transition: none;

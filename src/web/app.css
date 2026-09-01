@@ -53,3 +53,13 @@ body {
   background: var(--phosphor);
   color: var(--bg);
 }
+
+.field-shell {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  transition: border-color 0.35s ease;
+}
+
+.field-shell:focus-within {
+  border-color: var(--phosphor);
+}

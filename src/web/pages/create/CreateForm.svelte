@@ -1,11 +1,16 @@
 <script lang="ts">
-  import { DEFAULT_TTL_SECONDS, formatExpiryLabel, LONGEST_EXPIRY_LABEL } from "../../../shared/limits.js";
-  import TtlSlider from "../../components/TtlSlider.svelte";
+  import {
+    formatExpiryLabel,
+    LONGEST_EXPIRY_LABEL,
+    MAX_TTL_SECONDS,
+    MIN_TTL_SECONDS,
+  } from "../../../shared/limits.js";
   import { formatInputSize } from "../../lib/format-input-size.js";
   import Button from "../../ui/Button.svelte";
   import FieldLabel from "../../ui/FieldLabel.svelte";
   import Frame from "../../ui/Frame.svelte";
   import Readout from "../../ui/Readout.svelte";
+  import Slider from "../../ui/Slider.svelte";
   import StatusLine from "../../ui/StatusLine.svelte";
 
   type Props = {
@@ -57,12 +62,16 @@
 </section>
 
 <div class="controls">
-  <label class="control-label" for="ttl">ttl</label>
-  <TtlSlider id="ttl" bind:value={ttlSeconds} disabled={busy} />
-  <span class="readout ttl-readout">
-    <span class="ttl-readout-sizer" aria-hidden="true">{LONGEST_EXPIRY_LABEL}</span>
-    <span class="ttl-readout-value">{formatExpiryLabel(ttlSeconds)}</span>
-  </span>
+  <FieldLabel for="ttl" compact>ttl</FieldLabel>
+  <Slider
+    id="ttl"
+    bind:value={ttlSeconds}
+    min={MIN_TTL_SECONDS}
+    max={MAX_TTL_SECONDS}
+    step={60}
+    disabled={busy}
+  />
+  <Readout text={formatExpiryLabel(ttlSeconds)} sizer={LONGEST_EXPIRY_LABEL} />
   <Button busy={busy} disabled={shareDisabled} onclick={onShare}>share</Button>
 </div>
 
@@ -83,41 +92,6 @@
 
   .field-head :global(label) {
     margin-bottom: 0;
-  }
-
-  .control-label {
-    display: block;
-    margin-bottom: 0;
-    font-size: var(--tick);
-    letter-spacing: var(--track);
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .readout {
-    font-size: var(--tick);
-    letter-spacing: var(--track);
-    text-transform: uppercase;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-
-  .ttl-readout {
-    display: inline-grid;
-    justify-self: end;
-  }
-
-  .ttl-readout-sizer,
-  .ttl-readout-value {
-    grid-area: 1 / 1;
-  }
-
-  .ttl-readout-sizer {
-    visibility: hidden;
-  }
-
-  .ttl-readout-value {
-    justify-self: end;
   }
 
   .controls {

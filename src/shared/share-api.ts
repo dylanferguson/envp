@@ -38,34 +38,21 @@ export function buildCreateShareBody(ttlSeconds: TtlSeconds, envelope: Uint8Arra
   });
 }
 
-export function toCreateShareResponse(record: {
-  id: ShareId;
-  expiresAt: UnixMillis;
-}): CreateShareResponse {
-  return { id: record.id, expiresAt: record.expiresAt };
-}
-
-export function toGetShareResponse(id: ShareId, read: ShareRead): GetShareResponse {
-  return { id, expiresAt: read.expiresAt, envelope: read.envelope };
-}
-
 export function encodeCreateShareResponse(record: { id: ShareId; expiresAt: UnixMillis }): {
   id: string;
   expires_at: number;
 } {
-  const body = toCreateShareResponse(record);
-  return { id: body.id, expires_at: body.expiresAt };
+  return { id: record.id, expires_at: record.expiresAt };
 }
 
 export function encodeGetShareResponse(
   id: ShareId,
   read: ShareRead,
 ): { id: string; expires_at: number; envelope: string } {
-  const body = toGetShareResponse(id, read);
   return {
-    id: body.id,
-    expires_at: body.expiresAt,
-    envelope: base64urlEncode(body.envelope),
+    id,
+    expires_at: read.expiresAt,
+    envelope: base64urlEncode(read.envelope),
   };
 }
 

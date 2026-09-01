@@ -10,27 +10,17 @@
   let { busy = false, over = false, children }: Props = $props();
 </script>
 
-<div class="frame" class:is-busy={busy} class:is-over={over}>
+<div class="field-shell frame" class:is-busy={busy} class:is-over={over}>
   {@render children()}
 </div>
 
 <style>
-  .frame {
-    border: 1px solid var(--hairline);
-    background: var(--surface);
-    transition: border-color 0.35s ease;
-  }
-
   .frame.is-busy {
     animation: seal-pulse 1.4s ease-in-out infinite;
   }
 
   .frame.is-over {
     border-color: var(--coral);
-  }
-
-  .frame:focus-within {
-    border-color: var(--phosphor);
   }
 
   @keyframes seal-pulse {

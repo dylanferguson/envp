@@ -1,18 +1,15 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
   import { crossfade } from "svelte/transition";
   import { BUILD_META, buildCommitUrl } from "../../shared/build-meta.js";
-
-  type SignalTone = "idle" | "live" | "ok" | "error";
+  import type { SignalTone } from "../lib/signal.js";
 
   type Props = {
-    activeOp: "new" | "open";
+    activeOp: "share" | "open";
     word: string;
     tone: SignalTone;
-    children: Snippet;
   };
 
-  let { activeOp, word, tone, children }: Props = $props();
+  let { activeOp, word, tone }: Props = $props();
 
   const REPO_URL = "https://github.com/dylanferguson/env-share";
   const SIGNAL_WIDTH_WORD = "uploading";
@@ -20,30 +17,30 @@
   const [send, receive] = crossfade({ duration: 260 });
 </script>
 
-<header class="chrome">
-  <div class="chrome-row">
-    <div class="chrome-start">
-      <h1 class="chrome-name">
+<header class="nav">
+  <div class="nav-row">
+    <div class="nav-start">
+      <h1 class="nav-name">
         <a href="/">env-share</a>
       </h1>
-      <div class="chrome-menu">
-        <nav class="chrome-ops" aria-label="console modes">
-          <a data-op="new" href="/" class:is-active={activeOp === "new"}>new</a>
+      <div class="nav-menu">
+        <nav class="nav-ops" aria-label="console modes">
+          <a data-op="share" href="/" class:is-active={activeOp === "share"}>share</a>
           <a data-op="open" href="/open" class:is-active={activeOp === "open"}>open</a>
         </nav>
-        <span class="chrome-build">
+        <span class="nav-build">
           <a
-            class="chrome-repo"
+            class="nav-repo"
             href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="View source on GitHub"
           >
-            <span class="chrome-repo-mark" aria-hidden="true">&lt;/&gt;</span>
+            <span class="nav-repo-mark" aria-hidden="true">&lt;/&gt;</span>
           </a>
-          <span class="chrome-commit-wrap">
+          <span class="nav-commit-wrap">
             <a
-              class="chrome-commit"
+              class="nav-commit"
               href={commitHref}
               target="_blank"
               rel="noopener noreferrer"
@@ -72,12 +69,8 @@
   </div>
 </header>
 
-<main class="page">
-  {@render children()}
-</main>
-
 <style>
-  .chrome {
+  .nav {
     position: sticky;
     top: 0;
     z-index: 3;
@@ -85,32 +78,28 @@
     border-bottom: 1px solid var(--hairline);
   }
 
-  .chrome-row,
-  .page {
+  .nav-row {
+    display: flex;
+    align-items: center;
     width: min(var(--col), 100%);
+    height: 2.75rem;
     margin: 0 auto;
     padding-inline: 1.25rem;
   }
 
-  .chrome-row {
-    display: flex;
-    align-items: center;
-    height: 2.75rem;
-  }
-
-  .chrome-start {
+  .nav-start {
     display: flex;
     align-items: center;
     gap: 1.5rem;
   }
 
-  .chrome-menu {
+  .nav-menu {
     display: flex;
     align-items: center;
     gap: 1rem;
   }
 
-  .chrome-name {
+  .nav-name {
     margin: 0;
     font-size: var(--tick);
     font-weight: 500;
@@ -118,71 +107,73 @@
     text-transform: uppercase;
   }
 
-  .chrome-name a {
+  .nav-name a {
     color: var(--fg);
     text-decoration: none;
     transition: color 0.2s ease;
   }
 
-  .chrome-name a:hover {
+  .nav-name a:hover {
     color: var(--phosphor);
   }
 
-  .chrome-ops {
+  .nav-ops {
     display: flex;
     gap: 1rem;
   }
 
-  .chrome-ops > :global(*) {
+  .nav-ops > :global(*) {
     font-size: var(--tick);
     letter-spacing: var(--track);
     text-transform: uppercase;
     color: var(--muted);
     text-decoration: none;
     border-bottom: 1px solid transparent;
-    transition: color 0.2s ease, border-color 0.2s ease;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
   }
 
-  .chrome-ops > a:hover {
+  .nav-ops > a:hover {
     color: var(--phosphor);
   }
 
-  .chrome-ops > :global(.is-active) {
+  .nav-ops > :global(.is-active) {
     color: var(--phosphor);
     border-bottom-color: var(--phosphor);
   }
 
-  .chrome-build {
+  .nav-build {
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
   }
 
-  .chrome-commit-wrap {
+  .nav-commit-wrap {
     display: grid;
     grid-template-columns: 1fr;
     min-width: 0;
   }
 
-  .chrome-repo,
-  .chrome-commit {
+  .nav-repo,
+  .nav-commit {
     font-size: var(--tick);
     color: var(--muted);
     text-decoration: none;
     transition: color 0.2s ease;
   }
 
-  .chrome-repo-mark {
+  .nav-repo-mark {
     color: inherit;
     letter-spacing: 0;
   }
 
-  .chrome-repo:hover,
-  .chrome-commit:hover {
+  .nav-repo:hover,
+  .nav-commit:hover {
     color: var(--phosphor);
   }
 
-  .chrome-commit {
+  .nav-commit {
     min-width: 0;
     padding-left: 0.35rem;
     font-variant-numeric: tabular-nums;
@@ -190,12 +181,12 @@
   }
 
   @media (hover: hover) {
-    .chrome-commit-wrap {
+    .nav-commit-wrap {
       grid-template-columns: 0fr;
       transition: grid-template-columns 0.24s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .chrome-commit {
+    .nav-commit {
       overflow: hidden;
       opacity: 0;
       pointer-events: none;
@@ -206,13 +197,13 @@
         transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .chrome-build:hover .chrome-commit-wrap,
-    .chrome-build:has(:focus-visible) .chrome-commit-wrap {
+    .nav-build:hover .nav-commit-wrap,
+    .nav-build:has(:focus-visible) .nav-commit-wrap {
       grid-template-columns: 1fr;
     }
 
-    .chrome-build:hover .chrome-commit,
-    .chrome-build:has(:focus-visible) .chrome-commit {
+    .nav-build:hover .nav-commit,
+    .nav-build:has(:focus-visible) .nav-commit {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
@@ -220,11 +211,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .chrome-commit-wrap {
+    .nav-commit-wrap {
       transition: none;
     }
 
-    .chrome-commit {
+    .nav-commit {
       transition: color 0.2s ease;
     }
   }
@@ -302,25 +293,20 @@
     }
   }
 
-  .page {
-    flex: 1;
-    padding-block: 2rem 3.5rem;
-  }
-
   @media (max-width: 720px) {
-    .chrome-start {
+    .nav-start {
       gap: 0.75rem;
     }
 
-    .chrome-menu {
+    .nav-menu {
       gap: 0.65rem;
     }
 
-    .chrome-ops {
+    .nav-ops {
       gap: 0.65rem;
     }
 
-    .chrome-name {
+    .nav-name {
       letter-spacing: 0.12em;
     }
   }

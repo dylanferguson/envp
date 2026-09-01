@@ -1,6 +1,7 @@
+import type { DiagramFocus } from "../../lib/diagram-focus.js";
 import type { Reading, TreeLine } from "../../lib/signal.js";
 
-export type DiagramFocus = "link" | "key" | "fetch" | "unlock" | "revealed";
+export type { DiagramFocus };
 
 export const OPEN_STEPS = ["key", "fetch", "unlock", "env"] as const;
 export type OpenStep = (typeof OPEN_STEPS)[number];

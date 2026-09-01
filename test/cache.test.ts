@@ -17,7 +17,7 @@ describe("cacheControlForPath", () => {
 
   it("no-cache for HTML shells", () => {
     expect(cacheControlForPath("/", "text/html; charset=utf-8")).toBe(HTML_SHELL_CACHE);
-    expect(cacheControlForPath("/new", "text/html; charset=utf-8")).toBe(HTML_SHELL_CACHE);
+    expect(cacheControlForPath("/open", "text/html; charset=utf-8")).toBe(HTML_SHELL_CACHE);
   });
 
   it("leaves root favicons unset", () => {

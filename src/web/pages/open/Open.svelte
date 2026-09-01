@@ -2,10 +2,10 @@
   import "../../app.css";
   import { onMount, tick } from "svelte";
   import { parseShareLink } from "../../../shared/limits.js";
-  import Chrome from "../../components/Chrome.svelte";
-  import OpenIntro from "../../components/OpenIntro.svelte";
-  import StepTree from "../../components/StepTree.svelte";
-  import Toast from "../../components/Toast.svelte";
+  import Layout from "../../components/Layout.svelte";
+  import Hero from "../../components/Hero.svelte";
+  import Tree from "../../components/Tree.svelte";
+  import Toast from "../../ui/Toast.svelte";
   import StatusLine from "../../ui/StatusLine.svelte";
   import SwapStage from "../../ui/SwapStage.svelte";
   import {
@@ -153,11 +153,15 @@
   });
 </script>
 
-<Chrome activeOp="open" word={reading.word} tone={reading.tone}>
-  <OpenIntro focus={diagramFocus} />
+<Layout activeOp="open" word={reading.word} tone={reading.tone}>
+  <Hero
+    lead="Open a shared"
+    deck="Decrypt the sender's env, without the server having seen the key."
+    focus={diagramFocus}
+  />
 
   <div class="console">
-    <StepTree
+    <Tree
       steps={OPEN_STEPS}
       lines={OPEN_TREE}
       at={reading.step}
@@ -183,6 +187,6 @@
   </div>
 
   <StatusLine text={statusText} error={reading.tone === "error"} animated />
-</Chrome>
+</Layout>
 
 <Toast bind:this={copyToast} message="copied to clipboard" />

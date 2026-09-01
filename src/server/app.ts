@@ -1,6 +1,4 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { API_V1_SHARES } from "../shared/api.js";
@@ -168,24 +166,12 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(encodeGetShareResponse(id, share));
   });
 
-  app.get("/open", (c) => {
-    const html = readFileSync(join(clientRoot, "open.html"), "utf8");
-    return c.html(html);
-  });
+  const shell = (file: string) => (c: Context) =>
+    serveStatic({ root: clientRoot, path: file })(c, async () => {});
 
-  app.get("/s/:id", (c) => {
-    const html = readFileSync(join(clientRoot, "open.html"), "utf8");
-    return c.html(html);
-  });
-
-  app.get("/new", (c) => {
-    const html = readFileSync(join(clientRoot, "index.html"), "utf8");
-    return c.html(html);
-  });
-
-  app.get("/", async (c) => {
-    return serveStatic({ root: clientRoot, path: "index.html" })(c, async () => {});
-  });
+  app.get("/", shell("index.html"));
+  app.get("/open", shell("open.html"));
+  app.get("/s/:id", shell("open.html"));
 
   app.use("/*", serveStatic({ root: clientRoot }));
 

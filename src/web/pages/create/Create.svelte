@@ -2,10 +2,10 @@
   import "../../app.css";
   import { onMount, tick } from "svelte";
   import { DEFAULT_TTL_SECONDS, MAX_PLAINTEXT_BYTES } from "../../../shared/limits.js";
-  import Chrome from "../../components/Chrome.svelte";
-  import Intro from "../../components/Intro.svelte";
-  import StepTree from "../../components/StepTree.svelte";
-  import Toast from "../../components/Toast.svelte";
+  import Layout from "../../components/Layout.svelte";
+  import Hero from "../../components/Hero.svelte";
+  import Tree from "../../components/Tree.svelte";
+  import Toast from "../../ui/Toast.svelte";
   import SwapStage from "../../ui/SwapStage.svelte";
   import CreateDone from "./CreateDone.svelte";
   import CreateForm from "./CreateForm.svelte";
@@ -89,11 +89,14 @@
   });
 </script>
 
-<Chrome activeOp="new" word={reading.word} tone={reading.tone}>
-  <Intro />
+<Layout activeOp="share" word={reading.word} tone={reading.tone}>
+  <Hero
+    lead="Securely share your"
+    deck="Encrypt with the browser, and share a link with a key the server never sees."
+  />
 
   <div class="console">
-    <StepTree
+    <Tree
       steps={CREATE_STEPS}
       lines={CREATE_TREE}
       at={reading.step}
@@ -127,6 +130,6 @@
       {/snippet}
     </SwapStage>
   </div>
-</Chrome>
+</Layout>
 
 <Toast bind:this={copyToast} message="link copied to clipboard" />
