@@ -15,11 +15,11 @@ Canonical env vars: `PORT`, `DB_PATH`, `PUBLIC_ORIGIN`, `TRUST_PROXY` (see root 
 
 Rewrite the small Node/Hono server in Go (stdlib or chi, `go:embed` for `dist/client`, pure-Go SQLite via `modernc.org/sqlite`). Keep the JSON API contract identical.
 
-| Layer | Responsibility |
-| ----- | -------------- |
-| **App** | HTTP API, static files, `DB_PATH`, validation, headers |
-| **deploy/docker/** | Always-on or manual `compose up` / `down` |
-| **deploy/fly/** | Auto sleep/wake + volume (see [fly/README.md](./fly/README.md)) |
+| Layer              | Responsibility                                                  |
+| ------------------ | --------------------------------------------------------------- |
+| **App**            | HTTP API, static files, `DB_PATH`, validation, headers          |
+| **deploy/docker/** | Always-on or manual `compose up` / `down`                       |
+| **deploy/fly/**    | Auto sleep/wake + volume (see [fly/README.md](./fly/README.md)) |
 
 Image size (~20–30 MB) helps cold starts but **idle cost is dominated by compute hours**, not megabytes. Optimize for scale-to-zero where traffic is sporadic.
 
@@ -63,12 +63,12 @@ No code changes required for sleep/wake:
 
 ## Deploy profiles (planned)
 
-| Profile | Sleep/wake | SQLite | Status |
-| ------- | ---------- | ------ | ------ |
-| `deploy/docker/` | Manual | Volume | Baseline exists (root Dockerfile) |
-| `deploy/fly/` | Automatic | Volume | Example `fly.toml` only |
+| Profile                      | Sleep/wake            | SQLite   | Status                                  |
+| ---------------------------- | --------------------- | -------- | --------------------------------------- |
+| `deploy/docker/`             | Manual                | Volume   | Baseline exists (root Dockerfile)       |
+| `deploy/fly/`                | Automatic             | Volume   | Example `fly.toml` only                 |
 | Remote SQLite (Turso/libSQL) | Broader scale-to-zero | External | Future option if Fly is too opinionated |
 
 ## Issue cross-references
 
-Planning notes for GitHub issues live in [`.github/issue-notes/`](../.github/issue-notes/README.md) (paste-ready comments). Link issues there when created or renumbered.
+Planning notes for GitHub issues live in [`.github/issue-notes/`](../.github/issue-notes/README.md) (source material for issue bodies). Issues #1, #8, and #11 were updated 2026-09-02.

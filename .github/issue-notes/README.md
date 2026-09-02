@@ -1,12 +1,14 @@
 # Issue notes
 
-Paste-ready comments for GitHub issues. The Cloud Agent token cannot write to Issues on this repo; copy these into the relevant issue threads (or link `docs/deployment.md` from issue bodies).
+Source material for GitHub issue bodies. Canonical deployment strategy lives in [`deploy/README.md`](../../deploy/README.md).
 
-| Topic | File | Suggested issue |
-| ----- | ---- | ----------------- |
-| Portable Go container vs PaaS bindings | [portable-go-container.md](./portable-go-container.md) | Server rewrite / portability |
-| Fly scale-to-zero for internal use | [fly-scale-to-zero.md](./fly-scale-to-zero.md) | Deployment / sleep-wake |
-| Cloudflare Workers & Containers | [cloudflare-assessment.md](./cloudflare-assessment.md) | Edge / Cloudflare exploration |
-| Summary (all topics) | [summary-for-tracking-issue.md](./summary-for-tracking-issue.md) | Umbrella / tracking issue (#1) |
+Issues **#1**, **#8**, and **#11** were updated with merged decision notes on **2026-09-02**.
 
-After pasting into GitHub, update the **Suggested issue** column with real issue numbers.
+| Topic                                  | File                                                             | Issue                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Portable Go container vs PaaS bindings | [portable-go-container.md](./portable-go-container.md)           | [#11](https://github.com/dylanferguson/env-share/issues/11)                         |
+| Fly scale-to-zero for internal use     | [fly-scale-to-zero.md](./fly-scale-to-zero.md)                   | [#8](https://github.com/dylanferguson/env-share/issues/8)                           |
+| Cloudflare Workers & Containers        | [cloudflare-assessment.md](./cloudflare-assessment.md)           | [#8](https://github.com/dylanferguson/env-share/issues/8) (no dedicated edge issue) |
+| Summary (all topics)                   | [summary-for-tracking-issue.md](./summary-for-tracking-issue.md) | [#1](https://github.com/dylanferguson/env-share/issues/1)                           |
+
+When deployment decisions change, update the relevant `.md` file here and refresh the matching issue body section (`## Decision notes (updated YYYY-MM-DD)`).
