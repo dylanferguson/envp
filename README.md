@@ -2,7 +2,7 @@
 
 Browser-encrypted `.env` sharing. The homepage is the paste form: paste, get a link. The decryption key stays in the URL fragment (`#...`). The server stores only the encrypted blob and an expiry timestamp.
 
-Routes are `/` (compose), `/open` (paste a link), and `/s/:id#key` (direct share link).
+Routes are `/` (compose), `/open` (paste a link), and `/shared/:id#key` (direct share link).
 
 ## Run locally
 
@@ -41,14 +41,22 @@ POST /api/v1/shares
   Content-Type: application/json
   { "ttl_seconds": 3600, "envelope": "<base64url>" }
 
-→ 201 { "id": "share_…", "expires_at": 1735689600000 }
+→ 201 { "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "expires_at": 1735689600000 }
 
-GET /api/v1/shares/share_…
+GET /api/v1/shares/01ARZ3NDEKTSV4RRFFQ69G5FAV
 
-→ 200 { "id": "share_…", "expires_at": 1735689600000, "envelope": "<base64url>" }
+→ 200 { "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "expires_at": 1735689600000, "envelope": "<base64url>" }
 ```
 
-Share links use `/s/share_…#key`, not the API path.
+Errors use a Stripe-style envelope with generic codes, for example:
+
+```json
+{ "error": { "code": "not_found", "message": "Share not found." } }
+```
+
+Rate-limited responses (`429`) include a `Retry-After` header (seconds). Successful creates include `Location: /api/v1/shares/{id}`.
+
+Share links use `/shared/01ARZ3NDEKTSV4RRFFQ69G5FAV#key`, not the API path.
 
 ## Encryption
 

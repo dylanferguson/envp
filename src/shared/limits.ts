@@ -1,6 +1,4 @@
-import { typeid, TypeID } from "typeid-js";
-
-export const SHARE_TYPE_PREFIX = "share";
+import { ulid, isValid } from "ulid";
 
 export type ShareId = string & { readonly __brand: "ShareId" };
 export type TtlSeconds = number & { readonly __brand: "TtlSeconds" };
@@ -21,7 +19,7 @@ export const DEFAULT_TTL_SECONDS = 3600 as TtlSeconds;
 const KEY_FRAGMENT_RE = /^[A-Za-z0-9_-]{43}$/;
 
 export function mintShareId(): ShareId {
-  return typeid(SHARE_TYPE_PREFIX).toString() as ShareId;
+  return ulid() as ShareId;
 }
 
 export function parseTtlSeconds(value: string | null | undefined): TtlSeconds | null {
@@ -36,11 +34,10 @@ export function parseTtlSeconds(value: string | null | undefined): TtlSeconds | 
 }
 
 export function parseShareId(value: string): ShareId | null {
-  try {
-    return TypeID.fromString(value, SHARE_TYPE_PREFIX).toString() as ShareId;
-  } catch {
+  if (!isValid(value)) {
     return null;
   }
+  return value.toUpperCase() as ShareId;
 }
 
 export function parseKeyFragment(value: string): KeyFragment | null {
@@ -73,7 +70,7 @@ export function parseShareLink(input: string): ParsedShareLink | null {
   if (trimmed.startsWith("/") || trimmed.includes("://")) {
     try {
       const url = new URL(trimmed, "http://local");
-      const match = url.pathname.match(/^\/s\/([^/]+)$/);
+      const match = url.pathname.match(/^\/shared\/([^/]+)$/);
       if (!match?.[1]) {
         return null;
       }

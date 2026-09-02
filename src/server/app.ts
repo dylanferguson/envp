@@ -1,6 +1,8 @@
 import { Hono, type Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { bodyLimit } from "hono/body-limit";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { API_ERROR_CODES, API_ERROR_MESSAGES, apiErrorBody } from "../shared/api-error.js";
 import { API_V1_SHARES } from "../shared/api.js";
 import { parseShareId } from "../shared/limits.js";
 import {
@@ -17,25 +19,28 @@ type RateBucket = {
   resetAt: number;
 };
 
-type RateLimiter = {
-  check(key: string, limit: number, windowMs: number): boolean;
+export type RateCheckResult = { allowed: true } | { allowed: false; retryAfterSeconds: number };
+
+export type RateLimiter = {
+  check(key: string, limit: number, windowMs: number): RateCheckResult;
 };
 
-function createRateLimiter(): RateLimiter {
+export function createRateLimiter(): RateLimiter {
   const buckets = new Map<string, RateBucket>();
   return {
-    check(key: string, limit: number, windowMs: number): boolean {
+    check(key: string, limit: number, windowMs: number): RateCheckResult {
       const now = Date.now();
       const bucket = buckets.get(key);
       if (!bucket || now >= bucket.resetAt) {
         buckets.set(key, { count: 1, resetAt: now + windowMs });
-        return true;
+        return { allowed: true };
       }
       if (bucket.count >= limit) {
-        return false;
+        const retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+        return { allowed: false, retryAfterSeconds };
       }
       bucket.count += 1;
-      return true;
+      return { allowed: true };
     },
   };
 }
@@ -94,6 +99,26 @@ function withSecurityHeaders(response: Response): Response {
   });
 }
 
+function apiError(
+  c: Context,
+  code: (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES],
+  message: string,
+  status: ContentfulStatusCode,
+  extraHeaders?: Record<string, string>,
+) {
+  return c.json(apiErrorBody(code, message), status, extraHeaders);
+}
+
+function notFound(c: Context) {
+  return apiError(c, API_ERROR_CODES.notFound, API_ERROR_MESSAGES.notFound, 404);
+}
+
+function rateLimited(c: Context, retryAfterSeconds: number) {
+  return apiError(c, API_ERROR_CODES.rateLimited, API_ERROR_MESSAGES.rateLimited, 429, {
+    "Retry-After": String(retryAfterSeconds),
+  });
+}
+
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const limiter = deps.rateLimiter ?? createRateLimiter();
@@ -113,53 +138,58 @@ export function createApp(deps: AppDeps): Hono {
     API_V1_SHARES,
     bodyLimit({
       maxSize: MAX_CREATE_JSON_BYTES,
-      onError: (c) => c.body(null, 413),
+      onError: (c) =>
+        apiError(c, API_ERROR_CODES.payloadTooLarge, API_ERROR_MESSAGES.payloadTooLarge, 413),
     }),
     async (c) => {
       const origin = c.req.header("origin");
       if (origin) {
         const expected = expectedOrigin(c.req.raw, deps.publicOrigin);
         if (!expected || origin !== expected) {
-          return c.body(null, 403);
+          return apiError(c, API_ERROR_CODES.forbidden, API_ERROR_MESSAGES.forbidden, 403);
         }
       }
 
       const ip = clientIp(c.req.raw, trustProxy);
-      if (!limiter.check(`post:${ip}`, 15, 5 * 60 * 1000)) {
-        return c.body(null, 429);
+      const postLimit = limiter.check(`post:${ip}`, 15, 5 * 60 * 1000);
+      if (!postLimit.allowed) {
+        return rateLimited(c, postLimit.retryAfterSeconds);
       }
 
       let json: unknown;
       try {
         json = await c.req.json();
       } catch {
-        return c.body(null, 400);
+        return apiError(c, API_ERROR_CODES.invalidRequest, API_ERROR_MESSAGES.invalidRequest, 400);
       }
 
       const request = parseCreateShareRequest(json);
       if (!request) {
-        return c.body(null, 400);
+        return apiError(c, API_ERROR_CODES.invalidRequest, API_ERROR_MESSAGES.invalidRequest, 400);
       }
 
       const record = deps.store.create(request.envelope, request.ttl);
-      return c.json(encodeCreateShareResponse(record), 201);
+      return c.json(encodeCreateShareResponse(record), 201, {
+        Location: `${API_V1_SHARES}/${record.id}`,
+      });
     },
   );
 
   app.get(`${API_V1_SHARES}/:id`, async (c) => {
     const id = parseShareId(c.req.param("id"));
     if (!id) {
-      return c.body(null, 404);
+      return notFound(c);
     }
 
     const ip = clientIp(c.req.raw, trustProxy);
-    if (!limiter.check(`get:${ip}`, 120, 60 * 1000)) {
-      return c.body(null, 429);
+    const getLimit = limiter.check(`get:${ip}`, 120, 60 * 1000);
+    if (!getLimit.allowed) {
+      return rateLimited(c, getLimit.retryAfterSeconds);
     }
 
     const share = deps.store.read(id);
     if (!share) {
-      return c.body(null, 404);
+      return notFound(c);
     }
 
     c.header("Cache-Control", "no-store");
@@ -171,7 +201,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/", shell("index.html"));
   app.get("/open", shell("open.html"));
-  app.get("/s/:id", shell("open.html"));
+  app.get("/shared/:id", shell("open.html"));
 
   app.use("/*", serveStatic({ root: clientRoot }));
 

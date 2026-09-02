@@ -24,7 +24,7 @@ function shareOpenPage(): Plugin {
         if (req.url && /^\/open\/?(\?.*)?$/.test(req.url)) {
           req.url = "/open.html";
         }
-        if (req.url && /^\/s\/[^/]+\/?(\?.*)?$/.test(req.url)) {
+        if (req.url && /^\/shared\/[^/]+\/?(\?.*)?$/.test(req.url)) {
           req.url = "/open.html";
         }
         next();
