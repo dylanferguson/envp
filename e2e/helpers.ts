@@ -7,7 +7,7 @@ export const UNKNOWN_SHARE_ID = "00000000000000000000000000";
 
 export const VALID_KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
 
-export const SHARE_LINK_PATTERN = /\/shared\/[0-7][0-9A-HJKMNP-TV-Z]{25}#[A-Za-z0-9_-]{43}$/;
+export const SHARE_LINK_PATTERN = /\/share\/[0-7][0-9A-HJKMNP-TV-Z]{25}#[A-Za-z0-9_-]{43}$/;
 
 export const ENVS_MAGIC = new Uint8Array([0x45, 0x4e, 0x56, 0x53]);
 

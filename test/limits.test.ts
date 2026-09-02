@@ -29,11 +29,11 @@ describe("formatExpiryLabel", () => {
 
 describe("parseShareLink", () => {
   it("parses supported link shapes", () => {
-    expect(parseShareLink(`https://env-share.example/shared/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
+    expect(parseShareLink(`https://env-share.example/share/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
       shareId: SHARE_ID,
       keyFragment: KEY_FRAGMENT,
     });
-    expect(parseShareLink(`/shared/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
+    expect(parseShareLink(`/share/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
       shareId: SHARE_ID,
       keyFragment: KEY_FRAGMENT,
     });
@@ -44,7 +44,7 @@ describe("parseShareLink", () => {
   });
 
   it("rejects invalid links", () => {
-    expect(parseShareLink(`/shared/${SHARE_ID}`)).toBeNull();
+    expect(parseShareLink(`/share/${SHARE_ID}`)).toBeNull();
     expect(parseShareLink(SHARE_ID)).toBeNull();
     expect(parseShareLink("01ARZ3NDEKTSV4RRFFQ69G5FA")).toBeNull();
     expect(parseShareLink("")).toBeNull();

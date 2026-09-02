@@ -201,7 +201,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/", shell("index.html"));
   app.get("/open", shell("open.html"));
-  app.get("/shared/:id", shell("open.html"));
+  app.get("/share/:id", shell("open.html"));
 
   app.use("/*", serveStatic({ root: clientRoot }));
 

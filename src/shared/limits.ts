@@ -70,7 +70,7 @@ export function parseShareLink(input: string): ParsedShareLink | null {
   if (trimmed.startsWith("/") || trimmed.includes("://")) {
     try {
       const url = new URL(trimmed, "http://local");
-      const match = url.pathname.match(/^\/shared\/([^/]+)$/);
+      const match = url.pathname.match(/^\/share\/([^/]+)$/);
       if (!match?.[1]) {
         return null;
       }

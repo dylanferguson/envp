@@ -40,13 +40,13 @@ test.describe("open share", () => {
   });
 
   test("reports a missing key fragment", async ({ page }) => {
-    await page.goto(`/shared/${UNKNOWN_SHARE_ID}`);
+    await page.goto(`/share/${UNKNOWN_SHARE_ID}`);
 
     await expect(page.getByText("Missing #key.")).toBeVisible();
   });
 
   test("reports a share that does not exist", async ({ page }) => {
-    await page.goto(`/shared/${UNKNOWN_SHARE_ID}#${VALID_KEY_FRAGMENT}`);
+    await page.goto(`/share/${UNKNOWN_SHARE_ID}#${VALID_KEY_FRAGMENT}`);
 
     await expect(page.getByText("Not found. Expired, deleted, or never existed.")).toBeVisible();
   });

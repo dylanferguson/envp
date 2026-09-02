@@ -2,7 +2,7 @@
 
 Browser-encrypted `.env` sharing. The homepage is the paste form: paste, get a link. The decryption key stays in the URL fragment (`#...`). The server stores only the encrypted blob and an expiry timestamp.
 
-Routes are `/` (compose), `/open` (paste a link), and `/shared/:id#key` (direct share link).
+Routes are `/` (compose), `/open` (paste a link), and `/share/:id#key` (direct share link).
 
 ## Run locally
 
@@ -56,7 +56,7 @@ Errors use a Stripe-style envelope with generic codes, for example:
 
 Rate-limited responses (`429`) include a `Retry-After` header (seconds). Successful creates include `Location: /api/v1/shares/{id}`.
 
-Share links use `/shared/01ARZ3NDEKTSV4RRFFQ69G5FAV#key`, not the API path.
+Share links use `/share/01ARZ3NDEKTSV4RRFFQ69G5FAV#key`, not the API path.
 
 ## Encryption
 
