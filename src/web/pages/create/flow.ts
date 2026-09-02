@@ -31,7 +31,7 @@ export async function runShareFlow(
     at = "send";
     onProgress?.({ phase: "uploading", bytes: envelope.length });
     const created = await createShare(envelope, ttlSeconds as never);
-    const url = `${origin}/s/${created.id}#${fragment}`;
+    const url = `${origin}/shared/${created.id}#${fragment}`;
     at = "link";
 
     let copied = false;

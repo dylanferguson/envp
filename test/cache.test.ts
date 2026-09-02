@@ -12,7 +12,7 @@ describe("cacheControlForPath", () => {
   });
 
   it("does not cache-control API paths", () => {
-    expect(cacheControlForPath("/api/v1/shares/share_abc")).toBeNull();
+    expect(cacheControlForPath("/api/v1/shares/01ARZ3NDEKTSV4RRFFQ69G5FAV")).toBeNull();
   });
 
   it("no-cache for HTML shells", () => {

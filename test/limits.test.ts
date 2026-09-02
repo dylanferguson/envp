@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatExpiryLabel, parseShareLink } from "../src/shared/limits.js";
+import { formatExpiryLabel, parseShareId, parseShareLink } from "../src/shared/limits.js";
 
-const SHARE_ID = "share_01h2xcejqtf2nbrexx3vqjhp41";
+const SHARE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
+
+describe("parseShareId", () => {
+  it("accepts valid ULIDs and normalizes case", () => {
+    expect(parseShareId(SHARE_ID)).toBe(SHARE_ID);
+    expect(parseShareId(SHARE_ID.toLowerCase())).toBe(SHARE_ID);
+  });
+
+  it("rejects invalid ids", () => {
+    expect(parseShareId("share_01h2xcejqtf2nbrexx3vqjhp41")).toBeNull();
+    expect(parseShareId("not-a-ulid")).toBeNull();
+  });
+});
 
 describe("formatExpiryLabel", () => {
   it("rounds ttl to hours or minutes", () => {
@@ -17,11 +29,11 @@ describe("formatExpiryLabel", () => {
 
 describe("parseShareLink", () => {
   it("parses supported link shapes", () => {
-    expect(parseShareLink(`https://env-share.example/s/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
+    expect(parseShareLink(`https://env-share.example/shared/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
       shareId: SHARE_ID,
       keyFragment: KEY_FRAGMENT,
     });
-    expect(parseShareLink(`/s/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
+    expect(parseShareLink(`/shared/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
       shareId: SHARE_ID,
       keyFragment: KEY_FRAGMENT,
     });
@@ -32,13 +44,12 @@ describe("parseShareLink", () => {
   });
 
   it("rejects invalid links", () => {
-    expect(parseShareLink(`/s/${SHARE_ID}`)).toBeNull();
+    expect(parseShareLink(`/shared/${SHARE_ID}`)).toBeNull();
     expect(parseShareLink(SHARE_ID)).toBeNull();
-    expect(
-      parseShareLink("share_abcdefghijklmnopqrstuv#ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"),
-    ).toBeNull();
+    expect(parseShareLink("01ARZ3NDEKTSV4RRFFQ69G5FA")).toBeNull();
     expect(parseShareLink("")).toBeNull();
     expect(parseShareLink("not-a-share-link")).toBeNull();
     expect(parseShareLink(`https://env-share.example/open#${KEY_FRAGMENT}`)).toBeNull();
+    expect(parseShareLink(`/s/${SHARE_ID}#${KEY_FRAGMENT}`)).toBeNull();
   });
 });

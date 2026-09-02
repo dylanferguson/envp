@@ -24,7 +24,7 @@ export function resolveShareTarget(
 }
 
 export function shareIdFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/s\/([^/]+)$/);
+  const match = pathname.match(/^\/shared\/([^/]+)$/);
   return match?.[1] ?? null;
 }
 
