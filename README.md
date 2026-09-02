@@ -97,6 +97,8 @@ Open `http://127.0.0.1:8080`. SQLite persists in the `env-share-data` Docker vol
 
 Behind a reverse proxy, set `TRUST_PROXY=true` and `PUBLIC_ORIGIN=https://your-host.example`.
 
+Planned profiles (portable Go image, Fly scale-to-zero, platform notes): [deploy/README.md](deploy/README.md).
+
 ## Tests
 
 ```bash
@@ -104,6 +106,7 @@ pnpm test
 pnpm check
 ```
 
-## Issue
+## Planning
 
-https://github.com/dylanferguson/env-share/issues/1
+- Tracking: https://github.com/dylanferguson/env-share/issues/1
+- Deployment notes for issues: [.github/issue-notes/](.github/issue-notes/)

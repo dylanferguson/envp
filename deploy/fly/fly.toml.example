@@ -1,0 +1,37 @@
+# Example Fly.io profile for env-share (Go or Node image listening on 8080).
+# Copy to fly.toml and adjust app name / region after `fly launch`.
+#
+# Docs: https://fly.io/docs/launch/autostop-autostart/
+
+app = "env-share"
+primary_region = "ord"
+
+[build]
+  dockerfile = "../../Dockerfile"
+
+[env]
+  PORT = "8080"
+  DB_PATH = "/data/shares.db"
+  TRUST_PROXY = "true"
+  # PUBLIC_ORIGIN = "https://env-share.fly.dev"
+
+[mounts]
+  source = "env_share_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/"
+
+# One-time volume (per region):
+#   fly volumes create env_share_data --region ord --size 1
