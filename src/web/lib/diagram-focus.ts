@@ -1,1 +1,10 @@
-export type DiagramFocus = "link" | "key" | "fetch" | "unlock" | "revealed";
+export type DiagramFocus =
+  | "paste"
+  | "seal"
+  | "send"
+  | "share"
+  | "link"
+  | "key"
+  | "fetch"
+  | "unlock"
+  | "revealed";

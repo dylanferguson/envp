@@ -37,7 +37,9 @@
         lit = true;
       });
     }
+  });
 
+  $effect(() => {
     if (!isAnimated) {
       return;
     }
@@ -65,8 +67,8 @@
   data-focus={focus}
   aria-hidden="true"
   >   <span class="dia-you">╭ sender ─────╮</span>          <span class="dia-server">┌ server ───┐</span>          <span class="dia-them">╭ receiver ───╮</span>
-   <span class="dia-you">│ </span><span class="dia-slot"><span class="dia-plain">.env        </span><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span></span><span class="dia-you">│</span> <span class="dia-flow-a">--seal-></span> <span class="dia-server">│ </span><span class="dia-cipher dia-server-cipher">▒▒▒▒▒▒▒▒  </span><span class="dia-server">│</span> <span class="dia-flow-b">--get--></span> <span class="dia-them">│ </span><span class="dia-slot dia-slot-right"><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span><span class="dia-plain">.env        </span></span><span class="dia-them">│</span>
-   <span class="dia-you">│ </span><span class="dia-key">#key        </span><span class="dia-you">│</span>          <span class="dia-server">│  no key   │</span>          <span class="dia-them">│ </span><span class="dia-key dia-receiver-key">#key        </span><span class="dia-them">│</span>
+   <span class="dia-you">│ </span><span class="dia-slot dia-slot-left"><span class="dia-plain">.env        </span><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span></span><span class="dia-you">│</span> <span class="dia-flow-a">--seal-></span> <span class="dia-server">│ </span><span class="dia-cipher dia-server-cipher">▒▒▒▒▒▒▒▒  </span><span class="dia-server">│</span> <span class="dia-flow-b">--get--></span> <span class="dia-them">│ </span><span class="dia-slot dia-slot-right"><span class="dia-cipher">▒▒▒▒▒▒▒▒    </span><span class="dia-plain">.env        </span></span><span class="dia-them">│</span>
+   <span class="dia-you">│ </span><span class="dia-key dia-sender-key">#key        </span><span class="dia-you">│</span>          <span class="dia-server">│  no key   │</span>          <span class="dia-them">│ </span><span class="dia-key dia-receiver-key">#key        </span><span class="dia-them">│</span>
    <span class="dia-you">╰──────┬──────╯</span>          <span class="dia-server">└───────────┘</span>          <span class="dia-them">╰──────┬──────╯</span>
           <span class="dia-key-path">└{keyPathLeft}{KEY_PATH_PREFIX}</span><span class="dia-key">{KEY_PATH_SUFFIX}</span><span class="dia-key-path">{keyPathRight}┘</span></pre
 >
@@ -205,6 +207,50 @@
 
   .diagram.is-highlight :global(.dia-cipher) {
     opacity: 0.2;
+  }
+
+  .diagram.is-highlight[data-focus="paste"] :global(.dia-you) {
+    color: var(--fg);
+  }
+
+  .diagram.is-highlight[data-focus="paste"] :global(.dia-slot-left .dia-plain) {
+    opacity: 1;
+    color: var(--fg);
+  }
+
+  .diagram.is-highlight[data-focus="paste"] :global(.dia-slot-left .dia-cipher) {
+    opacity: 0;
+  }
+
+  .diagram.is-highlight[data-focus="seal"] :global(.dia-you) {
+    color: var(--fg);
+  }
+
+  .diagram.is-highlight[data-focus="seal"] :global(.dia-slot-left .dia-cipher) {
+    opacity: 1;
+    color: var(--fg);
+  }
+
+  .diagram.is-highlight[data-focus="seal"] :global(.dia-sender-key) {
+    color: var(--phosphor);
+  }
+
+  .diagram.is-highlight[data-focus="send"] :global(.dia-server),
+  .diagram.is-highlight[data-focus="send"] :global(.dia-server-cipher) {
+    color: var(--fg);
+    opacity: 1;
+  }
+
+  .diagram.is-highlight[data-focus="send"] :global(.dia-flow-a) {
+    color: var(--phosphor);
+  }
+
+  .diagram.is-highlight[data-focus="share"] :global(.dia-key-path) {
+    color: var(--fg);
+  }
+
+  .diagram.is-highlight[data-focus="share"] :global(.dia-key) {
+    color: var(--phosphor);
   }
 
   .diagram.is-highlight[data-focus="link"] :global(.dia-them),

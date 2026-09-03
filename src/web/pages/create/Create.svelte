@@ -5,6 +5,7 @@
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
+  import { hasSeenDiagram, markDiagramSeen } from "../../lib/diagram-seen.js";
   import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import SwapStage from "../../ui/SwapStage.svelte";
   import CreateDone from "./CreateDone.svelte";
@@ -17,6 +18,7 @@
   import {
     CREATE_STEPS,
     CREATE_TREE,
+    deriveCreateDiagramFocus,
     deriveCreateReading,
     isCreateBusy,
     isCreateDone,
@@ -28,8 +30,12 @@
   let ttlSeconds = $state(DEFAULT_TTL_SECONDS);
   let createForm = $state<CreateForm | null>(null);
   let createDone = $state<CreateDone | null>(null);
+  let intro = $state(!hasSeenDiagram());
 
   const reading = $derived(deriveCreateReading(state));
+  const diagramFocus = $derived(
+    intro && state.phase === "idle" ? undefined : deriveCreateDiagramFocus(state),
+  );
   const inputBytes = $derived(new TextEncoder().encode(envInput).length);
   const isOverLimit = $derived(inputBytes > MAX_PLAINTEXT_BYTES);
   const isDone = $derived(isCreateDone(state));
@@ -85,7 +91,16 @@
     createForm?.focusInput();
   }
 
+  $effect(() => {
+    if (state.phase !== "idle") {
+      intro = false;
+    }
+  });
+
   onMount(() => {
+    if (intro) {
+      markDiagramSeen();
+    }
     void tick().then(() => {
       createForm?.focusInput();
     });
@@ -96,6 +111,7 @@
   <Hero
     lead="Securely share your"
     deck="Encrypt with the browser, and share a link with a key the server never sees."
+    focus={diagramFocus}
   />
 
   <div class="console">
