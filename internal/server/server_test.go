@@ -16,7 +16,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/dylanferguson/env-share/internal/store"
+	"github.com/dylanferguson/envp/internal/store"
 )
 
 var testFiles = fstest.MapFS{

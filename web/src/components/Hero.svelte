@@ -80,7 +80,7 @@
 
   .lead {
     margin: 0 0 0.65rem;
-    font-size: clamp(1.2rem, 3.5vw, 1.55rem);
+    font-size: var(--heading);
     font-weight: 500;
     line-height: 1.35;
     color: var(--fg);

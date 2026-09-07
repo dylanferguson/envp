@@ -1,4 +1,4 @@
-module github.com/dylanferguson/env-share
+module github.com/dylanferguson/envp
 
 go 1.27.1
 

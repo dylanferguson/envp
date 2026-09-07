@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dylanferguson/env-share/internal/server"
-	"github.com/dylanferguson/env-share/internal/store"
-	"github.com/dylanferguson/env-share/internal/webui"
+	"github.com/dylanferguson/envp/internal/server"
+	"github.com/dylanferguson/envp/internal/store"
+	"github.com/dylanferguson/envp/internal/webui"
 )
 
 type config struct {

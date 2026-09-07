@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
 
-const image = process.argv[2] ?? "env-share:go-scratch";
+const image = process.argv[2] ?? "envp:go-scratch";
 const docker = (...args) => execFileSync("docker", args, { encoding: "utf8" }).trim();
-const name = `env-share-smoke-${process.pid}`;
+const name = `envp-smoke-${process.pid}`;
 const container = docker("run", "--detach", "--name", name, "--publish", "127.0.0.1::8080", image);
 
 async function ready(baseURL) {

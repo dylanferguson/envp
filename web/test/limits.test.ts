@@ -31,7 +31,7 @@ describe("formatExpiryLabel", () => {
 
 describe("parseShareLink", () => {
   it("parses supported link shapes", () => {
-    expect(parseShareLink(`https://env-share.example/share/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
+    expect(parseShareLink(`https://envp.example/share/${SHARE_ID}#${KEY_FRAGMENT}`)).toEqual({
       shareId: SHARE_ID,
       keyFragment: KEY_FRAGMENT,
     });
@@ -51,7 +51,7 @@ describe("parseShareLink", () => {
     expect(parseShareLink("01ARZ3NDEKTSV4RRFFQ69G5FA")).toBeNull();
     expect(parseShareLink("")).toBeNull();
     expect(parseShareLink("not-a-share-link")).toBeNull();
-    expect(parseShareLink(`https://env-share.example/open#${KEY_FRAGMENT}`)).toBeNull();
+    expect(parseShareLink(`https://envp.example/open#${KEY_FRAGMENT}`)).toBeNull();
     expect(parseShareLink(`/s/${SHARE_ID}#${KEY_FRAGMENT}`)).toBeNull();
   });
 });
