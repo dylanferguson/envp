@@ -21,7 +21,7 @@
   <div class="nav-row">
     <div class="nav-start">
       <h1 class="nav-name">
-        <a href="/">env-share</a>
+        <a href="/"><span class="nav-mark" aria-hidden="true">❯</span>env-share</a>
       </h1>
       <div class="nav-menu">
         <nav class="nav-ops" aria-label="console modes">
@@ -111,6 +111,13 @@
     color: var(--fg);
     text-decoration: none;
     transition: color 0.2s ease;
+  }
+
+  .nav-mark {
+    color: var(--phosphor);
+    letter-spacing: 0;
+    text-transform: none;
+    margin-right: 0.35em;
   }
 
   .nav-name a:hover {

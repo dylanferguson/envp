@@ -9,19 +9,13 @@
     fill="none"
     stroke="#23262b"
   />
-  <g
-    fill="none"
-    stroke="#48d597"
-    stroke-width="1.85"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  >
-    <circle cx="16" cy="8.25" r="2.6"/>
-    <circle cx="12.85" cy="10.85" r="2.6"/>
-    <circle cx="19.15" cy="10.85" r="2.6"/>
-    <path d="M14.15 13.35h3.7"/>
-    <path d="M14.15 14.65h3.7"/>
-    <path d="M16 14.65v9"/>
-    <path d="M16 21.1h5.1v1.35h-1.55v1.35h1.55v1.35H16"/>
-  </g>
+  <text
+    x="16"
+    y="16.5"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Menlo, Apple Symbols, Zapf Dingbats, ui-monospace, monospace"
+    font-size="18"
+    fill="#48d597"
+  >❯</text>
 </svg>
