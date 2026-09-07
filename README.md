@@ -27,6 +27,10 @@ mise run docker:run
 | `PUBLIC_ORIGIN` | derived from request                  |
 | `TRUST_PROXY`   | unset (`true` behind a trusted proxy) |
 
+Production on Fly sets `TRUST_PROXY=true`. Rate limits use `CF-Connecting-IP` when Cloudflare is in front, then `Fly-Client-IP`, then the last `X-Forwarded-For` hop.
+
+Production is `https://envp.dylanferguson.co` behind Cloudflare. Follow [Fly's Cloudflare guide](https://fly.io/docs/networking/understanding-cloudflare/): `fly certs add`, `_fly-ownership` TXT, proxied `A`/`AAAA` (or `CNAME`), SSL **Full (strict)**, Always Use HTTPS. Bypass cache and Bot Fight for `/api/*`.
+
 ## Observability
 
 `GET /metrics` is Prometheus text on the same listener. It publishes `http_requests_total`, `http_request_duration_seconds`, `rate_limit_exceeded_total`, `shares_created_total`, and `sweep_deleted_total`. The `route` label is `create`, `get`, or `static`. The `status_class` label is `1xx` through `5xx`. Share ids, IPs, and request bodies never appear as labels.
