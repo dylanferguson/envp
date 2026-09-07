@@ -25,16 +25,28 @@ function publishedURL() {
 }
 
 try {
-  const html = await ready(publishedURL());
+  const baseURL = publishedURL();
+  const html = await ready(baseURL);
   assert.match(await html.text(), /<html/);
 
-  const create = await fetch(`${publishedURL()}/api/v1/shares`, {
+  const health = await fetch(`${baseURL}/health`);
+  assert.equal(health.status, 200);
+  const healthBody = await health.json();
+  assert.equal(healthBody.status, "pass");
+
+  const create = await fetch(`${baseURL}/api/v1/shares`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ttl_seconds: 60, envelope: "AQID_w" }),
   });
   assert.equal(create.status, 201);
   const { id } = await create.json();
+
+  const metrics = await fetch(`${baseURL}/metrics`);
+  assert.equal(metrics.status, 200);
+  const metricsBody = await metrics.text();
+  assert.match(metricsBody, /http_requests_total/);
+  assert.match(metricsBody, /shares_created_total/);
 
   docker("restart", "--time", "15", container);
   const afterRestart = publishedURL();

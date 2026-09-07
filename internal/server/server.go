@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dylanferguson/envp/internal/obs"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/oklog/ulid/v2"
 )
@@ -82,7 +83,7 @@ type server struct {
 	shells map[string][]byte
 }
 
-func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger) (http.Handler, error) {
+func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *obs.Recorder) (http.Handler, error) {
 	if config.PublicOrigin != "" {
 		origin, err := ParseOrigin(config.PublicOrigin)
 		if err != nil {
@@ -102,27 +103,28 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger) (http
 		s.shells[name] = data
 	}
 
+	track := rec.Instrument
+
 	api := http.NewServeMux()
-	api.Handle("POST /api/v1/shares", s.limit(newLimiter(20*time.Second, 15), s.createShare))
-	api.Handle("GET /api/v1/shares/{id}", s.limit(newLimiter(time.Second/2, 30), s.readShare))
+	api.Handle("POST /api/v1/shares", track(obs.RouteCreate, s.limit(newLimiter(20*time.Second, 15), s.createShare)))
+	api.Handle("GET /api/v1/shares/{id}", track(obs.RouteGet, s.limit(newLimiter(time.Second/2, 30), s.readShare)))
 
 	pages := http.NewServeMux()
 	pages.HandleFunc("GET /{$}", s.shell("index.html"))
 	pages.HandleFunc("GET /open", s.shell("open.html"))
 	pages.HandleFunc("GET /share/{id}", s.shell("open.html"))
 	pages.HandleFunc("GET /", s.file)
+	static := track(obs.RouteStatic, pages)
 
-	return s.recover(headers(func(w http.ResponseWriter, r *http.Request) {
+	root := http.NewServeMux()
+	rec.Mount(root)
+	root.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		isAPI := r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/")
 		if isAPI {
 			w.Header().Set("Cache-Control", "no-store")
 		}
-		if r.URL.Path != path.Clean(r.URL.Path) {
-			s.error(w, r, errNotFound)
-			return
-		}
 		if !isAPI {
-			pages.ServeHTTP(w, r)
+			static.ServeHTTP(w, r)
 			return
 		}
 		if _, pattern := api.Handler(r); pattern == "" {
@@ -130,6 +132,14 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger) (http
 			return
 		}
 		api.ServeHTTP(w, r)
+	})
+
+	return s.recover(headers(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != path.Clean(r.URL.Path) {
+			s.error(w, r, errNotFound)
+			return
+		}
+		root.ServeHTTP(w, r)
 	})), nil
 }
 
@@ -139,6 +149,7 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
+		s.log.WarnContext(r.Context(), "origin rejected", "method", r.Method)
 		s.error(w, r, errForbidden)
 		return
 	}
@@ -249,7 +260,7 @@ func (s *server) error(w http.ResponseWriter, r *http.Request, err error) {
 		status = typed.status
 		detail = errorDetail{Code: typed.code, Message: typed.message}
 	} else {
-		s.log.Error("request failed", "method", r.Method, "route", r.Pattern, "error", err)
+		s.log.ErrorContext(r.Context(), "request failed", "method", r.Method, "route", r.Pattern, "error", err)
 	}
 	if r.Method == http.MethodHead {
 		w.WriteHeader(status)
@@ -262,8 +273,16 @@ func (s *server) recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hw := &headerWriter{ResponseWriter: w}
 		defer func() {
-			if v := recover(); v != nil && !hw.wrote {
-				s.error(hw, r, fmt.Errorf("panic: %v", v))
+			if v := recover(); v != nil {
+				err := fmt.Errorf("panic: %v", v)
+				s.log.ErrorContext(r.Context(), "request failed", "method", r.Method, "route", r.Pattern, "error", err)
+				if !hw.wrote {
+					if r.Method == http.MethodHead {
+						hw.WriteHeader(http.StatusInternalServerError)
+					} else {
+						writeJSON(hw, http.StatusInternalServerError, errorBody{Error: errorDetail{Code: "internal_error", Message: "The request could not be processed."}})
+					}
+				}
 			}
 		}()
 		next.ServeHTTP(hw, r)

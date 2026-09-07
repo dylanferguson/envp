@@ -26,6 +26,7 @@ COPY --from=build /envp /envp
 COPY --from=build --chown=65532:65532 /data /data
 USER 65532:65532
 ENV PORT=8080 DB_PATH=/data/shares.db
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD ["/envp", "healthcheck"]
 EXPOSE 8080
 VOLUME ["/data"]
 ENTRYPOINT ["/envp"]

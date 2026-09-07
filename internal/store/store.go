@@ -90,6 +90,17 @@ func (s *Store) init(ctx context.Context) error {
 
 func (s *Store) Close() error { return s.db.Close() }
 
+func (s *Store) Ping(ctx context.Context) error {
+	var one int
+	if err := s.db.QueryRowContext(ctx, "SELECT 1").Scan(&one); err != nil {
+		return fmt.Errorf("ping database: %w", err)
+	}
+	if one != 1 {
+		return fmt.Errorf("ping database: unexpected result %d", one)
+	}
+	return nil
+}
+
 func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration) (Share, error) {
 	now := s.now()
 	id, err := ulid.New(ulid.Timestamp(now), rand.Reader)
