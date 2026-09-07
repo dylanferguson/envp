@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="env-share">
+  <title>❯</title>
   <rect width="32" height="32" rx="7" fill="#08090b"/>
   <rect
     x="0.5"
@@ -9,19 +10,9 @@
     fill="none"
     stroke="#23262b"
   />
-  <g
-    fill="none"
-    stroke="#48d597"
-    stroke-width="1.85"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  >
-    <circle cx="16" cy="8.25" r="2.6"/>
-    <circle cx="12.85" cy="10.85" r="2.6"/>
-    <circle cx="19.15" cy="10.85" r="2.6"/>
-    <path d="M14.15 13.35h3.7"/>
-    <path d="M14.15 14.65h3.7"/>
-    <path d="M16 14.65v9"/>
-    <path d="M16 21.1h5.1v1.35h-1.55v1.35h1.55v1.35H16"/>
-  </g>
+  <path
+    fill="#48d597"
+    transform="translate(16 16) scale(0.0086956522 -0.0086956522) translate(-616.5 -578.5)"
+    d="M211 -169 701 578 211 1326H541L1022 578L541 -169Z"
+  />
 </svg>
