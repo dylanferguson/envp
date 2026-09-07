@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const baseURL = "http://127.0.0.1:5173";
+const baseURL = "http://127.0.0.1:18080";
 
 export default defineConfig({
   testDir: "e2e",
@@ -15,9 +15,9 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
-    command: "DB_PATH=./data/e2e-shares.db pnpm dev",
+    command: "mise run build && PORT=18080 DB_PATH=./data/e2e-shares.db mise run start",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });
