@@ -321,7 +321,7 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	logger := slog.New(obs.LogHandler(slog.NewJSONHandler(&buf, nil)))
+	logger := slog.New(slog.NewJSONHandler(&buf, nil))
 	h, err := New(db, testFiles, Config{}, logger, rec)
 	if err != nil {
 		t.Fatal(err)

@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-const healthFailOutput = "database check failed"
-
 const maxHealthBody = 64 << 10
 
 type Probe func(context.Context) error
@@ -24,27 +22,23 @@ type healthProbe struct {
 	timeout time.Duration
 	now     func() time.Time
 
-	mu       sync.Mutex
-	checked  time.Time
-	lastErr  error
-	lastTook time.Duration
+	mu      sync.Mutex
+	checked time.Time
+	lastErr error
 }
 
-func (p *healthProbe) result(ctx context.Context) (time.Duration, error) {
+func (p *healthProbe) result(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if !p.checked.IsZero() && p.now().Sub(p.checked) < p.ttl {
-		return p.lastTook, p.lastErr
+		return p.lastErr
 	}
-	start := p.now()
 	probeCtx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 	err := p.run(probeCtx)
-	took := p.now().Sub(start)
 	p.checked = p.now()
 	p.lastErr = err
-	p.lastTook = took
-	return took, err
+	return err
 }
 
 type healthReport struct {
@@ -53,25 +47,16 @@ type healthReport struct {
 }
 
 type healthCheck struct {
-	ComponentType string  `json:"componentType"`
-	ObservedValue float64 `json:"observedValue"`
-	ObservedUnit  string  `json:"observedUnit"`
-	Status        string  `json:"status"`
-	Time          string  `json:"time"`
-	Output        string  `json:"output,omitempty"`
+	Status string `json:"status"`
+	Time   string `json:"time"`
 }
 
 func (r *Recorder) handleHealth(w http.ResponseWriter, req *http.Request) {
-	took, err := r.health.result(req.Context())
-	checkStatus := "pass"
-	reportStatus := "pass"
+	status := "pass"
 	httpStatus := http.StatusOK
-	var output string
-	if err != nil {
-		checkStatus = "fail"
-		reportStatus = "fail"
+	if err := r.health.result(req.Context()); err != nil {
+		status = "fail"
 		httpStatus = http.StatusServiceUnavailable
-		output = healthFailOutput
 	}
 	w.Header().Set("Content-Type", "application/health+json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -80,15 +65,11 @@ func (r *Recorder) handleHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	report := healthReport{
-		Status: reportStatus,
+		Status: status,
 		Checks: map[string][]healthCheck{
 			healthComponent: {{
-				ComponentType: "datastore",
-				ObservedValue: float64(took.Milliseconds()),
-				ObservedUnit:  "ms",
-				Status:        checkStatus,
-				Time:          r.now().UTC().Format(time.RFC3339),
-				Output:        output,
+				Status: status,
+				Time:   r.now().UTC().Format(time.RFC3339),
 			}},
 		},
 	}

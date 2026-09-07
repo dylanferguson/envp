@@ -117,12 +117,6 @@ func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
 
-		ctx := req.Context()
-		if id := traceIDFromHeader(req.Header.Get("traceparent")); id != "" {
-			ctx = contextWithTraceID(ctx, id)
-		}
-		req = req.WithContext(ctx)
-
 		panicVal := any(nil)
 		defer func() {
 			took := time.Since(start)

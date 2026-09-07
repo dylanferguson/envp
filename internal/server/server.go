@@ -149,7 +149,7 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
-		s.log.WarnContext(r.Context(), "origin rejected", "method", r.Method)
+		s.log.Warn("origin rejected", "method", r.Method)
 		s.error(w, r, errForbidden)
 		return
 	}
@@ -260,7 +260,7 @@ func (s *server) error(w http.ResponseWriter, r *http.Request, err error) {
 		status = typed.status
 		detail = errorDetail{Code: typed.code, Message: typed.message}
 	} else {
-		s.log.ErrorContext(r.Context(), "request failed", "method", r.Method, "route", r.Pattern, "error", err)
+		s.log.Error("request failed", "method", r.Method, "route", r.Pattern, "error", err)
 	}
 	if r.Method == http.MethodHead {
 		w.WriteHeader(status)
@@ -275,7 +275,7 @@ func (s *server) recover(next http.Handler) http.Handler {
 		defer func() {
 			if v := recover(); v != nil {
 				err := fmt.Errorf("panic: %v", v)
-				s.log.ErrorContext(r.Context(), "request failed", "method", r.Method, "route", r.Pattern, "error", err)
+				s.log.Error("request failed", "method", r.Method, "route", r.Pattern, "error", err)
 				if !hw.wrote {
 					if r.Method == http.MethodHead {
 						hw.WriteHeader(http.StatusInternalServerError)

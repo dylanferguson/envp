@@ -33,6 +33,6 @@ mise run docker:run
 
 `GET /health` returns `application/health+json` with a `db:sqlite` check.
 
-Logs are JSON on stderr. INFO covers listen and shutdown. WARN covers a rejected origin. ERROR covers database, sweep, and panic failures. Successful requests are not logged. Envelopes, share ids, and URL fragments are not logged. A W3C `traceparent` on the request adds `trace_id` to error and warn lines.
+Logs are JSON on stderr. INFO covers listen and shutdown. WARN covers a rejected origin. ERROR covers database, sweep, and panic failures. Successful requests are not logged. Envelopes, share ids, and URL fragments are not logged.
 
 The scratch image has no shell. Docker `HEALTHCHECK` runs `/envp healthcheck`, which GETs `http://127.0.0.1:$PORT/health`.

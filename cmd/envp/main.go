@@ -30,7 +30,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		os.Exit(healthcheck())
 	}
-	logger := slog.New(obs.LogHandler(slog.NewJSONHandler(os.Stderr, nil)))
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := run(ctx, logger); err != nil {
@@ -156,7 +156,7 @@ func sweepLoop(ctx context.Context, db *store.Store, rec *obs.Recorder, logger *
 		case <-ticker.C:
 			n, err := db.Sweep(ctx)
 			if err != nil && ctx.Err() == nil {
-				logger.ErrorContext(ctx, "sweep failed", "error", err)
+				logger.Error("sweep failed", "error", err)
 				continue
 			}
 			rec.Swept(n)

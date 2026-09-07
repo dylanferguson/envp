@@ -1,11 +1,10 @@
 package obs
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -134,18 +133,23 @@ func TestHealthPassAndFail(t *testing.T) {
 			if ct := w.Header().Get("Content-Type"); ct != "application/health+json" {
 				t.Fatalf("content-type = %q", ct)
 			}
-			body := w.Body.String()
+			var report healthReport
+			if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
+				t.Fatal(err)
+			}
+			want := "fail"
 			if tc.pass {
-				if !strings.Contains(body, `"status":"pass"`) || !strings.Contains(body, `"db:sqlite"`) {
-					t.Fatalf("body: %s", body)
-				}
-			} else {
-				if !strings.Contains(body, `"status":"fail"`) || !strings.Contains(body, healthFailOutput) {
-					t.Fatalf("body: %s", body)
-				}
-				if strings.Contains(body, "db down") {
-					t.Fatal("driver error leaked in health output")
-				}
+				want = "pass"
+			}
+			if report.Status != want {
+				t.Fatalf("status = %q", report.Status)
+			}
+			checks := report.Checks["db:sqlite"]
+			if len(checks) != 1 || checks[0].Status != want || checks[0].Time == "" {
+				t.Fatalf("checks: %+v", report.Checks)
+			}
+			if strings.Contains(w.Body.String(), "db down") {
+				t.Fatal("driver error leaked in health body")
 			}
 		})
 	}
@@ -191,43 +195,5 @@ func TestCheckHealth(t *testing.T) {
 	defer failSrv.Close()
 	if err := CheckHealth(ctx, failSrv.URL); err == nil {
 		t.Fatal("expected fail health check error")
-	}
-}
-
-func TestLogHandlerTraceID(t *testing.T) {
-	var buf bytes.Buffer
-	logger := slog.New(LogHandler(slog.NewJSONHandler(&buf, nil)))
-	ctx := contextWithTraceID(context.Background(), "abc123")
-	logger.ErrorContext(ctx, "request failed", "method", "POST")
-	if !strings.Contains(buf.String(), `"trace_id":"abc123"`) {
-		t.Fatalf("log: %s", buf.String())
-	}
-}
-
-func TestTraceIDFromHeader(t *testing.T) {
-	const valid = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
-	if got := traceIDFromHeader(valid); got != "4bf92f3577b34da6a3ce929d0e0e4736" {
-		t.Fatalf("got %q", got)
-	}
-	for _, bad := range []string{"", "bad", "01-" + strings.Repeat("a", 32) + "-" + strings.Repeat("b", 16) + "-01", valid + "x"} {
-		if traceIDFromHeader(bad) != "" {
-			t.Fatalf("accepted %q", bad)
-		}
-	}
-}
-
-func TestInstrumentTraceparent(t *testing.T) {
-	var buf bytes.Buffer
-	logger := slog.New(LogHandler(slog.NewJSONHandler(&buf, nil)))
-	rec := testRecorder(t, func(context.Context) error { return nil })
-	h := rec.Instrument(RouteStatic, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger.WarnContext(r.Context(), "origin rejected", "method", r.Method)
-	}))
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-	if !strings.Contains(buf.String(), `"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736"`) {
-		t.Fatalf("log: %s", buf.String())
 	}
 }
