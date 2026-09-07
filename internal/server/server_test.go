@@ -290,23 +290,38 @@ func TestConcurrentHTTPWrites(t *testing.T) {
 
 func TestObservabilityEndpoints(t *testing.T) {
 	h, _ := testServer(t, Config{})
-	for _, path := range []string{"/metrics", "/health"} {
+	scrape := func() string {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("metrics: status = %d", w.Code)
+		}
+		return w.Body.String()
+	}
+	for _, path := range []string{"/metrics", "/health", "/favicon.ico"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
 		if w.Code != http.StatusOK {
 			t.Fatalf("%s: status = %d", path, w.Code)
 		}
 	}
+	if body := scrape(); strings.Contains(body, "http_requests_total") {
+		t.Fatalf("ops and asset hits counted: %s", body)
+	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`)))
 	if w.Code != 201 {
 		t.Fatalf("create: %d", w.Code)
 	}
-	metrics := httptest.NewRecorder()
-	h.ServeHTTP(metrics, httptest.NewRequest(http.MethodGet, "/metrics", nil))
-	body := metrics.Body.String()
+	if w := request(h, "GET", "/", ""); w.Code != 200 {
+		t.Fatalf("home: %d", w.Code)
+	}
+	body := scrape()
 	if !strings.Contains(body, "shares_created_total") || strings.Contains(body, `route="metrics"`) {
 		t.Fatalf("metrics: %s", body)
+	}
+	if !strings.Contains(body, `http_requests_total{route="static",status_class="2xx"} 1`) {
+		t.Fatalf("home not counted as static: %s", body)
 	}
 }
 

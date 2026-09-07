@@ -110,11 +110,10 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	api.Handle("GET /api/v1/shares/{id}", track(obs.RouteGet, s.limit(newLimiter(time.Second/2, 30), s.readShare)))
 
 	pages := http.NewServeMux()
-	pages.HandleFunc("GET /{$}", s.shell("index.html"))
-	pages.HandleFunc("GET /open", s.shell("open.html"))
-	pages.HandleFunc("GET /share/{id}", s.shell("open.html"))
+	pages.Handle("GET /{$}", track(obs.RouteStatic, s.shell("index.html")))
+	pages.Handle("GET /open", track(obs.RouteStatic, s.shell("open.html")))
+	pages.Handle("GET /share/{id}", track(obs.RouteStatic, s.shell("open.html")))
 	pages.HandleFunc("GET /", s.file)
-	static := track(obs.RouteStatic, pages)
 
 	root := http.NewServeMux()
 	rec.Mount(root)
@@ -124,7 +123,7 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 			w.Header().Set("Cache-Control", "no-store")
 		}
 		if !isAPI {
-			static.ServeHTTP(w, r)
+			pages.ServeHTTP(w, r)
 			return
 		}
 		if _, pattern := api.Handler(r); pattern == "" {
