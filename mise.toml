@@ -10,7 +10,7 @@ _.path = ["{{config_root}}/node_modules/.bin"]
 
 [tasks.api]
 description = "Go API, restarting on Go file changes"
-run = "watchexec -r -e go,mod,sum -w cmd -w internal -w go.mod -w go.sum -- go run ./cmd/env-share"
+run = "watchexec -r -e go,mod,sum -w cmd -w internal -w go.mod -w go.sum -- go run ./cmd/envp"
 
 [tasks.dev]
 description = "Vite UI + Go API"
@@ -20,12 +20,12 @@ run = 'vp build && concurrently -k -n web,api -c cyan,magenta "vp dev" "mise run
 description = "Embedded UI + production Go binary"
 run = [
   "vp build",
-  "CGO_ENABLED=0 go build -tags production -trimpath -ldflags='-s -w' -o dist/env-share ./cmd/env-share",
+  "CGO_ENABLED=0 go build -tags production -trimpath -ldflags='-s -w' -o dist/envp ./cmd/envp",
 ]
 
 [tasks.start]
 description = "Run the production binary"
-run = "./dist/env-share"
+run = "./dist/envp"
 
 [tasks.test]
 description = "Frontend unit tests and Go tests"
@@ -44,7 +44,7 @@ description = "Install Playwright browsers"
 run = "playwright install --with-deps --only-shell"
 
 [tasks."docker:build"]
-run = "docker build -t env-share:go-scratch ."
+run = "docker build -t envp:go-scratch ."
 
 [tasks."docker:run"]
-run = "docker run --rm -p 8080:8080 -v env-share-data:/data env-share:go-scratch"
+run = "docker run --rm -p 8080:8080 -v envp-data:/data envp:go-scratch"

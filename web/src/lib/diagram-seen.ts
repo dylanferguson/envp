@@ -1,4 +1,4 @@
-const DIAGRAM_SEEN_KEY = "env-share:diagram-seen";
+const DIAGRAM_SEEN_KEY = "envp:diagram-seen";
 
 function diagramStorage(): Storage | undefined {
   try {

@@ -7,7 +7,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("boundary", () => {
   it("Go server does not implement browser encryption or decryption", () => {
-    for (const dir of ["cmd/env-share", "internal/server", "internal/store"]) {
+    for (const dir of ["cmd/envp", "internal/server", "internal/store"]) {
       const serverDir = join(repoRoot, dir);
       const files = readdirSync(serverDir).filter(
         (name) => name.endsWith(".go") && !name.endsWith("_test.go"),

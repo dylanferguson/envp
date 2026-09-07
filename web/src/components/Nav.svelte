@@ -11,7 +11,7 @@
 
   let { activeOp, word, tone }: Props = $props();
 
-  const REPO_URL = "https://github.com/dylanferguson/env-share";
+  const REPO_URL = "https://github.com/dylanferguson/envp";
   const SIGNAL_WIDTH_WORD = "uploading";
   const commitHref = buildCommitUrl(REPO_URL, BUILD_META.commit);
   const [send, receive] = crossfade({ duration: 260 });
@@ -21,7 +21,7 @@
   <div class="nav-row">
     <div class="nav-start">
       <h1 class="nav-name">
-        <a href="/"><span class="nav-mark" aria-hidden="true">❯</span>env-share</a>
+        <a href="/"><span class="nav-mark" aria-hidden="true">❯</span>envp</a>
       </h1>
       <div class="nav-menu">
         <nav class="nav-ops" aria-label="console modes">
@@ -101,10 +101,9 @@
 
   .nav-name {
     margin: 0;
-    font-size: var(--tick);
+    font-size: 1rem;
     font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    line-height: 1;
   }
 
   .nav-name a {
@@ -113,15 +112,15 @@
     transition: color 0.2s ease;
   }
 
+  .nav-name a:hover {
+    color: var(--phosphor);
+  }
+
   .nav-mark {
     color: var(--phosphor);
     letter-spacing: 0;
     text-transform: none;
     margin-right: 0.35em;
-  }
-
-  .nav-name a:hover {
-    color: var(--phosphor);
   }
 
   .nav-ops {
@@ -350,10 +349,6 @@
 
     .nav-ops {
       gap: 0.65rem;
-    }
-
-    .nav-name {
-      letter-spacing: 0.12em;
     }
   }
 </style>

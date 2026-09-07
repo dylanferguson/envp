@@ -18,14 +18,14 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY --from=web /app/internal/webui/client ./internal/webui/client
-RUN CGO_ENABLED=0 go build -tags production -trimpath -ldflags="-s -w" -o /env-share ./cmd/env-share
+RUN CGO_ENABLED=0 go build -tags production -trimpath -ldflags="-s -w" -o /envp ./cmd/envp
 RUN mkdir /data && chown 65532:65532 /data
 
 FROM scratch
-COPY --from=build /env-share /env-share
+COPY --from=build /envp /envp
 COPY --from=build --chown=65532:65532 /data /data
 USER 65532:65532
 ENV PORT=8080 DB_PATH=/data/shares.db
 EXPOSE 8080
 VOLUME ["/data"]
-ENTRYPOINT ["/env-share"]
+ENTRYPOINT ["/envp"]

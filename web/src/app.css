@@ -19,6 +19,7 @@
   --font-features: "liga" 1, "calt" 1;
   --tick: 0.68rem;
   --track: 0.16em;
+  --heading: clamp(1.2rem, 3.5vw, 1.55rem);
 }
 
 * {

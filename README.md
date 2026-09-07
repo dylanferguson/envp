@@ -1,6 +1,6 @@
-# env-share
+# envp
 
-Browser-encrypted `.env` sharing. The key stays in the URL fragment; the server stores ciphertext, an id, and an expiry.
+envp is an environment pointer. Browser-encrypted `.env` sharing. The key stays in the URL fragment; the server stores ciphertext, an id, and an expiry.
 
 ```bash
 mise install

@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
 
-const image = process.argv[2] ?? "env-share:go-scratch";
+const image = process.argv[2] ?? "envp:go-scratch";
 const docker = (...args) => execFileSync("docker", args, { encoding: "utf8" }).trim();
-const name = `env-share-smoke-${process.pid}`;
+const name = `envp-smoke-${process.pid}`;
 const container = docker("run", "--detach", "--name", name, "--publish", "127.0.0.1::8080", image);
 
 async function ready(baseURL) {
@@ -17,16 +17,18 @@ async function ready(baseURL) {
     }
     await setTimeout(100);
   }
-  throw new Error("Container did not become ready");
+  throw new Error(`Container did not become ready at ${baseURL}`);
+}
+
+function publishedURL() {
+  return `http://${docker("port", container, "8080/tcp")}`;
 }
 
 try {
-  const address = docker("port", container, "8080/tcp");
-  const baseURL = `http://${address}`;
-  const html = await ready(baseURL);
+  const html = await ready(publishedURL());
   assert.match(await html.text(), /<html/);
 
-  const create = await fetch(`${baseURL}/api/v1/shares`, {
+  const create = await fetch(`${publishedURL()}/api/v1/shares`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ttl_seconds: 60, envelope: "AQID_w" }),
@@ -35,8 +37,9 @@ try {
   const { id } = await create.json();
 
   docker("restart", "--time", "15", container);
-  await ready(baseURL);
-  const read = await fetch(`${baseURL}/api/v1/shares/${id}`);
+  const afterRestart = publishedURL();
+  await ready(afterRestart);
+  const read = await fetch(`${afterRestart}/api/v1/shares/${id}`);
   assert.equal(read.status, 200);
 
   docker("stop", "--time", "15", container);

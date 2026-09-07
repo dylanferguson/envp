@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanferguson/env-share/internal/store"
+	"github.com/dylanferguson/envp/internal/store"
 	"github.com/oklog/ulid/v2"
 )
 
