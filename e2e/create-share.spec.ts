@@ -29,6 +29,20 @@ test.describe("create share", () => {
     expect(envelope.length).toBeGreaterThan(SAMPLE_ENV.length);
   });
 
+  test("validates the UTF-8 byte limit and recovers when input is shortened", async ({ page }) => {
+    const input = page.getByRole("textbox", { name: "paste your .env" });
+    const share = page.getByRole("button", { name: "share" });
+    await input.fill("é".repeat(32769));
+    await expect(page.getByText("over 64 KiB", { exact: true })).toBeVisible();
+    await expect(share).toBeDisabled();
+
+    await input.fill("é".repeat(32768));
+    await expect(page.getByText("64 KiB", { exact: true })).toBeVisible();
+    await expect(share).toBeEnabled();
+    await input.fill("");
+    await expect(share).toBeDisabled();
+  });
+
   test("selects share link after creation", async ({ page }) => {
     await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
     await page.getByRole("button", { name: "share" }).click();
@@ -47,8 +61,13 @@ test.describe("create share", () => {
   });
 
   test("starts a new share from the done screen", async ({ page }) => {
+    await page.getByRole("slider", { name: "ttl", exact: true }).fill("7200");
+    const post = page.waitForRequest(
+      (request) => request.method() === "POST" && request.url().includes("/api/v1/shares"),
+    );
     await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
     await page.getByRole("button", { name: "share" }).click();
+    expect((await post).postDataJSON().ttl_seconds).toBe(7200);
     await expect(page.getByRole("textbox", { name: "share link" })).toBeVisible();
 
     await page.getByRole("button", { name: "share again" }).click();
@@ -56,5 +75,6 @@ test.describe("create share", () => {
     await expect(page.getByRole("textbox", { name: "paste your .env" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "paste your .env" })).toHaveValue("");
     await expect(page.getByRole("button", { name: "share" })).toBeDisabled();
+    await expect(page.getByRole("slider", { name: "ttl", exact: true })).toHaveValue("7200");
   });
 });

@@ -3,33 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "concurrently -n web,api -c cyan,magenta \"vp dev\" \"tsx watch src/server/main.ts\"",
-    "build": "vp build && tsc -p tsconfig.server.json",
-    "start": "node dist/server/main.js",
-    "test": "vp test run",
-    "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps --only-shell",
-    "check": "vp check",
-    "docker:build": "docker build -t env-share:node-distroless .",
-    "docker:run": "docker run --rm -p 8080:8080 -v env-share-data:/data env-share:node-distroless"
-  },
-  "dependencies": {
-    "@hono/node-server": "1.14.3",
-    "better-sqlite3": "^11.9.1",
-    "hono": "^4.7.10",
-    "ulid": "^3.0.2"
-  },
   "devDependencies": {
     "@fontsource/fira-code": "^5.3.0",
     "@playwright/test": "^1.62.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
     "concurrently": "^9.1.2",
     "lefthook": "^1.11.12",
     "svelte": "^5.57.0",
-    "tsx": "^4.19.4",
     "typescript": "^5.9.3",
     "vite-plus": "catalog:"
   },

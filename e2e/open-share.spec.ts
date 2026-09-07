@@ -39,6 +39,23 @@ test.describe("open share", () => {
     await expect(page.getByText("Couldn't parse that.")).toBeVisible();
   });
 
+  test("reports a network failure and allows retrying a pasted link", async ({ page }) => {
+    const endpoint = `**/api/v1/shares/${UNKNOWN_SHARE_ID}`;
+    await page.route(endpoint, (route) => route.abort("failed"));
+    await page.goto("/open");
+    await page
+      .getByRole("textbox", { name: "paste shared link" })
+      .fill(`/share/${UNKNOWN_SHARE_ID}#${VALID_KEY_FRAGMENT}`);
+    await page.getByRole("button", { name: "open" }).click();
+
+    await expect(page.getByText("Request failed", { exact: true })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "paste shared link" })).toBeVisible();
+
+    await page.unroute(endpoint);
+    await page.getByRole("button", { name: "open" }).click();
+    await expect(page.getByText("Not found. Expired, deleted, or never existed.")).toBeVisible();
+  });
+
   test("reports a missing key fragment", async ({ page }) => {
     await page.goto(`/share/${UNKNOWN_SHARE_ID}`);
 
