@@ -253,6 +253,15 @@
     color: var(--phosphor);
   }
 
+  .diagram.is-highlight[data-focus="share"] :global(.dia-server),
+  .diagram.is-highlight[data-focus="share"] :global(.dia-server-cipher) {
+    color: var(--fg);
+  }
+
+  .diagram.is-highlight[data-focus="share"] :global(.dia-server-cipher) {
+    opacity: 0.2;
+  }
+
   .diagram.is-highlight[data-focus="link"] :global(.dia-them),
   .diagram.is-highlight[data-focus="link"] :global(.dia-key-path),
   .diagram.is-highlight[data-focus="link"] :global(.dia-server),
@@ -436,6 +445,7 @@
     66%,
     100% {
       opacity: 0.2;
+      color: var(--fg);
     }
   }
 
@@ -472,12 +482,31 @@
       animation: none;
     }
 
-    .diagram.is-animate.is-lit :global(*) {
+    .diagram.is-animate.is-lit :global(.dia-you),
+    .diagram.is-animate.is-lit :global(.dia-server),
+    .diagram.is-animate.is-lit :global(.dia-them),
+    .diagram.is-animate.is-lit :global(.dia-flow-a),
+    .diagram.is-animate.is-lit :global(.dia-flow-b),
+    .diagram.is-animate.is-lit :global(.dia-key),
+    .diagram.is-animate.is-lit :global(.dia-key-path),
+    .diagram.is-animate.is-lit :global(.dia-plain),
+    .diagram.is-animate.is-lit :global(.dia-cipher) {
       animation: none;
     }
 
-    .diagram.is-animate :global(.dia-server) {
+    .diagram.is-animate :global(.dia-server),
+    .diagram.is-animate :global(.dia-server-cipher) {
       color: var(--fg);
+    }
+
+    .diagram.is-animate :global(.dia-server-cipher),
+    .diagram.is-animate :global(.dia-slot-left .dia-cipher) {
+      opacity: 0.2;
+      color: var(--fg);
+    }
+
+    .diagram.is-animate :global(.dia-slot-left .dia-plain) {
+      opacity: 0;
     }
 
     .diagram.is-animate :global(.dia-key-path) {

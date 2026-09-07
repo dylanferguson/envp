@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatHttpError } from "../src/web/lib/http-error.js";
+import { formatHttpError } from "../src/lib/http-error.js";
 
 describe("formatHttpError", () => {
   it("includes status and reason when both are present", () => {

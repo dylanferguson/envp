@@ -33,7 +33,10 @@ function shareOpenPage(): Plugin {
   };
 }
 
+const webRoot = resolve(__dirname, "web");
+
 export default defineConfig({
+  root: webRoot,
   fmt: {},
   lint: {
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
@@ -43,19 +46,24 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
+    dir: webRoot,
+    include: ["test/**/*.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**"],
   },
-  plugins: lazyPlugins(() => [svelte(), shareOpenPage()]),
+  plugins: lazyPlugins(() => [
+    svelte({ configFile: resolve(webRoot, "svelte.config.js") }),
+    shareOpenPage(),
+  ]),
   define: {
     __BUILD_COMMIT__: JSON.stringify(buildCommit),
   },
   build: {
-    outDir: "dist/client",
+    outDir: resolve(__dirname, "internal/webui/client"),
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        index: resolve(__dirname, "index.html"),
-        open: resolve(__dirname, "open.html"),
+        index: resolve(webRoot, "index.html"),
+        open: resolve(webRoot, "open.html"),
       },
     },
   },

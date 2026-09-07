@@ -1,7 +1,7 @@
 <script lang="ts">
   import "../../app.css";
   import { onMount, tick } from "svelte";
-  import { DEFAULT_TTL_SECONDS, MAX_PLAINTEXT_BYTES } from "../../../shared/limits.js";
+  import type { TtlSeconds } from "../../lib/limits.js";
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
@@ -26,8 +26,6 @@
   } from "./state.js";
 
   let state = $state<CreateState>({ phase: "idle" });
-  let envInput = $state("");
-  let ttlSeconds = $state(DEFAULT_TTL_SECONDS);
   let createForm = $state<CreateForm | null>(null);
   let createDone = $state<CreateDone | null>(null);
   let intro = $state(!hasSeenDiagram());
@@ -36,15 +34,10 @@
   const diagramFocus = $derived(
     intro && state.phase === "idle" ? undefined : deriveCreateDiagramFocus(state),
   );
-  const inputBytes = $derived(new TextEncoder().encode(envInput).length);
-  const isOverLimit = $derived(inputBytes > MAX_PLAINTEXT_BYTES);
   const isDone = $derived(isCreateDone(state));
   const isBusy = $derived(isCreateBusy(state));
-  const shareDisabled = $derived(
-    isBusy || isOverLimit || envInput.length === 0,
-  );
 
-  async function onShare(): Promise<void> {
+  async function onShare(envInput: string, ttlSeconds: TtlSeconds): Promise<void> {
     const outcome = await runShareFlow(
       envInput,
       ttlSeconds,
@@ -61,6 +54,7 @@
       if (outcome.copied) {
         showToast("link copied to clipboard");
       }
+      // Wait for CreateDone's component binding; CopyField handles the visual swap timing.
       await tick();
       createDone?.selectLink();
     }
@@ -86,7 +80,7 @@
 
   function onAgain(): void {
     dismissToast();
-    envInput = "";
+    createForm?.clearInput();
     state = { phase: "idle" };
     createForm?.focusInput();
   }
@@ -126,10 +120,7 @@
       {#snippet primary()}
         <CreateForm
           bind:this={createForm}
-          bind:envInput
-          bind:ttlSeconds
           busy={isBusy}
-          shareDisabled={shareDisabled}
           statusText={reading.note}
           statusError={reading.tone === "error"}
           onShare={onShare}

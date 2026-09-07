@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { deriveCreateDiagramFocus, type CreateState } from "../src/web/pages/create/state.js";
+import { deriveCreateDiagramFocus, type CreateState } from "../src/pages/create/state.js";
 
 describe("deriveCreateDiagramFocus", () => {
   it("maps each create phase to the matching diagram region", () => {

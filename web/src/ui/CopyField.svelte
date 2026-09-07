@@ -25,6 +25,7 @@
 
   let field = $state<HTMLTextAreaElement | null>(null);
 
+  // Retry after SwapStage's 380 ms pane transition and this field's 400 ms resize.
   const SWAP_SELECT_DELAY_MS = 420;
 
   function applySelect(node: HTMLTextAreaElement): void {
@@ -36,10 +37,14 @@
   }
 
   function scheduleSelect(node: HTMLTextAreaElement): () => void {
+    // Select immediately for an already-visible field (for example, after copying).
     applySelect(node);
+    // Keep the two-frame retry for selection during the done-screen swap.
+    // A Svelte tick flushes DOM updates but does not wait for the browser to paint.
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(() => applySelect(node));
     });
+    // Reapply once the pane transition settles; frame retries alone were insufficient.
     const timer = setTimeout(() => applySelect(node), SWAP_SELECT_DELAY_MS);
     return () => {
       cancelAnimationFrame(raf);

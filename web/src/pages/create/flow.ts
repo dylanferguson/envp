@@ -1,5 +1,5 @@
-import { EnvelopeError, exportKeyFragment, generateKey, seal } from "../../../shared/envelope.js";
-import { MAX_PLAINTEXT_BYTES } from "../../../shared/limits.js";
+import { EnvelopeError, exportKeyFragment, generateKey, seal } from "../../lib/envelope.js";
+import { MAX_PLAINTEXT_BYTES, type TtlSeconds } from "../../lib/limits.js";
 import { ShareApiError, createShare } from "../../api/shares.js";
 import type { CreateState } from "./state.js";
 
@@ -12,7 +12,7 @@ export type ShareFlowProgress = { phase: "encrypting" } | { phase: "uploading"; 
 
 export async function runShareFlow(
   envInput: string,
-  ttlSeconds: number,
+  ttlSeconds: TtlSeconds,
   origin: string,
   onProgress?: (progress: ShareFlowProgress) => void,
 ): Promise<ShareFlowOutcome> {
@@ -30,7 +30,7 @@ export async function runShareFlow(
 
     at = "send";
     onProgress?.({ phase: "uploading", bytes: envelope.length });
-    const created = await createShare(envelope, ttlSeconds as never);
+    const created = await createShare(envelope, ttlSeconds);
     const url = `${origin}/share/${created.id}#${fragment}`;
     at = "link";
 

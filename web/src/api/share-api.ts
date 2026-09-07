@@ -1,22 +1,11 @@
-import { base64urlDecode, base64urlEncode } from "./bytes.js";
+import { base64urlDecode, base64urlEncode } from "../lib/bytes.js";
 import {
   MAX_ENVELOPE_BYTES,
   parseShareId,
-  parseTtlSeconds,
   type ShareId,
   type TtlSeconds,
   type UnixMillis,
-} from "./limits.js";
-
-export type ShareRead = {
-  envelope: Uint8Array;
-  expiresAt: UnixMillis;
-};
-
-export type CreateShareRequest = {
-  ttl: TtlSeconds;
-  envelope: Uint8Array;
-};
+} from "../lib/limits.js";
 
 export type CreateShareResponse = {
   id: ShareId;
@@ -29,59 +18,11 @@ export type GetShareResponse = {
   envelope: Uint8Array;
 };
 
-export const MAX_CREATE_JSON_BYTES = 64 + Math.ceil((MAX_ENVELOPE_BYTES * 4) / 3);
-
 export function buildCreateShareBody(ttlSeconds: TtlSeconds, envelope: Uint8Array): string {
   return JSON.stringify({
     ttl_seconds: ttlSeconds,
     envelope: base64urlEncode(envelope),
   });
-}
-
-export function encodeCreateShareResponse(record: { id: ShareId; expiresAt: UnixMillis }): {
-  id: string;
-  expires_at: number;
-} {
-  return { id: record.id, expires_at: record.expiresAt };
-}
-
-export function encodeGetShareResponse(
-  id: ShareId,
-  read: ShareRead,
-): { id: string; expires_at: number; envelope: string } {
-  return {
-    id,
-    expires_at: read.expiresAt,
-    envelope: base64urlEncode(read.envelope),
-  };
-}
-
-export function parseCreateShareRequest(body: unknown): CreateShareRequest | null {
-  if (typeof body !== "object" || body === null) {
-    return null;
-  }
-
-  const ttl = parseTtlSeconds("ttl_seconds" in body ? String(body.ttl_seconds) : null);
-  if (ttl === null) {
-    return null;
-  }
-
-  if (!("envelope" in body) || typeof body.envelope !== "string" || body.envelope.length === 0) {
-    return null;
-  }
-
-  let envelope: Uint8Array;
-  try {
-    envelope = base64urlDecode(body.envelope);
-  } catch {
-    return null;
-  }
-
-  if (envelope.length === 0 || envelope.length > MAX_ENVELOPE_BYTES) {
-    return null;
-  }
-
-  return { ttl, envelope };
 }
 
 export function parseCreateShareResponse(body: unknown): CreateShareResponse | null {

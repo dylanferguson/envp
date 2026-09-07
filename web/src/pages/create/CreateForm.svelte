@@ -1,10 +1,13 @@
 <script lang="ts">
   import {
+    DEFAULT_TTL_SECONDS,
     formatExpiryLabel,
     LONGEST_EXPIRY_LABEL,
     MAX_TTL_SECONDS,
     MIN_TTL_SECONDS,
-  } from "../../../shared/limits.js";
+    parseTtlSeconds,
+    type TtlSeconds,
+  } from "../../lib/limits.js";
   import { formatInputSize } from "../../lib/format-input-size.js";
   import Button from "../../ui/Button.svelte";
   import FieldLabel from "../../ui/FieldLabel.svelte";
@@ -14,26 +17,26 @@
   import StatusLine from "../../ui/StatusLine.svelte";
 
   type Props = {
-    envInput: string;
-    ttlSeconds: number;
     busy: boolean;
-    shareDisabled: boolean;
     statusText: string;
     statusError: boolean;
-    onShare: () => void;
+    onShare: (envInput: string, ttlSeconds: TtlSeconds) => void;
   };
 
   let {
-    envInput = $bindable(),
-    ttlSeconds = $bindable(),
     busy,
-    shareDisabled,
     statusText,
     statusError,
     onShare,
   }: Props = $props();
 
+  let envInput = $state("");
+  let ttlSeconds = $state<number>(DEFAULT_TTL_SECONDS);
   let envTextarea = $state<HTMLTextAreaElement | null>(null);
+
+  export function clearInput(): void {
+    envInput = "";
+  }
 
   export function focusInput(): void {
     envTextarea?.focus();
@@ -42,6 +45,17 @@
   const inputBytes = $derived(new TextEncoder().encode(envInput).length);
   const inputSize = $derived(formatInputSize(inputBytes));
   const isOverLimit = $derived(inputSize.over);
+  const validatedTtl = $derived(parseTtlSeconds(String(ttlSeconds)));
+  const shareDisabled = $derived(
+    busy || isOverLimit || envInput.length === 0 || validatedTtl === null,
+  );
+
+  function submit(): void {
+    if (shareDisabled || validatedTtl === null) {
+      return;
+    }
+    onShare(envInput, validatedTtl);
+  }
 </script>
 
 <section class:has-busy={busy}>
@@ -76,7 +90,7 @@
     sizer={LONGEST_EXPIRY_LABEL}
     align="start"
   />
-  <Button busy={busy} disabled={shareDisabled} onclick={onShare}>share</Button>
+  <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
 </div>
 
 <StatusLine text={statusText} error={statusError} animated />

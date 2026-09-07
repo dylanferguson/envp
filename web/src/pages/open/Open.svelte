@@ -1,18 +1,14 @@
 <script lang="ts">
   import "../../app.css";
   import { onMount, tick } from "svelte";
-  import { parseShareLink } from "../../../shared/limits.js";
+  import { parseShareLink, type KeyFragment, type ShareId } from "../../lib/limits.js";
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
   import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import StatusLine from "../../ui/StatusLine.svelte";
   import SwapStage from "../../ui/SwapStage.svelte";
-  import {
-    decryptShareEnvelope,
-    fetchShareEnvelope,
-    resolveShareTarget,
-  } from "./flow.js";
+  import { runOpenFlow } from "./flow.js";
   import OpenForm from "./OpenForm.svelte";
   import OpenResult from "./OpenResult.svelte";
   import {
@@ -31,7 +27,6 @@
     isManual ? { phase: "idle" } : { phase: "loading" },
   );
   let envOutput = $state("");
-  let statusNote = $state("");
   let linkInput = $state("");
   let openLoadToken = 0;
   let openForm = $state<OpenForm | null>(null);
@@ -41,13 +36,13 @@
   const diagramFocus = $derived(OPEN_DIAGRAM_FOCUS[state.phase]);
   const revealed = $derived(state.phase === "revealed");
   const showForm = $derived(showOpenForm(state, isManual));
-  const statusText = $derived(statusNote || reading.note);
 
   $effect(() => {
     if (!revealed || envOutput.length === 0) {
       return;
     }
     let cancelled = false;
+    // Let Svelte update the result value and visibility before CopyField retries selection.
     void tick().then(() => {
       requestAnimationFrame(() => {
         if (!cancelled) {
@@ -61,54 +56,26 @@
   });
 
   async function loadShare(
-    shareId?: string,
-    keyFragment?: string,
+    shareId?: ShareId,
+    keyFragment?: KeyFragment,
   ): Promise<void> {
     const token = ++openLoadToken;
-    statusNote = "";
     const isStale = () => token !== openLoadToken;
 
-    const resolved = resolveShareTarget(
-      shareId,
-      keyFragment,
-      location.pathname,
-      location.hash,
-      isManual,
-    );
-    if (!("kind" in resolved)) {
-      state = resolved;
-      return;
-    }
-
-    state = { phase: "loading" };
-    const outcome = await fetchShareEnvelope(resolved.shareId, isStale);
-    if (isStale() || outcome.kind === "stale") {
-      return;
-    }
-    if (outcome.kind === "missing") {
-      state = { phase: "gone" };
-      return;
-    }
-    if (outcome.kind === "http_error") {
-      state = { phase: "fetch_error", message: outcome.message };
-      return;
-    }
-
-    state = { phase: "unlocking" };
-    const decryptOutcome = await decryptShareEnvelope(
-      outcome.envelope,
-      resolved.fragment,
+    const outcome = await runOpenFlow(
+      { shareId, keyFragment, pathname: location.pathname, hash: location.hash, isManual },
       isStale,
+      (progress) => { state = progress; },
     );
-    if (isStale() || decryptOutcome.kind === "stale") {
+    if (isStale() || outcome.phase === "stale") {
       return;
     }
-    if (decryptOutcome.kind === "revealed") {
-      envOutput = decryptOutcome.envOutput;
+    if (outcome.phase === "revealed") {
+      envOutput = outcome.envOutput;
       state = { phase: "revealed" };
       return;
     }
-    state = { phase: decryptOutcome.kind };
+    state = outcome;
   }
 
   function onCopy(): void {
@@ -185,5 +152,5 @@
     </SwapStage>
   </div>
 
-  <StatusLine text={statusText} error={reading.tone === "error"} animated />
+  <StatusLine text={reading.note} error={reading.tone === "error"} animated />
 </Layout>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatExpiresAtLabel } from "../../../shared/limits.js";
+  import { formatExpiresAtLabel } from "../../lib/limits.js";
   import Button from "../../ui/Button.svelte";
   import CopyField from "../../ui/CopyField.svelte";
   import Readout from "../../ui/Readout.svelte";

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { crossfade } from "svelte/transition";
-  import { BUILD_META, buildCommitUrl } from "../../shared/build-meta.js";
+  import { BUILD_META, buildCommitUrl } from "../lib/build-meta.js";
   import type { SignalTone } from "../lib/signal.js";
 
   type Props = {

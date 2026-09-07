@@ -1,4 +1,4 @@
-import { MAX_PLAINTEXT_BYTES, MAX_PLAINTEXT_KIB } from "../../shared/limits.js";
+import { MAX_PLAINTEXT_BYTES, MAX_PLAINTEXT_KIB } from "./limits.js";
 
 export function formatInputSize(bytes: number): { text: string; over: boolean } {
   if (bytes > MAX_PLAINTEXT_BYTES) {

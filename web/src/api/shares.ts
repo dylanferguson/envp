@@ -1,13 +1,13 @@
-import { API_V1_SHARES } from "../../shared/api.js";
 import {
   buildCreateShareBody,
   parseCreateShareResponse,
   parseGetShareResponse,
   type CreateShareResponse,
-} from "../../shared/share-api.js";
-import { type ShareId, type TtlSeconds } from "../../shared/limits.js";
-
+} from "./share-api.js";
+import { type ShareId, type TtlSeconds } from "../lib/limits.js";
 import { formatHttpError } from "../lib/http-error.js";
+
+const API_V1_SHARES = "/api/v1/shares";
 
 export class ShareApiError extends Error {
   readonly status: number;
@@ -43,7 +43,7 @@ export async function createShare(
   return parsed;
 }
 
-export async function getShare(id: string): Promise<Uint8Array | null> {
+export async function getShare(id: ShareId): Promise<Uint8Array | null> {
   const response = await fetch(`${API_V1_SHARES}/${id}`);
   if (response.status === 404) {
     return null;

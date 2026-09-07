@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatExpiryLabel, parseShareId, parseShareLink } from "../src/shared/limits.js";
+import { formatExpiryLabel, parseShareId, parseShareLink } from "../src/lib/limits.js";
 
 const SHARE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
@@ -13,6 +13,8 @@ describe("parseShareId", () => {
   it("rejects invalid ids", () => {
     expect(parseShareId("share_01h2xcejqtf2nbrexx3vqjhp41")).toBeNull();
     expect(parseShareId("not-a-ulid")).toBeNull();
+    expect(parseShareId("81ARZ3NDEKTSV4RRFFQ69G5FAV")).toBeNull();
+    expect(parseShareId("I1ARZ3NDEKTSV4RRFFQ69G5FAV")).toBeNull();
   });
 });
 

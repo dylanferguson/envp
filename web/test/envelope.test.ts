@@ -6,12 +6,8 @@ import {
   importKeyFromFragment,
   open,
   seal,
-} from "../src/shared/envelope.js";
-import {
-  ENVELOPE_HEADER_BYTES,
-  MAX_PLAINTEXT_BYTES,
-  type KeyFragment,
-} from "../src/shared/limits.js";
+} from "../src/lib/envelope.js";
+import { ENVELOPE_HEADER_BYTES, MAX_PLAINTEXT_BYTES, type KeyFragment } from "../src/lib/limits.js";
 
 describe("envelope", () => {
   it("round-trips plaintext", async () => {
