@@ -1,0 +1,38 @@
+# Change app and PUBLIC_ORIGIN together if deploying under another name.
+app = "envp"
+primary_region = "syd"
+kill_signal = "SIGTERM"
+kill_timeout = 15
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+PORT = "8080"
+DB_PATH = "/data/shares.db"
+PUBLIC_ORIGIN = "https://envp.fly.dev"
+TRUST_PROXY = "true"
+
+[[mounts]]
+source = "envp_data"
+destination = "/data"
+initial_size = "1gb"
+
+[http_service]
+internal_port = 8080
+force_https = true
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 0
+
+[[http_service.checks]]
+method = "GET"
+path = "/health"
+interval = "30s"
+timeout = "3s"
+grace_period = "10s"
+
+[[vm]]
+cpu_kind = "shared"
+cpus = 1
+memory = "256mb"
