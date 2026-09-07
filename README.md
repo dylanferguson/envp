@@ -1,6 +1,8 @@
 # envp
 
-envp is an environment pointer. Browser-encrypted `.env` sharing. The key stays in the URL fragment; the server stores ciphertext, an id, and an expiry.
+Browser-encrypted `.env` sharing. The key stays in the URL fragment; the server stores ciphertext, an id, and an expiry.
+
+https://envp.dylanferguson.co
 
 ```bash
 mise install
@@ -15,7 +17,6 @@ mise run check
 mise run test
 mise run test:e2e:install
 mise run test:e2e
-
 mise run docker:build
 mise run docker:run
 ```
@@ -26,17 +27,3 @@ mise run docker:run
 | `DB_PATH`       | `./data/shares.db`                    |
 | `PUBLIC_ORIGIN` | derived from request                  |
 | `TRUST_PROXY`   | unset (`true` behind a trusted proxy) |
-
-Production on Fly sets `TRUST_PROXY=true`. Rate limits use `CF-Connecting-IP` when Cloudflare is in front, then `Fly-Client-IP`, then the last `X-Forwarded-For` hop.
-
-Production is `https://envp.dylanferguson.co` behind Cloudflare. Follow [Fly's Cloudflare guide](https://fly.io/docs/networking/understanding-cloudflare/): `fly certs add`, `_fly-ownership` TXT, proxied `A`/`AAAA` (or `CNAME`), SSL **Full (strict)**, Always Use HTTPS. Bypass cache and Bot Fight for `/api/*`.
-
-## Observability
-
-`GET /metrics` is Prometheus text on the same listener. It publishes `http_requests_total`, `http_request_duration_seconds`, `rate_limit_exceeded_total`, `shares_created_total`, and `sweep_deleted_total`. The `route` label is `create`, `get`, or `static`. The `status_class` label is `1xx` through `5xx`. Share ids, IPs, and request bodies never appear as labels.
-
-`GET /health` returns `application/health+json` with a `db:sqlite` check.
-
-Logs are JSON on stderr. INFO covers listen and shutdown. WARN covers a rejected origin. ERROR covers database, sweep, and panic failures. Successful requests are not logged. Envelopes, share ids, and URL fragments are not logged.
-
-The scratch image has no shell. Docker `HEALTHCHECK` runs `/envp healthcheck`, which GETs `http://127.0.0.1:$PORT/health`.
