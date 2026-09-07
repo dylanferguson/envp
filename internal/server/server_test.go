@@ -16,6 +16,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/dylanferguson/envp/internal/obs"
 	"github.com/dylanferguson/envp/internal/store"
 )
 
@@ -37,7 +38,11 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 			t.Error(err)
 		}
 	})
-	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	rec, err := obs.New(obs.Options{DB: db.Ping})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,4 +286,93 @@ func TestConcurrentHTTPWrites(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestObservabilityEndpoints(t *testing.T) {
+	h, _ := testServer(t, Config{})
+	for _, path := range []string{"/metrics", "/health"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d", path, w.Code)
+		}
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`)))
+	if w.Code != 201 {
+		t.Fatalf("create: %d", w.Code)
+	}
+	metrics := httptest.NewRecorder()
+	h.ServeHTTP(metrics, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	body := metrics.Body.String()
+	if !strings.Contains(body, "shares_created_total") || strings.Contains(body, `route="metrics"`) {
+		t.Fatalf("metrics: %s", body)
+	}
+}
+
+func TestOriginWarnNoOriginField(t *testing.T) {
+	var buf bytes.Buffer
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	rec, err := obs.New(obs.Options{DB: db.Ping})
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger := slog.New(slog.NewJSONHandler(&buf, nil))
+	h, err := New(db, testFiles, Config{}, logger, rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`))
+	r.Header.Set("Origin", "http://evil.example")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 403 {
+		t.Fatalf("status = %d", w.Code)
+	}
+	logLine := buf.String()
+	if !strings.Contains(logLine, "origin rejected") || strings.Contains(logLine, "evil.example") || strings.Contains(logLine, `"origin"`) {
+		t.Fatalf("log: %s", logLine)
+	}
+}
+
+func TestPanicBeforeWrite(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, nil))
+	s := &server{log: logger}
+	h := s.recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("boom")
+	}))
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	h.ServeHTTP(w, r)
+	if w.Code != 500 {
+		t.Fatalf("status = %d", w.Code)
+	}
+	if !strings.Contains(buf.String(), "panic") {
+		t.Fatalf("log: %s", buf.String())
+	}
+}
+
+func TestPanicAfterWrite(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, nil))
+	s := &server{log: logger}
+	h := s.recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("partial"))
+		panic("after headers")
+	}))
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	h.ServeHTTP(w, r)
+	if w.Code != 200 || w.Body.String() != "partial" {
+		t.Fatalf("response rewritten: %d %q", w.Code, w.Body.String())
+	}
+	if !strings.Contains(buf.String(), "panic") {
+		t.Fatalf("log: %s", buf.String())
+	}
 }

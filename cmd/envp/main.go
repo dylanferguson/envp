@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dylanferguson/envp/internal/obs"
 	"github.com/dylanferguson/envp/internal/server"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/dylanferguson/envp/internal/webui"
@@ -26,6 +27,9 @@ type config struct {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck())
+	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -33,6 +37,19 @@ func main() {
 		logger.Error("server stopped", "error", err)
 		os.Exit(1)
 	}
+}
+
+func healthcheck() int {
+	cfg, err := loadConfig()
+	if err != nil {
+		return 1
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := obs.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.port)); err != nil {
+		return 1
+	}
+	return 0
 }
 
 func loadConfig() (config, error) {
@@ -75,10 +92,16 @@ func run(ctx context.Context, logger *slog.Logger) error {
 			logger.Error("close database", "error", err)
 		}
 	}()
-	if _, err := db.Sweep(startup); err != nil {
+	rec, err := obs.New(obs.Options{DB: db.Ping})
+	if err != nil {
 		return err
 	}
-	handler, err := server.New(db, webui.Files(), cfg.http, logger)
+	if n, err := db.Sweep(startup); err != nil {
+		return err
+	} else {
+		rec.Swept(n)
+	}
+	handler, err := server.New(db, webui.Files(), cfg.http, logger, rec)
 	if err != nil {
 		return err
 	}
@@ -100,7 +123,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sweepLoop(maintenance, db, logger)
+		sweepLoop(maintenance, db, rec, logger)
 	}()
 	defer func() { stopMaintenance(); wg.Wait() }()
 	serveErr := make(chan error, 1)
@@ -123,7 +146,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
-func sweepLoop(ctx context.Context, db *store.Store, logger *slog.Logger) {
+func sweepLoop(ctx context.Context, db *store.Store, rec *obs.Recorder, logger *slog.Logger) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
@@ -131,9 +154,12 @@ func sweepLoop(ctx context.Context, db *store.Store, logger *slog.Logger) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if _, err := db.Sweep(ctx); err != nil && ctx.Err() == nil {
+			n, err := db.Sweep(ctx)
+			if err != nil && ctx.Err() == nil {
 				logger.Error("sweep failed", "error", err)
+				continue
 			}
+			rec.Swept(n)
 		}
 	}
 }

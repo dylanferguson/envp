@@ -149,3 +149,16 @@ func TestCanceledOperation(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 }
+
+func TestPing(t *testing.T) {
+	s := testStore(t)
+	if err := s.Ping(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Ping(t.Context()); err == nil {
+		t.Fatal("Ping after Close should fail")
+	}
+}
