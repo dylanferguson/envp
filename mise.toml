@@ -44,7 +44,7 @@ description = "Install Playwright browsers"
 run = "playwright install --with-deps --only-shell"
 
 [tasks."docker:build"]
-run = 'docker build -t envp:go-scratch --build-arg GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD)}" .'
+run = 'GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD)}" docker compose build'
 
 [tasks."docker:run"]
-run = "docker run --rm -p 8080:8080 -p 9090:9090 -v envp-data:/data envp:go-scratch"
+run = "docker compose up --build"
