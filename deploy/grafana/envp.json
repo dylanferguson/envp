@@ -402,7 +402,8 @@
             },
             "thresholdsStyle": {
               "mode": "off"
-            }
+            },
+            "axisSoftMin": 0
           },
           "mappings": [],
           "thresholds": {
@@ -411,15 +412,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "reqps",
-          "min": 0
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -487,7 +483,8 @@
             },
             "thresholdsStyle": {
               "mode": "off"
-            }
+            },
+            "axisSoftMin": 0
           },
           "mappings": [],
           "thresholds": {
@@ -496,15 +493,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "reqps",
-          "min": 0
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -572,7 +564,8 @@
             },
             "thresholdsStyle": {
               "mode": "off"
-            }
+            },
+            "axisSoftMin": 0
           },
           "mappings": [],
           "thresholds": {
@@ -581,15 +574,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "s",
-          "min": 0
+          "unit": "s"
         },
         "overrides": []
       },
@@ -665,7 +653,8 @@
             },
             "thresholdsStyle": {
               "mode": "off"
-            }
+            },
+            "axisSoftMin": 0
           },
           "mappings": [],
           "thresholds": {
@@ -674,15 +663,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "ops",
-          "min": 0
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -772,7 +756,8 @@
             },
             "thresholdsStyle": {
               "mode": "off"
-            }
+            },
+            "axisSoftMin": 0
           },
           "mappings": [],
           "thresholds": {
@@ -781,15 +766,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "reqps",
-          "min": 0
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -857,7 +837,8 @@
             },
             "thresholdsStyle": {
               "mode": "off"
-            }
+            },
+            "axisSoftMin": 0
           },
           "mappings": [],
           "thresholds": {
@@ -866,15 +847,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "bytes",
-          "min": 0
+          "unit": "bytes"
         },
         "overrides": []
       },
