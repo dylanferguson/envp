@@ -10,6 +10,7 @@ dockerfile = "Dockerfile"
 
 [env]
 PORT = "8080"
+OBS_PORT = "9090"
 DB_PATH = "/data/shares.db"
 PUBLIC_ORIGIN = "https://envp.dylanferguson.co"
 TRUST_PROXY = "true"
@@ -26,7 +27,14 @@ auto_stop_machines = "stop"
 auto_start_machines = true
 min_machines_running = 0
 
-[[http_service.checks]]
+[metrics]
+port = 9090
+path = "/metrics"
+
+[checks]
+[checks.health]
+type = "http"
+port = 9090
 method = "GET"
 path = "/health"
 interval = "30s"

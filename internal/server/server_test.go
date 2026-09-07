@@ -29,6 +29,12 @@ var testFiles = fstest.MapFS{
 
 func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 	t.Helper()
+	h, _, db := testApp(t, cfg)
+	return h, db
+}
+
+func testApp(t *testing.T, cfg Config) (http.Handler, *obs.Recorder, *store.Store) {
+	t.Helper()
 	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +52,7 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return handler, db
+	return handler, rec, db
 }
 
 func request(h http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -289,21 +295,24 @@ func TestConcurrentHTTPWrites(t *testing.T) {
 }
 
 func TestObservabilityEndpoints(t *testing.T) {
-	h, _ := testServer(t, Config{})
+	h, rec, _ := testApp(t, Config{})
 	scrape := func() string {
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+		rec.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 		if w.Code != http.StatusOK {
 			t.Fatalf("metrics: status = %d", w.Code)
 		}
 		return w.Body.String()
 	}
-	for _, path := range []string{"/metrics", "/health", "/favicon.ico"} {
+	for _, path := range []string{"/metrics", "/health"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
-		if w.Code != http.StatusOK {
+		if w.Code != http.StatusNotFound {
 			t.Fatalf("%s: status = %d", path, w.Code)
 		}
+	}
+	if w := request(h, "GET", "/favicon.ico", ""); w.Code != 200 {
+		t.Fatalf("favicon: %d", w.Code)
 	}
 	if body := scrape(); strings.Contains(body, "http_requests_total") {
 		t.Fatalf("ops and asset hits counted: %s", body)

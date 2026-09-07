@@ -115,30 +115,22 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	pages.Handle("GET /share/{id}", track(obs.RouteStatic, s.shell("open.html")))
 	pages.HandleFunc("GET /", s.file)
 
-	root := http.NewServeMux()
-	rec.Mount(root)
-	root.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		isAPI := r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/")
-		if isAPI {
-			w.Header().Set("Cache-Control", "no-store")
-		}
-		if !isAPI {
-			pages.ServeHTTP(w, r)
-			return
-		}
-		if _, pattern := api.Handler(r); pattern == "" {
-			s.error(w, r, errNotFound)
-			return
-		}
-		api.ServeHTTP(w, r)
-	})
-
 	return s.recover(headers(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != path.Clean(r.URL.Path) {
 			s.error(w, r, errNotFound)
 			return
 		}
-		root.ServeHTTP(w, r)
+		isAPI := r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/")
+		if !isAPI {
+			pages.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		if _, pattern := api.Handler(r); pattern == "" {
+			s.error(w, r, errNotFound)
+			return
+		}
+		api.ServeHTTP(w, r)
 	})), nil
 }
 

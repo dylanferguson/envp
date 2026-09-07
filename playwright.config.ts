@@ -15,7 +15,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
-    command: "mise run build && PORT=18080 DB_PATH=./data/e2e-shares.db mise run start",
+    command:
+      "mise run build && PORT=18080 OBS_PORT=18090 DB_PATH=./data/e2e-shares.db mise run start",
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,

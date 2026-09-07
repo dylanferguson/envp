@@ -21,9 +21,10 @@ import (
 )
 
 type config struct {
-	port   int
-	dbPath string
-	http   server.Config
+	port    int
+	obsPort int
+	dbPath  string
+	http    server.Config
 }
 
 func main() {
@@ -46,20 +47,26 @@ func healthcheck() int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := obs.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.port)); err != nil {
+	if err := obs.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.obsPort)); err != nil {
 		return 1
 	}
 	return 0
 }
 
 func loadConfig() (config, error) {
-	c := config{port: 8080, dbPath: "./data/shares.db"}
-	if value, ok := os.LookupEnv("PORT"); ok {
-		port, err := strconv.Atoi(value)
-		if err != nil || port < 1 || port > 65535 {
-			return c, errors.New("PORT must be between 1 and 65535")
-		}
-		c.port = port
+	c := config{port: 8080, obsPort: 9090, dbPath: "./data/shares.db"}
+	port, err := envPort("PORT", c.port)
+	if err != nil {
+		return c, err
+	}
+	c.port = port
+	obsPort, err := envPort("OBS_PORT", c.obsPort)
+	if err != nil {
+		return c, err
+	}
+	c.obsPort = obsPort
+	if c.port == c.obsPort {
+		return c, errors.New("OBS_PORT must differ from PORT")
 	}
 	if value, ok := os.LookupEnv("DB_PATH"); ok {
 		if value == "" {
@@ -74,6 +81,18 @@ func loadConfig() (config, error) {
 	c.http.PublicOrigin = origin
 	c.http.TrustProxy = os.Getenv("TRUST_PROXY") == "true"
 	return c, nil
+}
+
+func envPort(key string, fallback int) (int, error) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback, nil
+	}
+	port, err := strconv.Atoi(value)
+	if err != nil || port < 1 || port > 65535 {
+		return 0, fmt.Errorf("%s must be between 1 and 65535", key)
+	}
+	return port, nil
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
@@ -105,19 +124,17 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	listener, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.port)))
+	publicLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.port)))
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	httpServer := &http.Server{
-		Handler:           handler,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		MaxHeaderBytes:    16 << 10,
-		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
+	obsLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.obsPort)))
+	if err != nil {
+		_ = publicLn.Close()
+		return fmt.Errorf("listen obs: %w", err)
 	}
+	publicServer := newHTTPServer(handler, logger)
+	obsServer := newHTTPServer(rec.Handler(), logger)
 	maintenance, stopMaintenance := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -126,24 +143,45 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		sweepLoop(maintenance, db, rec, logger)
 	}()
 	defer func() { stopMaintenance(); wg.Wait() }()
-	serveErr := make(chan error, 1)
-	go func() { serveErr <- httpServer.Serve(listener) }()
-	logger.Info("listening", "address", listener.Addr().String())
+	serveErr := make(chan error, 2)
+	go func() { serveErr <- publicServer.Serve(publicLn) }()
+	go func() { serveErr <- obsServer.Serve(obsLn) }()
+	logger.Info("listening", "address", publicLn.Addr().String(), "obs", obsLn.Addr().String())
 	select {
 	case err := <-serveErr:
+		shutdownErr := shutdownHTTP(publicServer, obsServer)
 		if !errors.Is(err, http.ErrServerClosed) {
-			return err
+			return errors.Join(err, shutdownErr)
 		}
-		return nil
+		return shutdownErr
 	case <-ctx.Done():
 	}
 	logger.Info("shutting down")
-	shutdown, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelShutdown()
-	if err := httpServer.Shutdown(shutdown); err != nil {
-		return errors.Join(fmt.Errorf("shutdown: %w", err), httpServer.Close())
+	return shutdownHTTP(publicServer, obsServer)
+}
+
+func newHTTPServer(handler http.Handler, logger *slog.Logger) *http.Server {
+	return &http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    16 << 10,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
-	return nil
+}
+
+func shutdownHTTP(servers ...*http.Server) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var err error
+	for _, srv := range servers {
+		if shutErr := srv.Shutdown(ctx); shutErr != nil {
+			err = errors.Join(err, shutErr, srv.Close())
+		}
+	}
+	return err
 }
 
 func sweepLoop(ctx context.Context, db *store.Store, rec *obs.Recorder, logger *slog.Logger) {

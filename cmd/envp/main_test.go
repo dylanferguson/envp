@@ -7,10 +7,13 @@ func TestConfig(t *testing.T) {
 		name, key, value string
 		valid            bool
 	}{
-		{"custom port", "PORT", "9090", true},
+		{"custom port", "PORT", "18080", true},
 		{"invalid port", "PORT", "abc", false},
 		{"zero port", "PORT", "0", false},
 		{"large port", "PORT", "65536", false},
+		{"custom obs port", "OBS_PORT", "9191", true},
+		{"invalid obs port", "OBS_PORT", "abc", false},
+		{"obs port collision", "OBS_PORT", "8080", false},
 		{"empty database", "DB_PATH", "", false},
 		{"origin", "PUBLIC_ORIGIN", "https://example.com", true},
 		{"origin with port", "PUBLIC_ORIGIN", "http://localhost:8080", true},
@@ -22,6 +25,7 @@ func TestConfig(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("PORT", "8080")
+			t.Setenv("OBS_PORT", "9090")
 			t.Setenv("DB_PATH", "./data/shares.db")
 			t.Setenv("PUBLIC_ORIGIN", "")
 			t.Setenv("TRUST_PROXY", "")

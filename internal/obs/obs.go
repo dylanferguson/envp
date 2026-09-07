@@ -139,6 +139,12 @@ func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
 	})
 }
 
+func (r *Recorder) Handler() http.Handler {
+	mux := http.NewServeMux()
+	r.Mount(mux)
+	return mux
+}
+
 func (r *Recorder) Mount(root *http.ServeMux) {
 	root.Handle("GET "+MetricsPath, promhttp.HandlerFor(r.registry, promhttp.HandlerOpts{}))
 	root.HandleFunc("GET "+HealthPath, r.handleHealth)
