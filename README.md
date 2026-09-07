@@ -20,7 +20,7 @@ cd envp
 docker compose up --build
 ```
 
-http://127.0.0.1:8080 — SQLite on the `envp-data` volume.
+http://127.0.0.1:8080. SQLite lives on the named `envp-data` volume. A host bind mount at `/data` is root-owned, so the non-root process cannot write the database.
 
 Set `PUBLIC_ORIGIN` when the hostname is not localhost. Set `TRUST_PROXY=true` behind a trusted reverse proxy.
 

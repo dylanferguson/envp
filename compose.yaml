@@ -10,6 +10,8 @@ services:
     volumes:
       - envp-data:/data
     restart: unless-stopped
+    stop_grace_period: 15s
 
 volumes:
   envp-data:
+    name: envp-data
