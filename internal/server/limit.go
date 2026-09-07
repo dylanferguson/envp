@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/netip"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,8 +83,16 @@ func (s *server) limit(l *limiter, next http.HandlerFunc) http.HandlerFunc {
 
 func clientIP(r *http.Request, trustProxy bool) string {
 	if trustProxy {
-		if ip, err := netip.ParseAddr(lastCSV(r.Header.Get("X-Forwarded-For"))); err == nil {
-			return ip.Unmap().String()
+		// Cloudflare sets the visitor; Fly-Client-IP is the TCP peer (Cloudflare
+		// when orange-clouded). Fly's last X-Forwarded-For hop is the app IP.
+		for _, value := range []string{
+			strings.TrimSpace(r.Header.Get("CF-Connecting-IP")),
+			strings.TrimSpace(r.Header.Get("Fly-Client-IP")),
+			lastCSV(r.Header.Get("X-Forwarded-For")),
+		} {
+			if ip, err := netip.ParseAddr(value); err == nil {
+				return ip.Unmap().String()
+			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

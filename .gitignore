@@ -10,3 +10,4 @@ target/
 .pnpm-store/
 .vite/
 docs/
+*.pem
