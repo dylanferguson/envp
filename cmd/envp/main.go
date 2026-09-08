@@ -47,9 +47,13 @@ func healthcheck() int {
 	if err != nil {
 		return 1
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if err := metrics.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.obsPort)); err != nil {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + strconv.Itoa(cfg.obsPort) + "/health")
+	if err != nil {
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		return 1
 	}
 	return 0
@@ -117,10 +121,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if len(id) > 7 {
 		id = id[:7]
 	}
-	rec, err := metrics.New(metrics.Options{DB: db.Ping, ReleaseID: id})
-	if err != nil {
-		return err
-	}
+	rec := metrics.New(db.Ping, id)
 	if n, err := db.Sweep(startup); err != nil {
 		return err
 	} else {

@@ -38,10 +38,7 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 			t.Error(err)
 		}
 	})
-	rec, err := metrics.New(metrics.Options{DB: db.Ping})
-	if err != nil {
-		t.Fatal(err)
-	}
+	rec := metrics.New(db.Ping, "")
 	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
 	if err != nil {
 		t.Fatal(err)
@@ -333,10 +330,7 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	rec, err := metrics.New(metrics.Options{DB: db.Ping})
-	if err != nil {
-		t.Fatal(err)
-	}
+	rec := metrics.New(db.Ping, "")
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
 	h, err := New(db, testFiles, Config{}, logger, rec)
 	if err != nil {

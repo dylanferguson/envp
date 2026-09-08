@@ -1,191 +1,118 @@
 package metrics
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+type Route string
+
 const (
-	MetricsPath = "/metrics"
-	HealthPath  = "/health"
+	RouteCreate Route = "create"
+	RouteGet    Route = "get"
+	RouteStatic Route = "static"
 )
-
-const healthComponent = "db:sqlite"
-
-var durationBuckets = []float64{0.005, 0.02, 0.1, 0.5, 2}
-
-type Route struct {
-	name  string
-	timed bool
-}
-
-var (
-	RouteCreate = Route{name: "create", timed: true}
-	RouteGet    = Route{name: "get", timed: true}
-	RouteStatic = Route{name: "static"}
-)
-
-type Options struct {
-	DB           Probe
-	ReleaseID    string
-	ProbeTTL     time.Duration
-	ProbeTimeout time.Duration
-	Now          func() time.Time
-}
 
 type Recorder struct {
-	registry *prometheus.Registry
-
-	requests    *prometheus.CounterVec
-	duration    *prometheus.HistogramVec
-	rateLimited *prometheus.CounterVec
-	created     prometheus.Counter
-	swept       prometheus.Counter
-
-	health    *healthProbe
+	ping      func(context.Context) error
 	releaseID string
-	now       func() time.Time
+	requests  *prometheus.CounterVec
+	duration  *prometheus.HistogramVec
+	limited   *prometheus.CounterVec
+	created   prometheus.Counter
+	swept     prometheus.Counter
+	handler   http.Handler
 }
 
-func New(opts Options) (*Recorder, error) {
-	if opts.DB == nil {
-		return nil, errors.New("metrics: DB probe required")
-	}
-	ttl := opts.ProbeTTL
-	if ttl == 0 {
-		ttl = time.Second
-	}
-	timeout := opts.ProbeTimeout
-	if timeout == 0 {
-		timeout = 2 * time.Second
-	}
-	now := opts.Now
-	if now == nil {
-		now = time.Now
-	}
-
+func New(ping func(context.Context) error, releaseID string) *Recorder {
 	reg := prometheus.NewRegistry()
-	requests := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "http_requests_total",
-		Help: "Total HTTP requests by route and status class.",
-	}, []string{"route", "status_class"})
-	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "http_request_duration_seconds",
-		Help:    "HTTP request latency in seconds.",
-		Buckets: durationBuckets,
-	}, []string{"route"})
-	rateLimited := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "rate_limit_exceeded_total",
-		Help: "Rate limit rejections by route.",
-	}, []string{"route"})
-	created := prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "shares_created_total",
-		Help: "Shares successfully created.",
-	})
-	swept := prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "sweep_deleted_total",
-		Help: "Expired shares deleted by sweep.",
-	})
-	reg.MustRegister(requests, duration, rateLimited, created, swept)
-	rateLimited.WithLabelValues(RouteCreate.name).Add(0)
-	rateLimited.WithLabelValues(RouteGet.name).Add(0)
+	auto := promauto.With(reg)
+	rec := &Recorder{
+		ping:      ping,
+		releaseID: releaseID,
+		requests: auto.NewCounterVec(prometheus.CounterOpts{
+			Name: "http_requests_total", Help: "HTTP requests by route and status class.",
+		}, []string{"route", "status_class"}),
+		duration: auto.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "http_request_duration_seconds", Help: "HTTP latency.",
+			Buckets: []float64{0.005, 0.02, 0.1, 0.5, 2},
+		}, []string{"route"}),
+		limited: auto.NewCounterVec(prometheus.CounterOpts{
+			Name: "rate_limit_exceeded_total", Help: "Rate limit rejections.",
+		}, []string{"route"}),
+		created: auto.NewCounter(prometheus.CounterOpts{Name: "shares_created_total", Help: "Shares created."}),
+		swept:   auto.NewCounter(prometheus.CounterOpts{Name: "sweep_deleted_total", Help: "Shares swept."}),
+	}
+	rec.limited.WithLabelValues(string(RouteCreate)).Add(0)
+	rec.limited.WithLabelValues(string(RouteGet)).Add(0)
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	mux.HandleFunc("GET /health", rec.health)
+	rec.handler = mux
+	return rec
+}
 
-	return &Recorder{
-		registry:    reg,
-		requests:    requests,
-		duration:    duration,
-		rateLimited: rateLimited,
-		created:     created,
-		swept:       swept,
-		health: &healthProbe{
-			run:     opts.DB,
-			ttl:     ttl,
-			timeout: timeout,
-			now:     now,
-		},
-		releaseID: opts.ReleaseID,
-		now:       now,
-	}, nil
+func (r *Recorder) Handler() http.Handler { return r.handler }
+
+func (r *Recorder) Swept(n int64) {
+	if n > 0 {
+		r.swept.Add(float64(n))
+	}
 }
 
 func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
-	if route.name == "" {
-		panic("metrics: zero Route")
-	}
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
-
-		panicVal := any(nil)
 		defer func() {
-			took := time.Since(start)
+			p := recover()
 			status := sw.status
-			if p := recover(); p != nil {
-				panicVal = p
+			if status == 0 {
+				if p != nil {
+					status = http.StatusInternalServerError
+				} else {
+					status = http.StatusOK
+				}
 			}
-			if panicVal != nil && status == 0 {
-				status = http.StatusInternalServerError
-			} else if status == 0 {
-				status = http.StatusOK
-			}
-			r.observe(route, status, took)
-			if panicVal != nil {
-				panic(panicVal)
+			r.observe(route, status, time.Since(start))
+			if p != nil {
+				panic(p)
 			}
 		}()
-
 		next.ServeHTTP(sw, req)
 	})
 }
 
-func (r *Recorder) Handler() http.Handler {
-	mux := http.NewServeMux()
-	r.Mount(mux)
-	return mux
-}
-
-func (r *Recorder) Mount(root *http.ServeMux) {
-	root.Handle("GET "+MetricsPath, promhttp.HandlerFor(r.registry, promhttp.HandlerOpts{}))
-	root.HandleFunc("GET "+HealthPath, r.handleHealth)
-	root.HandleFunc("HEAD "+HealthPath, r.handleHealth)
-}
-
-func (r *Recorder) Swept(deleted int64) {
-	if deleted > 0 {
-		r.swept.Add(float64(deleted))
-	}
-}
-
 func (r *Recorder) observe(route Route, status int, took time.Duration) {
-	r.requests.WithLabelValues(route.name, statusClass(status)).Inc()
-	if route.timed {
-		r.duration.WithLabelValues(route.name).Observe(took.Seconds())
+	r.requests.WithLabelValues(string(route), strconv.Itoa(status/100)+"xx").Inc()
+	if route != RouteStatic {
+		r.duration.WithLabelValues(string(route)).Observe(took.Seconds())
 	}
 	if route == RouteCreate && status == http.StatusCreated {
 		r.created.Inc()
 	}
 	if status == http.StatusTooManyRequests {
-		r.rateLimited.WithLabelValues(route.name).Inc()
+		r.limited.WithLabelValues(string(route)).Inc()
 	}
 }
 
-func statusClass(code int) string {
-	switch {
-	case code >= 100 && code < 200:
-		return "1xx"
-	case code >= 200 && code < 300:
-		return "2xx"
-	case code >= 300 && code < 400:
-		return "3xx"
-	case code >= 400 && code < 500:
-		return "4xx"
-	default:
-		return "5xx"
+func (r *Recorder) health(w http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
+	defer cancel()
+	status, code := "pass", http.StatusOK
+	if r.ping(ctx) != nil {
+		status, code = "fail", http.StatusServiceUnavailable
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, _ = fmt.Fprintf(w, `{"status":%q,"releaseId":%q}`, status, r.releaseID)
 }
 
 type statusWriter struct {
