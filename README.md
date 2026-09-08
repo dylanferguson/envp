@@ -12,6 +12,18 @@ mise run dev
 
 http://127.0.0.1:5173 — Vite on 5173, API on 8080.
 
+Self-host the production image without Node or mise:
+
+```bash
+git clone https://github.com/dylanferguson/envp.git
+cd envp
+docker compose up --build
+```
+
+http://127.0.0.1:8080. SQLite lives on the named `envp-data` volume. A host bind mount at `/data` is root-owned, so the non-root process cannot write the database.
+
+Set `PUBLIC_ORIGIN` when the hostname is not localhost. Set `TRUST_PROXY=true` behind a trusted reverse proxy.
+
 ```bash
 mise run check
 mise run test

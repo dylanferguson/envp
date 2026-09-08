@@ -1,0 +1,17 @@
+services:
+  envp:
+    build:
+      context: .
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: envp:go-scratch
+    ports:
+      - "8080:8080"
+    volumes:
+      - envp-data:/data
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+volumes:
+  envp-data:
+    name: envp-data

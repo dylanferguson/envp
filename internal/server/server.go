@@ -122,6 +122,7 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	pages.Handle("GET /{$}", track(obs.RouteStatic, s.shell("index.html")))
 	pages.Handle("GET /open", track(obs.RouteStatic, s.shell("open.html")))
 	pages.Handle("GET /share/{id}", track(obs.RouteStatic, s.shell("open.html")))
+	pages.HandleFunc("GET /robots.txt", s.robots)
 	pages.HandleFunc("GET /", s.file)
 
 	return s.recover(headers(func(w http.ResponseWriter, r *http.Request) {
@@ -221,6 +222,14 @@ func (s *server) shell(name string) http.HandlerFunc {
 	}
 }
 
+const robotsTxt = "User-agent: *\nDisallow: /\n"
+
+func (s *server) robots(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	http.ServeContent(w, r, "robots.txt", time.Time{}, strings.NewReader(robotsTxt))
+}
+
 func (s *server) file(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/")
 	if !fs.ValidPath(name) {
@@ -318,6 +327,7 @@ func headers(next http.HandlerFunc) http.Handler {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("X-Robots-Tag", "noindex, nofollow")
 		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
