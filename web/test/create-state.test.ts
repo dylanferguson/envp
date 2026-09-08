@@ -12,6 +12,7 @@ describe("deriveCreateDiagramFocus", () => {
         url: "https://example.test/share/1#key",
         copied: true,
         expiresAt: 1,
+        maxReads: 20,
       }),
     ).toBe("share");
   });

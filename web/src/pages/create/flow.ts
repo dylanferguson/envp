@@ -1,11 +1,11 @@
 import { EnvelopeError, exportKeyFragment, generateKey, seal } from "../../lib/envelope.js";
-import { MAX_PLAINTEXT_BYTES, type TtlSeconds } from "../../lib/limits.js";
+import { MAX_PLAINTEXT_BYTES, type MaxReads, type TtlSeconds } from "../../lib/limits.js";
 import { ShareApiError, createShare } from "../../api/shares.js";
 import type { CreateState } from "./state.js";
 
 export type ShareFlowOutcome =
   | { kind: "over_limit" }
-  | { kind: "done"; url: string; copied: boolean; expiresAt: number }
+  | { kind: "done"; url: string; copied: boolean; expiresAt: number; maxReads: number }
   | { kind: "error"; at: "encrypt" | "send" | "link"; message: string };
 
 export type ShareFlowProgress = { phase: "encrypting" } | { phase: "uploading"; bytes: number };
@@ -13,6 +13,7 @@ export type ShareFlowProgress = { phase: "encrypting" } | { phase: "uploading"; 
 export async function runShareFlow(
   envInput: string,
   ttlSeconds: TtlSeconds,
+  maxReads: MaxReads,
   origin: string,
   onProgress?: (progress: ShareFlowProgress) => void,
 ): Promise<ShareFlowOutcome> {
@@ -30,7 +31,7 @@ export async function runShareFlow(
 
     at = "send";
     onProgress?.({ phase: "uploading", bytes: envelope.length });
-    const created = await createShare(envelope, ttlSeconds);
+    const created = await createShare(envelope, ttlSeconds, maxReads);
     const url = `${origin}/share/${created.id}#${fragment}`;
     at = "link";
 
@@ -47,6 +48,7 @@ export async function runShareFlow(
       url,
       copied,
       expiresAt: created.expiresAt,
+      maxReads: created.maxReads,
     };
   } catch (error) {
     if (error instanceof EnvelopeError) {
@@ -69,6 +71,7 @@ export function applyShareOutcome(outcome: ShareFlowOutcome): CreateState {
       url: outcome.url,
       copied: outcome.copied,
       expiresAt: outcome.expiresAt,
+      maxReads: outcome.maxReads,
     };
   }
   return { phase: "error", at: outcome.at, message: outcome.message };

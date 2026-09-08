@@ -1,5 +1,6 @@
 export type ShareId = string & { readonly __brand: "ShareId" };
 export type TtlSeconds = number & { readonly __brand: "TtlSeconds" };
+export type MaxReads = number & { readonly __brand: "MaxReads" };
 export type UnixMillis = number & { readonly __brand: "UnixMillis" };
 export type KeyFragment = string & { readonly __brand: "KeyFragment" };
 export type EnvelopeBytes = Uint8Array & { readonly __brand: "EnvelopeBytes" };
@@ -14,6 +15,10 @@ export const MIN_TTL_SECONDS = 60;
 export const MAX_TTL_SECONDS = 86400;
 export const DEFAULT_TTL_SECONDS = 3600 as TtlSeconds;
 
+export const MIN_MAX_READS = 1;
+export const MAX_MAX_READS = 100;
+export const DEFAULT_MAX_READS = 20 as MaxReads;
+
 const SHARE_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i;
 const KEY_FRAGMENT_RE = /^[A-Za-z0-9_-]{43}$/;
 
@@ -27,6 +32,25 @@ export function parseTtlSeconds(value: string | null | undefined): TtlSeconds | 
   }
   return n as TtlSeconds;
 }
+
+export function parseMaxReads(value: unknown): MaxReads | null {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return null;
+  }
+  if (value < MIN_MAX_READS || value > MAX_MAX_READS) {
+    return null;
+  }
+  return value as MaxReads;
+}
+
+export function formatMaxReadsLabel(maxReads: number): string {
+  if (maxReads === 1) {
+    return "1 read";
+  }
+  return `${maxReads} reads`;
+}
+
+export const LONGEST_READS_LABEL = formatMaxReadsLabel(MAX_MAX_READS);
 
 export function parseShareId(value: string): ShareId | null {
   if (!SHARE_ID_RE.test(value)) {

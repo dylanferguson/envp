@@ -4,7 +4,7 @@ import {
   parseGetShareResponse,
   type CreateShareResponse,
 } from "./share-api.js";
-import { type ShareId, type TtlSeconds } from "../lib/limits.js";
+import { type MaxReads, type ShareId, type TtlSeconds } from "../lib/limits.js";
 import { formatHttpError } from "../lib/http-error.js";
 
 const API_V1_SHARES = "/api/v1/shares";
@@ -24,11 +24,12 @@ export class ShareApiError extends Error {
 export async function createShare(
   envelope: Uint8Array,
   ttl: TtlSeconds,
+  maxReads: MaxReads,
 ): Promise<CreateShareResponse> {
   const response = await fetch(API_V1_SHARES, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: buildCreateShareBody(ttl, envelope),
+    body: buildCreateShareBody(ttl, maxReads, envelope),
   });
 
   if (!response.ok) {

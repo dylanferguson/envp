@@ -1,11 +1,18 @@
 <script lang="ts">
   import {
+    DEFAULT_MAX_READS,
     DEFAULT_TTL_SECONDS,
     formatExpiryLabel,
+    formatMaxReadsLabel,
     LONGEST_EXPIRY_LABEL,
+    LONGEST_READS_LABEL,
+    MAX_MAX_READS,
     MAX_TTL_SECONDS,
+    MIN_MAX_READS,
     MIN_TTL_SECONDS,
+    parseMaxReads,
     parseTtlSeconds,
+    type MaxReads,
     type TtlSeconds,
   } from "../../lib/limits.js";
   import { formatInputSize } from "../../lib/format-input-size.js";
@@ -20,7 +27,7 @@
     busy: boolean;
     statusText: string;
     statusError: boolean;
-    onShare: (envInput: string, ttlSeconds: TtlSeconds) => void;
+    onShare: (envInput: string, ttlSeconds: TtlSeconds, maxReads: MaxReads) => void;
   };
 
   let {
@@ -32,6 +39,7 @@
 
   let envInput = $state("");
   let ttlSeconds = $state<number>(DEFAULT_TTL_SECONDS);
+  let maxReads = $state<number>(DEFAULT_MAX_READS);
   let envTextarea = $state<HTMLTextAreaElement | null>(null);
 
   export function clearInput(): void {
@@ -46,15 +54,16 @@
   const inputSize = $derived(formatInputSize(inputBytes));
   const isOverLimit = $derived(inputSize.over);
   const validatedTtl = $derived(parseTtlSeconds(String(ttlSeconds)));
+  const validatedMaxReads = $derived(parseMaxReads(maxReads));
   const shareDisabled = $derived(
-    busy || isOverLimit || envInput.length === 0 || validatedTtl === null,
+    busy || isOverLimit || envInput.length === 0 || validatedTtl === null || validatedMaxReads === null,
   );
 
   function submit(): void {
-    if (shareDisabled || validatedTtl === null) {
+    if (shareDisabled || validatedTtl === null || validatedMaxReads === null) {
       return;
     }
-    onShare(envInput, validatedTtl);
+    onShare(envInput, validatedTtl, validatedMaxReads);
   }
 </script>
 
@@ -76,21 +85,39 @@
 </section>
 
 <div class="controls">
-  <FieldLabel for="ttl" compact>ttl</FieldLabel>
-  <Slider
-    id="ttl"
-    bind:value={ttlSeconds}
-    min={MIN_TTL_SECONDS}
-    max={MAX_TTL_SECONDS}
-    step={60}
-    disabled={busy}
-  />
-  <Readout
-    text={formatExpiryLabel(ttlSeconds)}
-    sizer={LONGEST_EXPIRY_LABEL}
-    align="start"
-  />
-  <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
+  <div class="control-row">
+    <FieldLabel for="ttl" compact>ttl</FieldLabel>
+    <Slider
+      id="ttl"
+      bind:value={ttlSeconds}
+      min={MIN_TTL_SECONDS}
+      max={MAX_TTL_SECONDS}
+      step={60}
+      disabled={busy}
+    />
+    <Readout
+      text={formatExpiryLabel(ttlSeconds)}
+      sizer={LONGEST_EXPIRY_LABEL}
+      align="start"
+    />
+  </div>
+  <div class="control-row">
+    <FieldLabel for="reads" compact>reads</FieldLabel>
+    <Slider
+      id="reads"
+      bind:value={maxReads}
+      min={MIN_MAX_READS}
+      max={MAX_MAX_READS}
+      step={1}
+      disabled={busy}
+    />
+    <Readout
+      text={formatMaxReadsLabel(maxReads)}
+      sizer={LONGEST_READS_LABEL}
+      align="start"
+    />
+    <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
+  </div>
 </div>
 
 <StatusLine text={statusText} error={statusError} animated />
@@ -115,10 +142,15 @@
   .controls {
     --controls-band: 0.85rem;
     display: grid;
+    gap: 1rem;
+    margin: 0 0 1.25rem;
+  }
+
+  .control-row {
+    display: grid;
     grid-template-columns: auto 1fr auto auto;
     align-items: center;
     gap: 1rem;
-    margin: 0 0 1.25rem;
   }
 
   .controls :global(label.compact),

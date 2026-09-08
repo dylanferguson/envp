@@ -16,6 +16,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const defaultRemainingReads = 20
+
 var ErrNotFound = errors.New("share not found")
 
 type Share struct {
@@ -27,7 +29,8 @@ type Share struct {
 type Store struct {
 	db            *sql.DB
 	insert        *sql.Stmt
-	selectShare   *sql.Stmt
+	consumeShare  *sql.Stmt
+	peekShare     *sql.Stmt
 	deleteExpired *sql.Stmt
 	now           func() time.Time
 }
@@ -66,22 +69,39 @@ func (s *Store) init(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS shares (
 			id TEXT PRIMARY KEY,
 			envelope BLOB NOT NULL,
-			expires_at INTEGER NOT NULL
+			expires_at INTEGER NOT NULL,
+			remaining_reads INTEGER NOT NULL
 		) STRICT;
 		CREATE INDEX IF NOT EXISTS shares_expires_at ON shares (expires_at);
 	`)
 	if err != nil {
 		return fmt.Errorf("initialize shares: %w", err)
 	}
-	s.insert, err = s.db.PrepareContext(ctx, "INSERT INTO shares (id, envelope, expires_at) VALUES (?, ?, ?)")
+	var columnCount int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('shares') WHERE name = 'remaining_reads'`).Scan(&columnCount); err != nil {
+		return fmt.Errorf("check remaining_reads column: %w", err)
+	}
+	if columnCount == 0 {
+		if _, err := s.db.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE shares ADD COLUMN remaining_reads INTEGER NOT NULL DEFAULT %d`, defaultRemainingReads)); err != nil {
+			return fmt.Errorf("add remaining_reads column: %w", err)
+		}
+	}
+	s.insert, err = s.db.PrepareContext(ctx, "INSERT INTO shares (id, envelope, expires_at, remaining_reads) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return fmt.Errorf("prepare create: %w", err)
 	}
-	s.selectShare, err = s.db.PrepareContext(ctx, "SELECT envelope, expires_at FROM shares WHERE id = ? AND expires_at > ?")
+	s.consumeShare, err = s.db.PrepareContext(ctx, `
+		UPDATE shares SET remaining_reads = remaining_reads - 1
+		WHERE id = ? AND expires_at > ? AND remaining_reads > 0
+		RETURNING envelope, expires_at`)
 	if err != nil {
-		return fmt.Errorf("prepare read: %w", err)
+		return fmt.Errorf("prepare consume: %w", err)
 	}
-	s.deleteExpired, err = s.db.PrepareContext(ctx, "DELETE FROM shares WHERE id IN (SELECT id FROM shares WHERE expires_at <= ? LIMIT 500)")
+	s.peekShare, err = s.db.PrepareContext(ctx, "SELECT 1 FROM shares WHERE id = ? AND expires_at > ? AND remaining_reads > 0")
+	if err != nil {
+		return fmt.Errorf("prepare peek: %w", err)
+	}
+	s.deleteExpired, err = s.db.PrepareContext(ctx, "DELETE FROM shares WHERE id IN (SELECT id FROM shares WHERE expires_at <= ? OR remaining_reads <= 0 LIMIT 500)")
 	if err != nil {
 		return fmt.Errorf("prepare sweep: %w", err)
 	}
@@ -101,31 +121,43 @@ func (s *Store) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration) (Share, error) {
+func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration, maxReads int) (Share, error) {
 	now := s.now()
 	id, err := ulid.New(ulid.Timestamp(now), rand.Reader)
 	if err != nil {
 		return Share{}, fmt.Errorf("generate share ID: %w", err)
 	}
 	share := Share{ID: id.String(), Envelope: envelope, ExpiresAt: now.Add(ttl).Truncate(time.Millisecond)}
-	if _, err := s.insert.ExecContext(ctx, share.ID, share.Envelope, share.ExpiresAt.UnixMilli()); err != nil {
+	if _, err := s.insert.ExecContext(ctx, share.ID, share.Envelope, share.ExpiresAt.UnixMilli(), maxReads); err != nil {
 		return Share{}, fmt.Errorf("create share: %w", err)
 	}
 	return share, nil
 }
 
-func (s *Store) Read(ctx context.Context, id string) (Share, error) {
+func (s *Store) Consume(ctx context.Context, id string) (Share, error) {
 	share := Share{ID: id}
 	var expiresAt int64
-	err := s.selectShare.QueryRowContext(ctx, id, s.now().UnixMilli()).Scan(&share.Envelope, &expiresAt)
+	err := s.consumeShare.QueryRowContext(ctx, id, s.now().UnixMilli()).Scan(&share.Envelope, &expiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Share{}, ErrNotFound
 	}
 	if err != nil {
-		return Share{}, fmt.Errorf("read share: %w", err)
+		return Share{}, fmt.Errorf("consume share: %w", err)
 	}
 	share.ExpiresAt = time.UnixMilli(expiresAt)
 	return share, nil
+}
+
+func (s *Store) Peek(ctx context.Context, id string) error {
+	var one int
+	err := s.peekShare.QueryRowContext(ctx, id, s.now().UnixMilli()).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("peek share: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) Sweep(ctx context.Context) (int64, error) {

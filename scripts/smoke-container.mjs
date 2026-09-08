@@ -53,7 +53,7 @@ try {
   const create = await fetch(`${baseURL}/api/v1/shares`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ttl_seconds: 60, envelope: "AQID_w" }),
+    body: JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }),
   });
   assert.equal(create.status, 201);
   const { id } = await create.json();

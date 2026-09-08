@@ -1,7 +1,7 @@
 <script lang="ts">
   import "../../app.css";
   import { onMount, tick } from "svelte";
-  import type { TtlSeconds } from "../../lib/limits.js";
+  import type { MaxReads, TtlSeconds } from "../../lib/limits.js";
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
@@ -37,10 +37,11 @@
   const isDone = $derived(isCreateDone(state));
   const isBusy = $derived(isCreateBusy(state));
 
-  async function onShare(envInput: string, ttlSeconds: TtlSeconds): Promise<void> {
+  async function onShare(envInput: string, ttlSeconds: TtlSeconds, maxReads: MaxReads): Promise<void> {
     const outcome = await runShareFlow(
       envInput,
       ttlSeconds,
+      maxReads,
       location.origin,
       (progress) => {
         state = applyShareProgress(progress);
@@ -132,6 +133,7 @@
             bind:this={createDone}
             url={state.url}
             expiresAt={state.expiresAt}
+            maxReads={state.maxReads}
             copied={state.copied}
             onCopy={copyShareLink}
             onAgain={onAgain}

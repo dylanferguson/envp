@@ -21,8 +21,9 @@ test.describe("create share", () => {
     await page.getByRole("button", { name: "share" }).click();
 
     const request = await post;
-    const body = request.postDataJSON() as { envelope: string };
+    const body = request.postDataJSON() as { envelope: string; max_reads: number };
 
+    expect(body.max_reads).toBe(20);
     expect(JSON.stringify(body)).not.toContain("e2e-secret");
     const envelope = decodeBase64Url(body.envelope);
     expect(envelope.subarray(0, ENVS_MAGIC.length)).toEqual(ENVS_MAGIC);
@@ -62,12 +63,15 @@ test.describe("create share", () => {
 
   test("starts a new share from the done screen", async ({ page }) => {
     await page.getByRole("slider", { name: "ttl", exact: true }).fill("7200");
+    await page.getByRole("slider", { name: "reads", exact: true }).fill("50");
     const post = page.waitForRequest(
       (request) => request.method() === "POST" && request.url().includes("/api/v1/shares"),
     );
     await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
     await page.getByRole("button", { name: "share" }).click();
-    expect((await post).postDataJSON().ttl_seconds).toBe(7200);
+    const body = (await post).postDataJSON() as { ttl_seconds: number; max_reads: number };
+    expect(body.ttl_seconds).toBe(7200);
+    expect(body.max_reads).toBe(50);
     await expect(page.getByRole("textbox", { name: "share link" })).toBeVisible();
 
     await page.getByRole("button", { name: "share again" }).click();
@@ -76,5 +80,6 @@ test.describe("create share", () => {
     await expect(page.getByRole("textbox", { name: "paste your .env" })).toHaveValue("");
     await expect(page.getByRole("button", { name: "share" })).toBeDisabled();
     await expect(page.getByRole("slider", { name: "ttl", exact: true })).toHaveValue("7200");
+    await expect(page.getByRole("slider", { name: "reads", exact: true })).toHaveValue("50");
   });
 });

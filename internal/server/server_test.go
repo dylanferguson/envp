@@ -83,13 +83,16 @@ func assertError(t *testing.T, w *httptest.ResponseRecorder, status int, code, m
 func TestCreateReadContract(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	before := time.Now().UnixMilli()
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"envelope":"AQID_w"}`)
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":20,"envelope":"AQID_w"}`)
 	if w.Code != 201 {
 		t.Fatalf("create: %d %s", w.Code, w.Body)
 	}
-	var created shareResponse
+	var created createShareResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
+	}
+	if created.MaxReads != 20 {
+		t.Fatalf("max_reads: %d", created.MaxReads)
 	}
 	if created.ExpiresAt < before+3600000 || created.ExpiresAt > time.Now().UnixMilli()+3600000 {
 		t.Fatalf("expiry: %d", created.ExpiresAt)
@@ -104,12 +107,15 @@ func TestCreateReadContract(t *testing.T) {
 	if w.Code != 200 {
 		t.Fatalf("read: %d %s", w.Code, w.Body)
 	}
-	var read shareResponse
+	var read getShareResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &read); err != nil {
 		t.Fatal(err)
 	}
 	if read.ID != created.ID || read.ExpiresAt != created.ExpiresAt || read.Envelope != "AQID_w" {
 		t.Fatalf("read: %+v", read)
+	}
+	if strings.Contains(w.Body.String(), "max_reads") {
+		t.Fatal("read returned max_reads")
 	}
 	if w.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal("missing no-store")
@@ -119,13 +125,24 @@ func TestCreateReadContract(t *testing.T) {
 func TestRequestValidation(t *testing.T) {
 	for _, body := range []string{
 		`null`, `[]`, `{}`, `{`, `{} {}`,
-		`{"ttl_seconds":30,"envelope":"AQ"}`, `{"ttl_seconds":86401,"envelope":"AQ"}`,
-		`{"ttl_seconds":60.1,"envelope":"AQ"}`, `{"ttl_seconds":[60],"envelope":"AQ"}`,
-		`{"ttl_seconds":true,"envelope":"AQ"}`, `{"ttl_seconds":null,"envelope":"AQ"}`,
-		`{"ttl_seconds":"3600","envelope":"AQ"}`, `{"ttl_seconds":60.0,"envelope":"AQ"}`,
-		`{"ttl_seconds":6e1,"envelope":"AQ"}`,
-		`{"ttl_seconds":"NaN","envelope":"AQ"}`, `{"ttl_seconds":60,"envelope":""}`,
-		`{"ttl_seconds":60,"envelope":12}`, `{"ttl_seconds":60,"envelope":"!AQ"}`,
+		`{"ttl_seconds":30,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":86401,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":60.1,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":[60],"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":true,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":null,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":"3600","max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":60.0,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":6e1,"max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":"NaN","max_reads":20,"envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":20,"envelope":""}`,
+		`{"ttl_seconds":60,"max_reads":20,"envelope":12}`,
+		`{"ttl_seconds":60,"max_reads":20,"envelope":"!AQ"}`,
+		`{"ttl_seconds":60,"envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":0,"envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":101,"envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":20.5,"envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":"20","envelope":"AQ"}`,
 	} {
 		t.Run(body, func(t *testing.T) {
 			h, _ := testServer(t, Config{})
@@ -134,7 +151,7 @@ func TestRequestValidation(t *testing.T) {
 	}
 	for _, ttl := range []string{`60`, `3600`, `86400`} {
 		h, _ := testServer(t, Config{})
-		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":`+ttl+`,"envelope":"AQ","extra":true}`)
+		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":`+ttl+`,"max_reads":20,"envelope":"AQ","extra":true}`)
 		if w.Code != 201 {
 			t.Errorf("TTL %s: %d %s", ttl, w.Code, w.Body)
 		}
@@ -144,7 +161,7 @@ func TestRequestValidation(t *testing.T) {
 func TestBodyAndEnvelopeLimits(t *testing.T) {
 	for _, size := range []int{maxEnvelopeBytes, maxEnvelopeBytes + 1} {
 		h, _ := testServer(t, Config{})
-		body, _ := json.Marshal(map[string]any{"ttl_seconds": 60, "envelope": base64.RawURLEncoding.EncodeToString(make([]byte, size))})
+		body, _ := json.Marshal(map[string]any{"ttl_seconds": 60, "max_reads": 20, "envelope": base64.RawURLEncoding.EncodeToString(make([]byte, size))})
 		w := request(h, "POST", "/api/v1/shares", string(body))
 		if size == maxEnvelopeBytes && w.Code != 201 {
 			t.Fatalf("at limit: %d %s", w.Code, w.Body)
@@ -165,7 +182,7 @@ func TestBodyAndEnvelopeLimits(t *testing.T) {
 
 func TestOversizedContentLength(t *testing.T) {
 	h, _ := testServer(t, Config{})
-	r := httptest.NewRequest("POST", "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`))
+	r := httptest.NewRequest("POST", "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
 	r.ContentLength = maxCreateJSONBytes + 1
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -174,7 +191,7 @@ func TestOversizedContentLength(t *testing.T) {
 
 func TestUnknownExpiredAndInvalidIDs(t *testing.T) {
 	h, db := testServer(t, Config{})
-	expired, err := db.Create(t.Context(), []byte{1}, -time.Minute)
+	expired, err := db.Create(t.Context(), []byte{1}, -time.Minute, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +216,7 @@ func TestOrigin(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h, _ := testServer(t, tc.cfg)
-			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`))
+			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
 			r.Header.Set("Origin", tc.origin)
 			r.Header.Set("X-Forwarded-Proto", tc.forwarded)
 			w := httptest.NewRecorder()
@@ -216,12 +233,12 @@ func TestOrigin(t *testing.T) {
 func TestRateLimits(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	for range 15 {
-		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"envelope":"AQ"}`)
+		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
 		if w.Code != 201 {
 			t.Fatalf("create: %d", w.Code)
 		}
 	}
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"envelope":"AQ"}`)
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
 	assertError(t, w, 429, "rate_limited", "Too many requests. Try again later.")
 	if w.Header().Get("Retry-After") != "20" {
 		t.Fatalf("retry: %s", w.Header().Get("Retry-After"))
@@ -271,7 +288,7 @@ func TestStorageFailureIsGeneric(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"envelope":"AQ"}`)
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
 	assertError(t, w, 500, "internal_error", "The request could not be processed.")
 }
 
@@ -282,7 +299,7 @@ func TestConcurrentHTTPWrites(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", bytes.NewBufferString(`{"ttl_seconds":60,"envelope":"AQID"}`))
+			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", bytes.NewBufferString(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQID"}`))
 			r.Header.Set("X-Forwarded-For", "192.0.2."+strconv.Itoa(i+1))
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, r)
@@ -318,7 +335,7 @@ func TestObservabilityEndpoints(t *testing.T) {
 		t.Fatalf("ops and asset hits counted: %s", body)
 	}
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`)))
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)))
 	if w.Code != 201 {
 		t.Fatalf("create: %d", w.Code)
 	}
@@ -332,6 +349,53 @@ func TestObservabilityEndpoints(t *testing.T) {
 	if !strings.Contains(body, `http_requests_total{route="static",status_class="2xx"} 1`) {
 		t.Fatalf("home not counted as static: %s", body)
 	}
+}
+
+func TestHeadDoesNotConsume(t *testing.T) {
+	h, _ := testServer(t, Config{})
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":1,"envelope":"AQID_w"}`)
+	if w.Code != 201 {
+		t.Fatalf("create: %d %s", w.Code, w.Body)
+	}
+	var created createShareResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	for range 5 {
+		r := httptest.NewRequest(http.MethodHead, "http://localhost/api/v1/shares/"+created.ID, nil)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		if rec.Code != 200 || rec.Body.Len() != 0 {
+			t.Fatalf("HEAD: %d %s", rec.Code, rec.Body)
+		}
+	}
+	w = request(h, "GET", "/api/v1/shares/"+created.ID, "")
+	if w.Code != 200 {
+		t.Fatalf("GET: %d %s", w.Code, w.Body)
+	}
+	assertError(t, request(h, "GET", "/api/v1/shares/"+created.ID, ""), 404, "not_found", "Share not found.")
+}
+
+func TestExhaustedLooksMissing(t *testing.T) {
+	h, _ := testServer(t, Config{})
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":1,"envelope":"AQID_w"}`)
+	if w.Code != 201 {
+		t.Fatalf("create: %d %s", w.Code, w.Body)
+	}
+	var created createShareResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	w = request(h, "GET", "/api/v1/shares/"+created.ID, "")
+	if w.Code != 200 {
+		t.Fatalf("GET: %d %s", w.Code, w.Body)
+	}
+	exhausted := request(h, "GET", "/api/v1/shares/"+created.ID, "")
+	unknown := request(h, "GET", "/api/v1/shares/00000000000000000000000000", "")
+	if exhausted.Code != unknown.Code || exhausted.Body.String() != unknown.Body.String() {
+		t.Fatalf("exhausted %d %s != unknown %d %s", exhausted.Code, exhausted.Body, unknown.Code, unknown.Body)
+	}
+	assertError(t, exhausted, 404, "not_found", "Share not found.")
 }
 
 func TestOriginWarnNoOriginField(t *testing.T) {
@@ -350,7 +414,7 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"envelope":"AQ"}`))
+	r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
 	r.Header.Set("Origin", "http://evil.example")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)

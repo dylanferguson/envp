@@ -8,7 +8,7 @@ export type CreateState =
   | { phase: "idle" }
   | { phase: "encrypting" }
   | { phase: "uploading"; bytes: number }
-  | { phase: "done"; url: string; copied: boolean; expiresAt: number }
+  | { phase: "done"; url: string; copied: boolean; expiresAt: number; maxReads: number }
   | { phase: "error"; at: "encrypt" | "send" | "link"; message: string };
 
 const READINGS: Record<CreateState["phase"], Reading<CreateStep>> = {
