@@ -67,10 +67,6 @@ func New(opts Options) (*Recorder, error) {
 	if now == nil {
 		now = time.Now
 	}
-	releaseID := opts.ReleaseID
-	if releaseID == "" {
-		releaseID = "unknown"
-	}
 
 	reg := prometheus.NewRegistry()
 	requests := prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -111,7 +107,7 @@ func New(opts Options) (*Recorder, error) {
 			timeout: timeout,
 			now:     now,
 		},
-		releaseID: releaseID,
+		releaseID: opts.ReleaseID,
 		now:       now,
 	}, nil
 }

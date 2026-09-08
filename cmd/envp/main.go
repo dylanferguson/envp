@@ -20,6 +20,8 @@ import (
 	"github.com/dylanferguson/envp/internal/webui"
 )
 
+var commit = "unknown"
+
 type config struct {
 	port    int
 	obsPort int
@@ -111,8 +113,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 			logger.Error("close database", "error", err)
 		}
 	}()
-	releaseID := resolveCommit(commit, vcsRevision())
-	rec, err := obs.New(obs.Options{DB: db.Ping, ReleaseID: releaseID})
+	id := commit
+	if len(id) > 7 {
+		id = id[:7]
+	}
+	rec, err := obs.New(obs.Options{DB: db.Ping, ReleaseID: id})
 	if err != nil {
 		return err
 	}
@@ -147,7 +152,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	serveErr := make(chan error, 2)
 	go func() { serveErr <- publicServer.Serve(publicLn) }()
 	go func() { serveErr <- obsServer.Serve(obsLn) }()
-	logger.Info("listening", "address", publicLn.Addr().String(), "obs", obsLn.Addr().String(), "commit", releaseID)
+	logger.Info("listening", "address", publicLn.Addr().String(), "obs", obsLn.Addr().String())
 	select {
 	case err := <-serveErr:
 		shutdownErr := shutdownHTTP(publicServer, obsServer)
