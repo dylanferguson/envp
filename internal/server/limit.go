@@ -10,12 +10,7 @@ import (
 	"time"
 
 	"github.com/sethvargo/go-limiter"
-	"github.com/sethvargo/go-limiter/memorystore"
 )
-
-func perIP(tokens uint64, interval time.Duration) (limiter.Store, error) {
-	return memorystore.New(&memorystore.Config{Tokens: tokens, Interval: interval})
-}
 
 func (s *server) limit(store limiter.Store, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

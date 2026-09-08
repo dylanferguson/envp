@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"net/url"
@@ -277,5 +278,25 @@ func TestLegacySchemaUpgrade(t *testing.T) {
 	read, err := s.Consume(t.Context(), "01ARZ3NDEKTSV4RRFFQ69G5FAV")
 	if err != nil || !bytes.Equal(read.Envelope, []byte{1, 2, 3}) {
 		t.Fatalf("consume after upgrade: %+v, %v", read, err)
+	}
+}
+
+func TestSweepEveryStopsWithoutCallback(t *testing.T) {
+	s := testStore(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	called := false
+	done := make(chan struct{})
+	go func() {
+		s.SweepEvery(ctx, time.Hour, func(int64, error) { called = true })
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("SweepEvery did not stop")
+	}
+	if called {
+		t.Fatal("callback ran after cancel")
 	}
 }

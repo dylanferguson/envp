@@ -188,9 +188,10 @@ func (s *Store) SweepEvery(ctx context.Context, every time.Duration, after func(
 			return
 		case <-ticker.C:
 			n, err := s.Sweep(ctx)
-			if after != nil {
-				after(n, err)
+			if err != nil && ctx.Err() != nil {
+				return
 			}
+			after(n, err)
 		}
 	}
 }

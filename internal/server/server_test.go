@@ -38,11 +38,16 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 			t.Error(err)
 		}
 	})
-	rec := metrics.New(db.Ping, "")
+	rec := metrics.New()
 	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := handler.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	return handler, db
 }
 
@@ -330,12 +335,13 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	rec := metrics.New(db.Ping, "")
+	rec := metrics.New()
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
 	h, err := New(db, testFiles, Config{}, logger, rec)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = h.Close() })
 	r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
 	r.Header.Set("Origin", "http://evil.example")
 	w := httptest.NewRecorder()

@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,22 +19,18 @@ const (
 )
 
 type Recorder struct {
-	ping      func(context.Context) error
-	releaseID string
-	requests  *prometheus.CounterVec
-	duration  *prometheus.HistogramVec
-	limited   *prometheus.CounterVec
-	created   prometheus.Counter
-	swept     prometheus.Counter
-	handler   http.Handler
+	requests *prometheus.CounterVec
+	duration *prometheus.HistogramVec
+	limited  *prometheus.CounterVec
+	created  prometheus.Counter
+	swept    prometheus.Counter
+	handler  http.Handler
 }
 
-func New(ping func(context.Context) error, releaseID string) *Recorder {
+func New() *Recorder {
 	reg := prometheus.NewRegistry()
 	auto := promauto.With(reg)
 	rec := &Recorder{
-		ping:      ping,
-		releaseID: releaseID,
 		requests: auto.NewCounterVec(prometheus.CounterOpts{
 			Name: "http_requests_total", Help: "HTTP requests by route and status class.",
 		}, []string{"route", "status_class"}),
@@ -52,10 +46,7 @@ func New(ping func(context.Context) error, releaseID string) *Recorder {
 	}
 	rec.limited.WithLabelValues(string(RouteCreate)).Add(0)
 	rec.limited.WithLabelValues(string(RouteGet)).Add(0)
-	mux := http.NewServeMux()
-	mux.Handle("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	mux.HandleFunc("GET /health", rec.health)
-	rec.handler = mux
+	rec.handler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	return rec
 }
 
@@ -71,22 +62,12 @@ func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
-		defer func() {
-			p := recover()
-			status := sw.status
-			if status == 0 {
-				if p != nil {
-					status = http.StatusInternalServerError
-				} else {
-					status = http.StatusOK
-				}
-			}
-			r.observe(route, status, time.Since(start))
-			if p != nil {
-				panic(p)
-			}
-		}()
 		next.ServeHTTP(sw, req)
+		status := sw.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		r.observe(route, status, time.Since(start))
 	})
 }
 
@@ -101,18 +82,6 @@ func (r *Recorder) observe(route Route, status int, took time.Duration) {
 	if status == http.StatusTooManyRequests {
 		r.limited.WithLabelValues(string(route)).Inc()
 	}
-}
-
-func (r *Recorder) health(w http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
-	defer cancel()
-	status, code := "pass", http.StatusOK
-	if r.ping(ctx) != nil {
-		status, code = "fail", http.StatusServiceUnavailable
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, _ = fmt.Fprintf(w, `{"status":%q,"releaseId":%q}`, status, r.releaseID)
 }
 
 type statusWriter struct {

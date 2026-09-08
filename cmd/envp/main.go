@@ -121,7 +121,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if len(id) > 7 {
 		id = id[:7]
 	}
-	rec := metrics.New(db.Ping, id)
+	rec := metrics.New()
 	if n, err := db.Sweep(startup); err != nil {
 		return err
 	} else {
@@ -131,6 +131,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := handler.Close(); err != nil {
+			logger.Error("close limiters", "error", err)
+		}
+	}()
 	publicLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.port)))
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
@@ -140,8 +145,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		_ = publicLn.Close()
 		return fmt.Errorf("listen internal: %w", err)
 	}
+	internal := http.NewServeMux()
+	internal.Handle("GET /metrics", rec.Handler())
+	internal.HandleFunc("GET /health", health(db.Ping, id))
 	publicServer := newHTTPServer(handler, logger)
-	internalServer := newHTTPServer(rec.Handler(), logger)
+	internalServer := newHTTPServer(internal, logger)
 	maintenance, stopMaintenance := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -149,9 +157,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		defer wg.Done()
 		db.SweepEvery(maintenance, time.Minute, func(n int64, err error) {
 			if err != nil {
-				if ctx.Err() == nil {
-					logger.Error("sweep failed", "error", err)
-				}
+				logger.Error("sweep failed", "error", err)
 				return
 			}
 			rec.Swept(n)
@@ -173,6 +179,18 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 	logger.Info("shutting down")
 	return shutdownHTTP(publicServer, internalServer)
+}
+
+func health(ping func(context.Context) error, releaseID string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		status, code := "pass", http.StatusOK
+		if ping(req.Context()) != nil {
+			status, code = "fail", http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_, _ = fmt.Fprintf(w, `{"status":%q,"releaseId":%q}`, status, releaseID)
+	}
 }
 
 func newHTTPServer(handler http.Handler, logger *slog.Logger) *http.Server {
