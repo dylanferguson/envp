@@ -75,7 +75,7 @@ func assertError(t *testing.T, w *httptest.ResponseRecorder, status int, code, m
 	if body.Error.Code != code || body.Error.Message != message {
 		t.Fatalf("error = %+v", body.Error)
 	}
-	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+	if w.Header().Get("X-Content-Type-Options") != "nosniff" || w.Header().Get("X-Robots-Tag") != "noindex, nofollow" {
 		t.Error("missing security headers")
 	}
 }
@@ -243,13 +243,14 @@ func TestStaticFiles(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	for _, tc := range []struct{ path, content, cache string }{
 		{"/", "Create", "no-cache"}, {"/open", "Open", "no-cache"}, {"/share/any-id", "Open", "no-cache"},
+		{"/robots.txt", "Disallow: /", "public, max-age=86400"},
 		{"/assets/app-123.js", "console.log", "public, max-age=31536000, immutable"}, {"/favicon.ico", "", ""},
 	} {
 		w := request(h, "GET", tc.path, "")
 		if w.Code != 200 || !strings.Contains(w.Body.String(), tc.content) || w.Header().Get("Cache-Control") != tc.cache {
 			t.Errorf("%s: %d %s %v", tc.path, w.Code, w.Body, w.Header())
 		}
-		if w.Header().Get("Referrer-Policy") != "no-referrer" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") {
+		if w.Header().Get("Referrer-Policy") != "no-referrer" || w.Header().Get("X-Robots-Tag") != "noindex, nofollow" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") {
 			t.Errorf("security headers: %s", tc.path)
 		}
 		w = request(h, "HEAD", tc.path, "")
@@ -311,8 +312,10 @@ func TestObservabilityEndpoints(t *testing.T) {
 			t.Fatalf("%s: status = %d", path, w.Code)
 		}
 	}
-	if w := request(h, "GET", "/favicon.ico", ""); w.Code != 200 {
-		t.Fatalf("favicon: %d", w.Code)
+	for _, path := range []string{"/favicon.ico", "/robots.txt"} {
+		if w := request(h, "GET", path, ""); w.Code != 200 {
+			t.Fatalf("%s: %d", path, w.Code)
+		}
 	}
 	if body := scrape(); strings.Contains(body, "http_requests_total") {
 		t.Fatalf("ops and asset hits counted: %s", body)
