@@ -28,7 +28,7 @@ func TestConfig(t *testing.T) {
 			t.Setenv("INTERNAL_PORT", "9090")
 			t.Setenv("DB_PATH", "./data/shares.db")
 			t.Setenv("PUBLIC_ORIGIN", "")
-			t.Setenv("TRUST_PROXY", "")
+			t.Setenv("LISTEN_HOST", "")
 			t.Setenv(tc.key, tc.value)
 			cfg, err := loadConfig()
 			if (err == nil) != tc.valid {

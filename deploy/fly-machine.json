@@ -1,0 +1,55 @@
+{
+  "volumes": [
+    {
+      "name": "envp_data"
+    }
+  ],
+  "containers": [
+    {
+      "name": "envp",
+      "image": "envp:go-scratch",
+      "mounts": [
+        {
+          "name": "envp_data",
+          "path": "/data"
+        }
+      ],
+      "healthchecks": [
+        {
+          "http": {
+            "port": 9090,
+            "method": "GET",
+            "path": "/health",
+            "scheme": "http"
+          },
+          "grace_period": 10,
+          "interval": 30,
+          "timeout": 3
+        }
+      ]
+    },
+    {
+      "name": "nginx",
+      "image": "registry.fly.io/envp:nginx",
+      "depends_on": [
+        {
+          "name": "envp",
+          "condition": "healthy"
+        }
+      ],
+      "healthchecks": [
+        {
+          "http": {
+            "port": 8080,
+            "method": "GET",
+            "path": "/",
+            "scheme": "http"
+          },
+          "grace_period": 10,
+          "interval": 30,
+          "timeout": 3
+        }
+      ]
+    }
+  ]
+}

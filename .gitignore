@@ -1,6 +1,5 @@
 node_modules/
 dist/
-internal/webui/client/
 data/
 test-results/
 playwright-report/

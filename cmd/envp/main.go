@@ -17,7 +17,6 @@ import (
 	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/server"
 	"github.com/dylanferguson/envp/internal/store"
-	"github.com/dylanferguson/envp/internal/webui"
 )
 
 var commit = "unknown"
@@ -25,6 +24,7 @@ var commit = "unknown"
 type config struct {
 	port         int
 	internalPort int
+	listenHost   string
 	dbPath       string
 	http         server.Config
 }
@@ -85,7 +85,7 @@ func loadConfig() (config, error) {
 		return c, err
 	}
 	c.http.PublicOrigin = origin
-	c.http.TrustProxy = os.Getenv("TRUST_PROXY") == "true"
+	c.listenHost = os.Getenv("LISTEN_HOST")
 	return c, nil
 }
 
@@ -127,16 +127,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	} else {
 		rec.Swept(n)
 	}
-	handler, err := server.New(db, webui.Files(), cfg.http, logger, rec)
+	handler, err := server.New(db, cfg.http, logger, rec)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := handler.Close(); err != nil {
-			logger.Error("close limiters", "error", err)
-		}
-	}()
-	publicLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.port)))
+	publicLn, err := net.Listen("tcp", net.JoinHostPort(cfg.listenHost, strconv.Itoa(cfg.port)))
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}

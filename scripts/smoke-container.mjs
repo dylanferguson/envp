@@ -17,17 +17,17 @@ const container = docker(
   image,
 );
 
-async function ready(baseURL) {
+async function ready(healthURL) {
   for (let attempt = 0; attempt < 50; attempt++) {
     try {
-      const response = await fetch(baseURL, { signal: AbortSignal.timeout(1000) });
-      if (response.ok) return response;
+      const response = await fetch(healthURL, { signal: AbortSignal.timeout(1000) });
+      if (response.ok) return;
     } catch {
       // The process may still be starting or draining connections after restart.
     }
     await setTimeout(100);
   }
-  throw new Error(`Container did not become ready at ${baseURL}`);
+  throw new Error(`Container did not become ready at ${healthURL}`);
 }
 
 function publishedURL(containerPort) {
@@ -37,8 +37,7 @@ function publishedURL(containerPort) {
 try {
   const baseURL = publishedURL(8080);
   const internalURL = publishedURL(9090);
-  const html = await ready(baseURL);
-  assert.match(await html.text(), /<html/);
+  await ready(`${internalURL}/health`);
 
   const publicHealth = await fetch(`${baseURL}/health`);
   assert.equal(publicHealth.status, 404);
@@ -66,7 +65,7 @@ try {
 
   docker("restart", "--time", "15", container);
   const afterRestart = publishedURL(8080);
-  await ready(afterRestart);
+  await ready(`${publishedURL(9090)}/health`);
   const read = await fetch(`${afterRestart}/api/v1/shares/${id}`);
   assert.equal(read.status, 200);
 

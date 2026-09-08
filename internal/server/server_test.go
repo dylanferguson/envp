@@ -9,23 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 )
-
-var testFiles = fstest.MapFS{
-	"index.html":        {Data: []byte("<!doctype html><title>Create</title>")},
-	"open.html":         {Data: []byte("<!doctype html><title>Open</title>")},
-	"assets/app-123.js": {Data: []byte("console.log('test')")},
-	"favicon.ico":       {Data: []byte{1, 2, 3}},
-}
 
 func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 	t.Helper()
@@ -39,15 +30,10 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 		}
 	})
 	rec := metrics.New()
-	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
+	handler, err := New(db, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := handler.Close(); err != nil {
-			t.Error(err)
-		}
-	})
 	return handler, db
 }
 
@@ -181,7 +167,6 @@ func TestOrigin(t *testing.T) {
 		{"explicit origin", "https://example.com", "", Config{PublicOrigin: "https://example.com"}, 201},
 		{"canonical origin", "https://example.com", "", Config{PublicOrigin: "https://Example.com:443"}, 201},
 		{"untrusted protocol", "https://localhost", "https", Config{}, 403},
-		{"trusted protocol", "https://localhost", "https", Config{TrustProxy: true}, 201},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h, _ := testServer(t, tc.cfg)
@@ -199,58 +184,9 @@ func TestOrigin(t *testing.T) {
 	}
 }
 
-func TestRateLimits(t *testing.T) {
+func TestUnknownAPIRoute(t *testing.T) {
 	h, _ := testServer(t, Config{})
-	for range 15 {
-		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
-		if w.Code != 201 {
-			t.Fatalf("create: %d", w.Code)
-		}
-	}
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
-	assertError(t, w, 429, "rate_limited", "Too many requests. Try again later.")
-	if w.Header().Get("Retry-After") != "20" {
-		t.Fatalf("retry: %s", w.Header().Get("Retry-After"))
-	}
-	// Failed reads spend the independent read allowance too.
-	for range 30 {
-		if w := request(h, "GET", "/api/v1/shares/invalid", ""); w.Code != 404 {
-			t.Fatalf("read: %d", w.Code)
-		}
-	}
-	w = request(h, "GET", "/api/v1/shares/invalid", "")
-	assertError(t, w, 429, "rate_limited", "Too many requests. Try again later.")
-	if w.Header().Get("Retry-After") != "1" {
-		t.Fatal("missing read Retry-After")
-	}
-}
-
-func TestStaticFiles(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	for _, tc := range []struct{ path, content, cache string }{
-		{"/", "Create", "no-cache"}, {"/open", "Open", "no-cache"}, {"/share/any-id", "Open", "no-cache"},
-		{"/robots.txt", "Disallow: /", "public, max-age=86400"},
-		{"/assets/app-123.js", "console.log", "public, max-age=31536000, immutable"}, {"/favicon.ico", "", ""},
-	} {
-		w := request(h, "GET", tc.path, "")
-		if w.Code != 200 || !strings.Contains(w.Body.String(), tc.content) || w.Header().Get("Cache-Control") != tc.cache {
-			t.Errorf("%s: %d %s %v", tc.path, w.Code, w.Body, w.Header())
-		}
-		if w.Header().Get("Referrer-Policy") != "no-referrer" || w.Header().Get("X-Robots-Tag") != "noindex, nofollow" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") {
-			t.Errorf("security headers: %s", tc.path)
-		}
-		w = request(h, "HEAD", tc.path, "")
-		if w.Code != 200 || w.Body.Len() != 0 {
-			t.Errorf("HEAD %s: %d %s", tc.path, w.Code, w.Body)
-		}
-	}
-	for _, path := range []string{"/assets/", "/assets/missing.js", "/missing", "/../go.mod", "/api/v1/missing"} {
-		w := request(h, "GET", path, "")
-		assertError(t, w, 404, "not_found", "Not found.")
-		if strings.Contains(w.Header().Get("Cache-Control"), "immutable") {
-			t.Errorf("%s: immutable cache on 404", path)
-		}
-	}
+	assertError(t, request(h, "GET", "/api/v1/missing", ""), 404, "not_found", "Not found.")
 }
 
 func TestStorageFailureIsGeneric(t *testing.T) {
@@ -263,14 +199,13 @@ func TestStorageFailureIsGeneric(t *testing.T) {
 }
 
 func TestConcurrentHTTPWrites(t *testing.T) {
-	h, _ := testServer(t, Config{TrustProxy: true})
+	h, _ := testServer(t, Config{})
 	var wg sync.WaitGroup
-	for i := range 50 {
+	for range 50 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", bytes.NewBufferString(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQID"}`))
-			r.Header.Set("X-Forwarded-For", "192.0.2."+strconv.Itoa(i+1))
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, r)
 			if w.Code != 201 {
@@ -337,11 +272,10 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 	defer func() { _ = db.Close() }()
 	rec := metrics.New()
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
-	h, err := New(db, testFiles, Config{}, logger, rec)
+	h, err := New(db, Config{}, logger, rec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = h.Close() })
 	r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
 	r.Header.Set("Origin", "http://evil.example")
 	w := httptest.NewRecorder()
