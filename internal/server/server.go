@@ -23,15 +23,12 @@ import (
 )
 
 const (
-	minTTLSeconds       = 60
-	maxTTLSeconds       = 86400
-	minMaxReads         = 1
-	maxMaxReads         = 100
-	maxPlaintextBytes   = 65536
-	envelopeHeaderBytes = 18
-	gcmTagBytes         = 16
-	maxEnvelopeBytes    = envelopeHeaderBytes + maxPlaintextBytes + gcmTagBytes
-	maxCreateJSONBytes  = 64 + (maxEnvelopeBytes*4+2)/3
+	minTTLSeconds      = 60
+	maxTTLSeconds      = 86400
+	minMaxReads        = 1
+	maxMaxReads        = 100
+	maxShareBytes      = 65570
+	maxCreateJSONBytes = 64 + (maxShareBytes*4+2)/3
 )
 
 type Config struct {
@@ -170,7 +167,7 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	envelope, err := base64.RawURLEncoding.DecodeString(req.Envelope)
-	if err != nil || len(envelope) == 0 || len(envelope) > maxEnvelopeBytes {
+	if err != nil || len(envelope) == 0 || len(envelope) > maxShareBytes {
 		s.error(w, r, errInvalidRequest)
 		return
 	}

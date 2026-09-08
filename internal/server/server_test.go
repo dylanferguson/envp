@@ -158,15 +158,15 @@ func TestRequestValidation(t *testing.T) {
 	}
 }
 
-func TestBodyAndEnvelopeLimits(t *testing.T) {
-	for _, size := range []int{maxEnvelopeBytes, maxEnvelopeBytes + 1} {
+func TestBodyAndShareLimits(t *testing.T) {
+	for _, size := range []int{maxShareBytes, maxShareBytes + 1} {
 		h, _ := testServer(t, Config{})
 		body, _ := json.Marshal(map[string]any{"ttl_seconds": 60, "max_reads": 20, "envelope": base64.RawURLEncoding.EncodeToString(make([]byte, size))})
 		w := request(h, "POST", "/api/v1/shares", string(body))
-		if size == maxEnvelopeBytes && w.Code != 201 {
+		if size == maxShareBytes && w.Code != 201 {
 			t.Fatalf("at limit: %d %s", w.Code, w.Body)
 		}
-		if size > maxEnvelopeBytes {
+		if size > maxShareBytes {
 			assertError(t, w, 400, "invalid_request", "The request could not be processed.")
 		}
 	}
