@@ -1,4 +1,4 @@
-package obs
+package metrics
 
 import (
 	"errors"
@@ -53,7 +53,7 @@ type Recorder struct {
 
 func New(opts Options) (*Recorder, error) {
 	if opts.DB == nil {
-		return nil, errors.New("obs: DB probe required")
+		return nil, errors.New("metrics: DB probe required")
 	}
 	ttl := opts.ProbeTTL
 	if ttl == 0 {
@@ -114,7 +114,7 @@ func New(opts Options) (*Recorder, error) {
 
 func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
 	if route.name == "" {
-		panic("obs: zero Route")
+		panic("metrics: zero Route")
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()

@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanferguson/envp/internal/obs"
+	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/oklog/ulid/v2"
 )
@@ -89,7 +89,7 @@ type server struct {
 	shells map[string][]byte
 }
 
-func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *obs.Recorder) (http.Handler, error) {
+func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *metrics.Recorder) (http.Handler, error) {
 	if config.PublicOrigin != "" {
 		origin, err := ParseOrigin(config.PublicOrigin)
 		if err != nil {
@@ -112,13 +112,13 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	track := rec.Instrument
 
 	api := http.NewServeMux()
-	api.Handle("POST /api/v1/shares", track(obs.RouteCreate, s.limit(newLimiter(20*time.Second, 15), s.createShare)))
-	api.Handle("GET /api/v1/shares/{id}", track(obs.RouteGet, s.limit(newLimiter(time.Second/2, 30), s.readShare)))
+	api.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.limit(newLimiter(20*time.Second, 15), s.createShare)))
+	api.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.limit(newLimiter(time.Second/2, 30), s.readShare)))
 
 	pages := http.NewServeMux()
-	pages.Handle("GET /{$}", track(obs.RouteStatic, s.shell("index.html")))
-	pages.Handle("GET /open", track(obs.RouteStatic, s.shell("open.html")))
-	pages.Handle("GET /share/{id}", track(obs.RouteStatic, s.shell("open.html")))
+	pages.Handle("GET /{$}", track(metrics.RouteStatic, s.shell("index.html")))
+	pages.Handle("GET /open", track(metrics.RouteStatic, s.shell("open.html")))
+	pages.Handle("GET /share/{id}", track(metrics.RouteStatic, s.shell("open.html")))
 	pages.HandleFunc("GET /robots.txt", s.robots)
 	pages.HandleFunc("GET /", s.file)
 

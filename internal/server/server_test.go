@@ -16,7 +16,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/dylanferguson/envp/internal/obs"
+	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 )
 
@@ -38,7 +38,7 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 			t.Error(err)
 		}
 	})
-	rec, err := obs.New(obs.Options{DB: db.Ping})
+	rec, err := metrics.New(metrics.Options{DB: db.Ping})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	rec, err := obs.New(obs.Options{DB: db.Ping})
+	rec, err := metrics.New(metrics.Options{DB: db.Ping})
 	if err != nil {
 		t.Fatal(err)
 	}

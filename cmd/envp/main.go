@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dylanferguson/envp/internal/obs"
+	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/server"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/dylanferguson/envp/internal/webui"
@@ -49,7 +49,7 @@ func healthcheck() int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := obs.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.obsPort)); err != nil {
+	if err := metrics.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.obsPort)); err != nil {
 		return 1
 	}
 	return 0
@@ -117,7 +117,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if len(id) > 7 {
 		id = id[:7]
 	}
-	rec, err := obs.New(obs.Options{DB: db.Ping, ReleaseID: id})
+	rec, err := metrics.New(metrics.Options{DB: db.Ping, ReleaseID: id})
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func shutdownHTTP(servers ...*http.Server) error {
 	return err
 }
 
-func sweepLoop(ctx context.Context, db *store.Store, rec *obs.Recorder, logger *slog.Logger) {
+func sweepLoop(ctx context.Context, db *store.Store, rec *metrics.Recorder, logger *slog.Logger) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
