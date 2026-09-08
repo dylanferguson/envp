@@ -22,6 +22,10 @@ try {
   let last = 201;
   for (let n = 0; n < 20; n++) last = (await create()).status;
   assert.equal(last, 429);
+
+  const metrics = await fetch("http://127.0.0.1:9090/metrics");
+  assert.equal(metrics.status, 200);
+  assert.match(await metrics.text(), /^nginx_up 1(\.0)?$/m);
   console.log("ok");
 } finally {
   compose("down", "--volumes");

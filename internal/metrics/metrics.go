@@ -39,6 +39,7 @@ func New() *Recorder {
 		created: auto.NewCounter(prometheus.CounterOpts{Name: "shares_created_total", Help: "Shares created."}),
 		swept:   auto.NewCounter(prometheus.CounterOpts{Name: "sweep_deleted_total", Help: "Shares swept."}),
 	}
+	reg.MustRegister(newNginxCollector(stubStatusURL))
 	rec.handler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	return rec
 }
