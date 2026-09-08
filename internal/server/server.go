@@ -111,9 +111,18 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 
 	track := rec.Instrument
 
+	createLimit, err := perIP(15, 20*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	readLimit, err := perIP(30, time.Second/2)
+	if err != nil {
+		return nil, err
+	}
+
 	api := http.NewServeMux()
-	api.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.limit(newLimiter(20*time.Second, 15), s.createShare)))
-	api.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.limit(newLimiter(time.Second/2, 30), s.readShare)))
+	api.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.limit(createLimit, s.createShare)))
+	api.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.limit(readLimit, s.readShare)))
 
 	pages := http.NewServeMux()
 	pages.Handle("GET /{$}", track(metrics.RouteStatic, s.shell("index.html")))

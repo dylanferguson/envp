@@ -2,71 +2,8 @@ package server
 
 import (
 	"net/http/httptest"
-	"strconv"
-	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 )
-
-func TestTokenRefill(t *testing.T) {
-	l := newLimiter(20*time.Second, 15)
-	now := time.Now()
-	for range 15 {
-		if delay := l.allow("client", now); delay != 0 {
-			t.Fatal(delay)
-		}
-	}
-	if delay := l.allow("client", now); delay != 20*time.Second {
-		t.Fatalf("exhausted: %s", delay)
-	}
-	if delay := l.allow("client", now.Add(19*time.Second)); delay <= 0 || delay > time.Second {
-		t.Fatalf("partial refill: %s", delay)
-	}
-	if delay := l.allow("client", now.Add(20*time.Second)); delay != 0 {
-		t.Fatalf("refilled: %s", delay)
-	}
-	if delay := l.allow("other", now); delay != 0 {
-		t.Fatalf("other client: %s", delay)
-	}
-}
-
-func TestLimiterBoundsAndCleanup(t *testing.T) {
-	l := newLimiter(20*time.Second, 15)
-	now := time.Now()
-	for i := range maxClients {
-		l.allow(strconv.Itoa(i), now)
-	}
-	if l.allow("new", now) == 0 {
-		t.Fatal("allowed new client at capacity")
-	}
-	if l.allow("0", now) != 0 {
-		t.Fatal("blocked existing client at capacity")
-	}
-	if l.allow("new", now.Add(clientIdleTime)) != 0 {
-		t.Fatal("did not remove inactive clients")
-	}
-}
-
-func TestConcurrentBurst(t *testing.T) {
-	l := newLimiter(20*time.Second, 15)
-	now := time.Now()
-	var allowed atomic.Int32
-	var wg sync.WaitGroup
-	for range 100 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if l.allow("client", now) == 0 {
-				allowed.Add(1)
-			}
-		}()
-	}
-	wg.Wait()
-	if allowed.Load() != 15 {
-		t.Fatalf("allowed: %d", allowed.Load())
-	}
-}
 
 func TestClientIP(t *testing.T) {
 	for _, tc := range []struct {

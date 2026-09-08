@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/prometheus/client_golang v1.24.1
-	golang.org/x/time v0.15.0
+	github.com/sethvargo/go-limiter v1.2.0
 	modernc.org/sqlite v1.58.0
 )
 
