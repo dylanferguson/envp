@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { formatExpiresAtLabel, formatMaxReadsLabel } from "../../lib/limits.js";
+  import { formatShareBoundsLabel } from "../../lib/limits.js";
   import Button from "../../ui/Button.svelte";
   import CopyField from "../../ui/CopyField.svelte";
-  import Readout from "../../ui/Readout.svelte";
 
   type Props = {
     url: string;
@@ -22,18 +21,14 @@
   }
 
   const title = $derived(!copied ? "copy, then send." : "");
-  const expiry = $derived(formatExpiresAtLabel(expiresAt));
-  const reads = $derived(formatMaxReadsLabel(maxReads));
+  const bounds = $derived(formatShareBoundsLabel(expiresAt, maxReads));
 </script>
 
 <div class="done">
   {#if title}
     <p class="done-title" aria-live="polite">{title}</p>
   {/if}
-  <p class="done-meta">
-    <Readout text={expiry} />
-    <Readout text={reads} />
-  </p>
+  <p class="done-meta">{bounds}</p>
   <CopyField
     bind:this={copyField}
     id="share-url"
@@ -57,10 +52,11 @@
   }
 
   .done-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1rem;
     margin: 0 0 0.65rem;
+    font-size: var(--tick);
+    letter-spacing: var(--track);
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
   .done-actions {

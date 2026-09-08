@@ -174,6 +174,22 @@
     field-sizing: auto;
   }
 
+  .copy-field.is-hidden.is-multiline .copy-output {
+    min-height: 0;
+  }
+
+  @media (pointer: coarse) {
+    .copy-output {
+      font-size: 16px;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .copy-field.is-multiline .copy-output {
+      min-height: 11rem;
+    }
+  }
+
   .copy-output:focus {
     outline: none;
   }

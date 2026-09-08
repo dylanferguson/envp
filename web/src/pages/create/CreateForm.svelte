@@ -85,39 +85,35 @@
 </section>
 
 <div class="controls">
-  <div class="control-row">
-    <FieldLabel for="ttl" compact>ttl</FieldLabel>
-    <Slider
-      id="ttl"
-      bind:value={ttlSeconds}
-      min={MIN_TTL_SECONDS}
-      max={MAX_TTL_SECONDS}
-      step={60}
-      disabled={busy}
-    />
-    <Readout
-      text={formatExpiryLabel(ttlSeconds)}
-      sizer={LONGEST_EXPIRY_LABEL}
-      align="start"
-    />
-  </div>
-  <div class="control-row">
-    <FieldLabel for="reads" compact>reads</FieldLabel>
-    <Slider
-      id="reads"
-      bind:value={maxReads}
-      min={MIN_MAX_READS}
-      max={MAX_MAX_READS}
-      step={1}
-      disabled={busy}
-    />
-    <Readout
-      text={formatMaxReadsLabel(maxReads)}
-      sizer={LONGEST_READS_LABEL}
-      align="start"
-    />
-    <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
-  </div>
+  <FieldLabel for="ttl" compact>ttl</FieldLabel>
+  <Slider
+    id="ttl"
+    bind:value={ttlSeconds}
+    min={MIN_TTL_SECONDS}
+    max={MAX_TTL_SECONDS}
+    step={60}
+    disabled={busy}
+  />
+  <Readout
+    text={formatExpiryLabel(ttlSeconds)}
+    sizer={LONGEST_EXPIRY_LABEL}
+    align="start"
+  />
+  <FieldLabel for="reads" compact>reads</FieldLabel>
+  <Slider
+    id="reads"
+    bind:value={maxReads}
+    min={MIN_MAX_READS}
+    max={MAX_MAX_READS}
+    step={1}
+    disabled={busy}
+  />
+  <Readout
+    text={formatMaxReadsLabel(maxReads)}
+    sizer={LONGEST_READS_LABEL}
+    align="start"
+  />
+  <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
 </div>
 
 <StatusLine text={statusText} error={statusError} animated />
@@ -142,29 +138,41 @@
   .controls {
     --controls-band: 0.85rem;
     display: grid;
-    gap: 1rem;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0.85rem;
+    min-width: 0;
     margin: 0 0 1.25rem;
   }
 
-  .control-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto auto;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .controls :global(label.compact),
-  .controls :global(.readout-grid) {
+  .controls > :global(label.compact),
+  .controls > :global(.readout-grid) {
     min-height: var(--controls-band);
     line-height: 1;
   }
 
-  .controls :global(.slider) {
+  .controls > :global(.slider) {
     min-width: 0;
     height: var(--controls-band);
   }
 
-  .controls :global(button) {
+  .controls > :global(button) {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    align-self: center;
     line-height: 1;
+  }
+
+  @media (max-width: 40rem) {
+    .controls {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .controls > :global(button) {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      justify-self: end;
+    }
   }
 </style>

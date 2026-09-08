@@ -23,7 +23,7 @@ test.describe("create share", () => {
     const request = await post;
     const body = request.postDataJSON() as { envelope: string; max_reads: number };
 
-    expect(body.max_reads).toBe(20);
+    expect(body.max_reads).toBe(5);
     expect(JSON.stringify(body)).not.toContain("e2e-secret");
     const envelope = decodeBase64Url(body.envelope);
     expect(envelope.subarray(0, ENVS_MAGIC.length)).toEqual(ENVS_MAGIC);

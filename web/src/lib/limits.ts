@@ -17,7 +17,7 @@ export const DEFAULT_TTL_SECONDS = 3600 as TtlSeconds;
 
 export const MIN_MAX_READS = 1;
 export const MAX_MAX_READS = 100;
-export const DEFAULT_MAX_READS = 20 as MaxReads;
+export const DEFAULT_MAX_READS = 5 as MaxReads;
 
 const SHARE_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i;
 const KEY_FRAGMENT_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -123,4 +123,12 @@ export const LONGEST_EXPIRY_LABEL = formatExpiryLabel(MAX_TTL_SECONDS);
 export function formatExpiresAtLabel(expiresAt: UnixMillis, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((expiresAt - now) / 1000));
   return formatExpiryLabel(seconds);
+}
+
+export function formatShareBoundsLabel(
+  expiresAt: UnixMillis,
+  maxReads: number,
+  now = Date.now(),
+): string {
+  return `${formatExpiresAtLabel(expiresAt, now)} or ${formatMaxReadsLabel(maxReads)}`;
 }

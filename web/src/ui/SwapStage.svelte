@@ -22,6 +22,7 @@
 <style>
   .swap-stage {
     display: grid;
+    min-width: 0;
   }
 
   .swap-pane {
@@ -41,6 +42,8 @@
     visibility: hidden;
     pointer-events: none;
     transform: translateY(0.4rem);
+    overflow: hidden;
+    height: 0;
   }
 
   @media (prefers-reduced-motion: reduce) {
