@@ -45,6 +45,7 @@ jobs:
           files: compose.yaml
           load: true
           provenance: false
+          # GHA cache is wired via `set` below; local compose is unchanged.
           set: |
             *.args.GIT_COMMIT=${{ github.sha }}
             envp.cache-from=type=gha,scope=envp
