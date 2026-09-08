@@ -7,18 +7,11 @@ import {
 } from "./helpers.js";
 
 test.describe("open share", () => {
-  test("selects decrypted output after open", async ({ page }) => {
-    const url = await createShare(page);
-    await page.goto(url);
-    const output = page.getByRole("textbox", { name: "decrypted .env" });
-    await expect(output).toBeVisible();
-    await expect(output).toBeFocused();
-  });
-
   test("roundtrips create → open via share URL", async ({ page }) => {
     const url = await createShare(page);
     await page.goto(url);
     await expectDecryptedEnv(page);
+    await expect(page.getByRole("textbox", { name: "decrypted .env" })).toBeFocused();
   });
 
   test("opens a pasted link on /open", async ({ page }) => {

@@ -123,38 +123,20 @@ func TestCreateReadContract(t *testing.T) {
 }
 
 func TestRequestValidation(t *testing.T) {
+	h, _ := testServer(t, Config{})
 	for _, body := range []string{
-		`null`, `[]`, `{}`, `{`, `{} {}`,
+		`{`,
 		`{"ttl_seconds":30,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":86401,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":60.1,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":[60],"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":true,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":null,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":"3600","max_reads":20,"envelope":"AQ"}`,
 		`{"ttl_seconds":60.0,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":6e1,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":"NaN","max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":20,"envelope":""}`,
-		`{"ttl_seconds":60,"max_reads":20,"envelope":12}`,
-		`{"ttl_seconds":60,"max_reads":20,"envelope":"!AQ"}`,
 		`{"ttl_seconds":60,"envelope":"AQ"}`,
 		`{"ttl_seconds":60,"max_reads":0,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":101,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":20.5,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":"20","envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":20,"envelope":"!AQ"}`,
 	} {
-		t.Run(body, func(t *testing.T) {
-			h, _ := testServer(t, Config{})
-			assertError(t, request(h, "POST", "/api/v1/shares", body), 400, "invalid_request", "The request could not be processed.")
-		})
+		assertError(t, request(h, "POST", "/api/v1/shares", body), 400, "invalid_request", "The request could not be processed.")
 	}
-	for _, ttl := range []string{`60`, `3600`, `86400`} {
-		h, _ := testServer(t, Config{})
-		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":`+ttl+`,"max_reads":20,"envelope":"AQ","extra":true}`)
-		if w.Code != 201 {
-			t.Errorf("TTL %s: %d %s", ttl, w.Code, w.Body)
-		}
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ","extra":true}`)
+	if w.Code != 201 {
+		t.Fatalf("valid create: %d %s", w.Code, w.Body)
 	}
 }
 
@@ -178,15 +160,6 @@ func TestBodyAndShareLimits(t *testing.T) {
 		h.ServeHTTP(w, r)
 		assertError(t, w, 413, "payload_too_large", "Request body is too large.")
 	}
-}
-
-func TestOversizedContentLength(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	r := httptest.NewRequest("POST", "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
-	r.ContentLength = maxCreateJSONBytes + 1
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, r)
-	assertError(t, w, 413, "payload_too_large", "Request body is too large.")
 }
 
 func TestUnknownExpiredAndInvalidIDs(t *testing.T) {

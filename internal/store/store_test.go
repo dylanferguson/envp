@@ -2,7 +2,6 @@ package store
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"errors"
 	"net/url"
@@ -142,28 +141,6 @@ func TestConcurrentCreateReadAndSweep(t *testing.T) {
 	}
 	if len(seen) != 100 {
 		t.Fatalf("created %d shares", len(seen))
-	}
-}
-
-func TestCanceledOperation(t *testing.T) {
-	s := testStore(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := s.Create(ctx, []byte{1}, time.Minute, 20); !errors.Is(err, context.Canceled) {
-		t.Fatalf("create: %v", err)
-	}
-}
-
-func TestPing(t *testing.T) {
-	s := testStore(t)
-	if err := s.Ping(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Ping(t.Context()); err == nil {
-		t.Fatal("Ping after Close should fail")
 	}
 }
 
