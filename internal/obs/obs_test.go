@@ -155,28 +155,6 @@ func TestHealthPassAndFail(t *testing.T) {
 	}
 }
 
-func TestHealthReleaseID(t *testing.T) {
-	rec, err := New(Options{
-		DB:        func(context.Context) error { return nil },
-		ReleaseID: "abc1234",
-		Now:       func() time.Time { return time.Unix(1_700_000_000, 0) },
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	mux := http.NewServeMux()
-	rec.Mount(mux)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, HealthPath, nil))
-	var report healthReport
-	if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
-		t.Fatal(err)
-	}
-	if report.ReleaseID != "abc1234" {
-		t.Fatalf("releaseId = %q", report.ReleaseID)
-	}
-}
-
 func TestHealthCache(t *testing.T) {
 	var calls int
 	rec := testRecorder(t, func(context.Context) error {

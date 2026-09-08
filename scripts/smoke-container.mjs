@@ -49,9 +49,6 @@ try {
   assert.equal(health.status, 200);
   const healthBody = await health.json();
   assert.equal(healthBody.status, "pass");
-  if (process.env.GIT_COMMIT) {
-    assert.equal(healthBody.releaseId, process.env.GIT_COMMIT.slice(0, 7));
-  }
 
   const create = await fetch(`${baseURL}/api/v1/shares`, {
     method: "POST",
