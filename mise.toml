@@ -20,7 +20,7 @@ run = 'vp build && concurrently -k -n web,api -c cyan,magenta "vp dev" "mise run
 description = "Embedded UI + production Go binary"
 run = [
   "vp build",
-  "CGO_ENABLED=0 go build -tags production -trimpath -ldflags='-s -w' -o dist/envp ./cmd/envp",
+  "CGO_ENABLED=0 go build -tags production -trimpath -ldflags=\"-s -w -X main.commit=${GIT_COMMIT:-$(git rev-parse HEAD)}\" -o dist/envp ./cmd/envp",
 ]
 
 [tasks.start]

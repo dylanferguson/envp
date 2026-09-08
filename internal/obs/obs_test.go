@@ -144,12 +144,60 @@ func TestHealthPassAndFail(t *testing.T) {
 			if report.Status != want {
 				t.Fatalf("status = %q", report.Status)
 			}
+			if report.ReleaseID != "unknown" {
+				t.Fatalf("releaseId = %q, want unknown", report.ReleaseID)
+			}
 			checks := report.Checks["db:sqlite"]
 			if len(checks) != 1 || checks[0].Status != want || checks[0].Time == "" {
 				t.Fatalf("checks: %+v", report.Checks)
 			}
 			if strings.Contains(w.Body.String(), "db down") {
 				t.Fatal("driver error leaked in health body")
+			}
+		})
+	}
+}
+
+func TestHealthReleaseID(t *testing.T) {
+	for _, tc := range []struct {
+		name, releaseID, wantStatus string
+		probe                       Probe
+	}{
+		{
+			name:       "pass",
+			releaseID:  "7c4e901",
+			wantStatus: "pass",
+			probe:      func(context.Context) error { return nil },
+		},
+		{
+			name:       "fail",
+			releaseID:  "abc1234",
+			wantStatus: "fail",
+			probe:      func(context.Context) error { return errors.New("db down") },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec, err := New(Options{
+				DB:        tc.probe,
+				ReleaseID: tc.releaseID,
+				Now:       func() time.Time { return time.Unix(1_700_000_000, 0) },
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			mux := http.NewServeMux()
+			rec.Mount(mux)
+			w := httptest.NewRecorder()
+			mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, HealthPath, nil))
+			var report healthReport
+			if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
+				t.Fatal(err)
+			}
+			if report.ReleaseID != tc.releaseID {
+				t.Fatalf("releaseId = %q, want %q", report.ReleaseID, tc.releaseID)
+			}
+			if report.Status != tc.wantStatus {
+				t.Fatalf("status = %q, want %q", report.Status, tc.wantStatus)
 			}
 		})
 	}

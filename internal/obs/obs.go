@@ -31,6 +31,7 @@ var (
 
 type Options struct {
 	DB           Probe
+	ReleaseID    string
 	ProbeTTL     time.Duration
 	ProbeTimeout time.Duration
 	Now          func() time.Time
@@ -45,8 +46,9 @@ type Recorder struct {
 	created     prometheus.Counter
 	swept       prometheus.Counter
 
-	health *healthProbe
-	now    func() time.Time
+	health    *healthProbe
+	releaseID string
+	now       func() time.Time
 }
 
 func New(opts Options) (*Recorder, error) {
@@ -64,6 +66,10 @@ func New(opts Options) (*Recorder, error) {
 	now := opts.Now
 	if now == nil {
 		now = time.Now
+	}
+	releaseID := opts.ReleaseID
+	if releaseID == "" {
+		releaseID = "unknown"
 	}
 
 	reg := prometheus.NewRegistry()
@@ -105,7 +111,8 @@ func New(opts Options) (*Recorder, error) {
 			timeout: timeout,
 			now:     now,
 		},
-		now: now,
+		releaseID: releaseID,
+		now:       now,
 	}, nil
 }
 
