@@ -51,7 +51,7 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     tone: "error",
     step: "fetch",
     kind: "error",
-    note: "Not found. Expired, deleted, or never existed.",
+    note: "Not found. Spent, expired, or never existed.",
   },
   fetch_error: {
     word: "fault",
