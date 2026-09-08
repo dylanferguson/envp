@@ -1,5 +1,6 @@
 # Overlay for GitHub Actions. type=gha needs setup-buildx and actions:write.
 # Keep this out of compose.yaml so local `docker compose build` stays offline.
+# Scopes are per service so envp and nginx caches do not overwrite each other.
 services:
   envp:
     build:
