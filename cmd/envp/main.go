@@ -147,7 +147,15 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sweepLoop(maintenance, db, rec, logger)
+		db.SweepEvery(maintenance, time.Minute, func(n int64, err error) {
+			if err != nil {
+				if ctx.Err() == nil {
+					logger.Error("sweep failed", "error", err)
+				}
+				return
+			}
+			rec.Swept(n)
+		})
 	}()
 	defer func() { stopMaintenance(); wg.Wait() }()
 	serveErr := make(chan error, 2)
@@ -189,22 +197,4 @@ func shutdownHTTP(servers ...*http.Server) error {
 		}
 	}
 	return err
-}
-
-func sweepLoop(ctx context.Context, db *store.Store, rec *metrics.Recorder, logger *slog.Logger) {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			n, err := db.Sweep(ctx)
-			if err != nil && ctx.Err() == nil {
-				logger.Error("sweep failed", "error", err)
-				continue
-			}
-			rec.Swept(n)
-		}
-	}
 }
