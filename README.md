@@ -36,7 +36,7 @@ mise run docker:run
 | Variable        | Default                               |
 | --------------- | ------------------------------------- |
 | `PORT`          | `8080`                                |
-| `OBS_PORT`      | `9090` (`/health`, `/metrics`)        |
+| `INTERNAL_PORT` | `9090` (`/health`, `/metrics`)        |
 | `DB_PATH`       | `./data/shares.db`                    |
 | `PUBLIC_ORIGIN` | derived from request                  |
 | `TRUST_PROXY`   | unset (`true` behind a trusted proxy) |
