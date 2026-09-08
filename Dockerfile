@@ -31,7 +31,8 @@ FROM scratch AS envp
 COPY --from=build /envp /envp
 COPY --from=build --chown=65532:65532 /data /data
 USER 65532:65532
-ENV PORT=8080 INTERNAL_PORT=9090 DB_PATH=/data/shares.db
+# Leave PORT unset so compose/Fly can put the API on 8081 behind nginx.
+ENV INTERNAL_PORT=9090 DB_PATH=/data/shares.db
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD ["/envp", "healthcheck"]
 EXPOSE 8080 9090
 VOLUME ["/data"]

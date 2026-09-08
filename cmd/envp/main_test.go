@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestConfig(t *testing.T) {
 	for _, tc := range []struct {
@@ -38,6 +41,40 @@ func TestConfig(t *testing.T) {
 				if cfg.http.PublicOrigin != "https://example.com" && cfg.http.PublicOrigin != "http://localhost:8080" {
 					t.Fatalf("origin = %q", cfg.http.PublicOrigin)
 				}
+			}
+		})
+	}
+}
+
+func TestConfigSidecarPort(t *testing.T) {
+	for _, tc := range []struct {
+		name, listenHost, port string
+		want                   int
+	}{
+		{"public default", "", "", 8080},
+		{"public explicit", "", "8080", 8080},
+		{"sidecar default", "127.0.0.1", "", 8081},
+		{"sidecar fly service port", "127.0.0.1", "8080", 8081},
+		{"sidecar explicit", "127.0.0.1", "8081", 8081},
+		{"sidecar custom", "127.0.0.1", "8082", 8082},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("INTERNAL_PORT", "9090")
+			t.Setenv("DB_PATH", "./data/shares.db")
+			t.Setenv("PUBLIC_ORIGIN", "")
+			t.Setenv("LISTEN_HOST", tc.listenHost)
+			if tc.port != "" {
+				t.Setenv("PORT", tc.port)
+			} else {
+				t.Setenv("PORT", "8080")
+				_ = os.Unsetenv("PORT")
+			}
+			cfg, err := loadConfig()
+			if err != nil {
+				t.Fatalf("loadConfig: %v", err)
+			}
+			if cfg.port != tc.want {
+				t.Fatalf("port = %d, want %d", cfg.port, tc.want)
 			}
 		})
 	}

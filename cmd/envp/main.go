@@ -71,9 +71,6 @@ func loadConfig() (config, error) {
 		return c, err
 	}
 	c.internalPort = internalPort
-	if c.port == c.internalPort {
-		return c, errors.New("INTERNAL_PORT must differ from PORT")
-	}
 	if value, ok := os.LookupEnv("DB_PATH"); ok {
 		if value == "" {
 			return c, errors.New("DB_PATH must not be empty")
@@ -86,6 +83,13 @@ func loadConfig() (config, error) {
 	}
 	c.http.PublicOrigin = origin
 	c.listenHost = os.Getenv("LISTEN_HOST")
+	// nginx owns :8080. Image ENV and Fly's service port still default PORT to 8080.
+	if c.listenHost == "127.0.0.1" && c.port == 8080 {
+		c.port = 8081
+	}
+	if c.port == c.internalPort {
+		return c, errors.New("INTERNAL_PORT must differ from PORT")
+	}
 	return c, nil
 }
 
