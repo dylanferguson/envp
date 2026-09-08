@@ -3,6 +3,10 @@
     {
       "name": "envp",
       "image": "envp:go-scratch",
+      "env": {
+        "PORT": "8081",
+        "LISTEN_HOST": "127.0.0.1"
+      },
       "healthchecks": [
         {
           "http": {
