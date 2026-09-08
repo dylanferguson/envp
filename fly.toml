@@ -8,12 +8,16 @@ kill_timeout = 15
 [build]
 dockerfile = "Dockerfile"
 
+[experimental]
+machine_config = "deploy/fly-machine.json"
+container = "envp"
+
 [env]
-PORT = "8080"
+PORT = "8081"
+LISTEN_HOST = "127.0.0.1"
 INTERNAL_PORT = "9090"
 DB_PATH = "/data/shares.db"
 PUBLIC_ORIGIN = "https://envp.dylanferguson.co"
-TRUST_PROXY = "true"
 
 [[mounts]]
 source = "envp_data"
@@ -44,4 +48,4 @@ grace_period = "10s"
 [[vm]]
 cpu_kind = "shared"
 cpus = 1
-memory = "256mb"
+memory = "512mb"

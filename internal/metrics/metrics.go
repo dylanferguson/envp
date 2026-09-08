@@ -21,7 +21,6 @@ const (
 type Recorder struct {
 	requests *prometheus.CounterVec
 	duration *prometheus.HistogramVec
-	limited  *prometheus.CounterVec
 	created  prometheus.Counter
 	swept    prometheus.Counter
 	handler  http.Handler
@@ -38,14 +37,9 @@ func New() *Recorder {
 			Name: "http_request_duration_seconds", Help: "HTTP latency.",
 			Buckets: []float64{0.005, 0.02, 0.1, 0.5, 2},
 		}, []string{"route"}),
-		limited: auto.NewCounterVec(prometheus.CounterOpts{
-			Name: "rate_limit_exceeded_total", Help: "Rate limit rejections.",
-		}, []string{"route"}),
 		created: auto.NewCounter(prometheus.CounterOpts{Name: "shares_created_total", Help: "Shares created."}),
 		swept:   auto.NewCounter(prometheus.CounterOpts{Name: "sweep_deleted_total", Help: "Shares swept."}),
 	}
-	rec.limited.WithLabelValues(string(RouteCreate)).Add(0)
-	rec.limited.WithLabelValues(string(RouteGet)).Add(0)
 	rec.handler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	return rec
 }
@@ -78,9 +72,6 @@ func (r *Recorder) observe(route Route, status int, took time.Duration) {
 	}
 	if route == RouteCreate && status == http.StatusCreated {
 		r.created.Inc()
-	}
-	if status == http.StatusTooManyRequests {
-		r.limited.WithLabelValues(string(route)).Inc()
 	}
 }
 

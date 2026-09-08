@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -19,8 +18,6 @@ import (
 	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/oklog/ulid/v2"
-	"github.com/sethvargo/go-limiter"
-	"github.com/sethvargo/go-limiter/memorystore"
 )
 
 const (
@@ -34,7 +31,6 @@ const (
 
 type Config struct {
 	PublicOrigin string
-	TrustProxy   bool
 }
 
 type createRequest struct {
@@ -78,18 +74,10 @@ var (
 	errNotFound        = apiError{http.StatusNotFound, "not_found", "Not found."}
 	errShareNotFound   = apiError{http.StatusNotFound, "not_found", "Share not found."}
 	errPayloadTooLarge = apiError{http.StatusRequestEntityTooLarge, "payload_too_large", "Request body is too large."}
-	errRateLimited     = apiError{http.StatusTooManyRequests, "rate_limited", "Too many requests. Try again later."}
 )
 
 type Server struct {
 	http.Handler
-	create limiter.Store
-	read   limiter.Store
-}
-
-func (h *Server) Close() error {
-	ctx := context.Background()
-	return errors.Join(h.create.Close(ctx), h.read.Close(ctx))
 }
 
 type server struct {
@@ -112,28 +100,12 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 			return nil, fmt.Errorf("load UI %s (run vp build first): %w", name, err)
 		}
 	}
-	createLimit, err := memorystore.New(&memorystore.Config{
-		Tokens: 15, Interval: 20 * time.Second,
-		SweepInterval: time.Minute, SweepMinTTL: 10 * time.Minute,
-	})
-	if err != nil {
-		return nil, err
-	}
-	readLimit, err := memorystore.New(&memorystore.Config{
-		Tokens: 30, Interval: time.Second / 2,
-		SweepInterval: time.Minute, SweepMinTTL: 10 * time.Minute,
-	})
-	if err != nil {
-		_ = createLimit.Close(context.Background())
-		return nil, err
-	}
-
 	s := &server{db: db, files: files, config: config, log: logger}
 	track := rec.Instrument
 
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.recover(s.limit(createLimit, noStore(s.createShare)))))
-	mux.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.recover(s.limit(readLimit, noStore(s.readShare)))))
+	mux.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.recover(noStore(s.createShare))))
+	mux.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.recover(noStore(s.readShare))))
 	mux.Handle("GET /api/{path...}", track(metrics.RouteGet, s.recover(noStore(s.apiNotFound))))
 	mux.Handle("POST /api/{path...}", track(metrics.RouteCreate, s.recover(noStore(s.apiNotFound))))
 	mux.Handle("GET /{$}", track(metrics.RouteStatic, s.recover(s.page("index.html"))))
@@ -142,11 +114,7 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	mux.Handle("GET /robots.txt", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.robots))))
 	mux.Handle("GET /", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.file))))
 
-	return &Server{
-		Handler: headers(rejectUncleanPath(s, mux)),
-		create:  createLimit,
-		read:    readLimit,
-	}, nil
+	return &Server{Handler: headers(rejectUncleanPath(s, mux))}, nil
 }
 
 func noStore(next http.HandlerFunc) http.HandlerFunc {
@@ -286,11 +254,6 @@ func (s *server) expectedOrigin(r *http.Request) string {
 	if r.TLS != nil {
 		scheme = "https"
 	}
-	if s.config.TrustProxy {
-		if proto := lastCSV(r.Header.Get("X-Forwarded-Proto")); proto == "http" || proto == "https" {
-			scheme = proto
-		}
-	}
 	return scheme + "://" + r.Host
 }
 
@@ -382,11 +345,4 @@ func ParseOrigin(raw string) (string, error) {
 		return u.Scheme + "://" + host, nil
 	}
 	return u.Scheme + "://" + net.JoinHostPort(host, port), nil
-}
-
-func lastCSV(header string) string {
-	if i := strings.LastIndex(header, ","); i >= 0 {
-		header = header[i+1:]
-	}
-	return strings.TrimSpace(header)
 }

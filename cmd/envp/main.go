@@ -25,6 +25,7 @@ var commit = "unknown"
 type config struct {
 	port         int
 	internalPort int
+	listenHost   string
 	dbPath       string
 	http         server.Config
 }
@@ -85,7 +86,7 @@ func loadConfig() (config, error) {
 		return c, err
 	}
 	c.http.PublicOrigin = origin
-	c.http.TrustProxy = os.Getenv("TRUST_PROXY") == "true"
+	c.listenHost = os.Getenv("LISTEN_HOST")
 	return c, nil
 }
 
@@ -131,12 +132,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := handler.Close(); err != nil {
-			logger.Error("close limiters", "error", err)
-		}
-	}()
-	publicLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.port)))
+	publicLn, err := net.Listen("tcp", net.JoinHostPort(cfg.listenHost, strconv.Itoa(cfg.port)))
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
