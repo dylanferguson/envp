@@ -19,26 +19,7 @@
     },
     {
       "name": "nginx",
-      "image": "registry.fly.io/envp:nginx",
-      "depends_on": [
-        {
-          "name": "envp",
-          "condition": "healthy"
-        }
-      ],
-      "healthchecks": [
-        {
-          "http": {
-            "port": 8080,
-            "method": "GET",
-            "path": "/",
-            "scheme": "http"
-          },
-          "grace_period": 10,
-          "interval": 30,
-          "timeout": 3
-        }
-      ]
+      "image": "registry.fly.io/envp:nginx"
     }
   ]
 }
