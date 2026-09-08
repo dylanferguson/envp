@@ -49,9 +49,12 @@ try {
   assert.equal(health.status, 200);
   const healthBody = await health.json();
   assert.equal(healthBody.status, "pass");
+  assert.equal(typeof healthBody.releaseId, "string");
   const gitCommit = process.env.GIT_COMMIT;
   if (gitCommit && /^[0-9a-fA-F]{7,}$/.test(gitCommit)) {
     assert.equal(healthBody.releaseId, gitCommit.slice(0, 7).toLowerCase());
+  } else {
+    assert.match(healthBody.releaseId, /^(?:unknown|[0-9a-f]{7})$/);
   }
 
   const create = await fetch(`${baseURL}/api/v1/shares`, {
