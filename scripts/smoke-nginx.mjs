@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 
-const env = { ...process.env, COMPOSE_PROJECT_NAME: "envp-nginx-smoke" };
+const gitCommit =
+  process.env.GIT_COMMIT || execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const env = {
+  ...process.env,
+  COMPOSE_PROJECT_NAME: "envp-nginx-smoke",
+  GIT_COMMIT: gitCommit,
+};
 const compose = (...args) =>
   execFileSync("docker", ["compose", ...args], {
     env,
