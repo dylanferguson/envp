@@ -2,6 +2,7 @@ services:
   envp:
     build:
       context: .
+      target: envp
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
     image: envp:go-scratch
@@ -10,18 +11,22 @@ services:
       LISTEN_HOST: "127.0.0.1"
     ports:
       - "8080:8080"
+      - "9090:9090"
     volumes:
       - envp-data:/data
     restart: unless-stopped
     stop_grace_period: 15s
   nginx:
-    image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+    build:
+      context: .
+      target: nginx
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: envp-nginx
     network_mode: service:envp
     depends_on:
       envp:
         condition: service_healthy
-    volumes:
-      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
 
 volumes:

@@ -52,6 +52,22 @@ try {
   });
   assert.equal(flyDev, 403);
 
+  const home = await fetch("http://127.0.0.1:8080/");
+  assert.equal(home.status, 200);
+  assert.match(await home.text(), /<html/i);
+
+  const robots = await fetch("http://127.0.0.1:8080/robots.txt");
+  assert.equal(robots.status, 200);
+  assert.match(await robots.text(), /Disallow: \//);
+
+  const open = await fetch("http://127.0.0.1:8080/open");
+  assert.equal(open.status, 200);
+  assert.match(await open.text(), /<html/i);
+
+  const share = await fetch("http://127.0.0.1:8080/share/any-id");
+  assert.equal(share.status, 200);
+  assert.match(await share.text(), /<html/i);
+
   const first = await fetch("http://127.0.0.1:8080/api/v1/shares", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

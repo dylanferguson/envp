@@ -17,7 +17,6 @@ import (
 	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/server"
 	"github.com/dylanferguson/envp/internal/store"
-	"github.com/dylanferguson/envp/internal/webui"
 )
 
 var commit = "unknown"
@@ -128,7 +127,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	} else {
 		rec.Swept(n)
 	}
-	handler, err := server.New(db, webui.Files(), cfg.http, logger, rec)
+	handler, err := server.New(db, cfg.http, logger, rec)
 	if err != nil {
 		return err
 	}

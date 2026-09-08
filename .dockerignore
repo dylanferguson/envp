@@ -1,6 +1,5 @@
 node_modules
 dist
-internal/webui/client
 data
 .git
 .github

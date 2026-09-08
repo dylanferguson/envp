@@ -14,17 +14,14 @@ run = "watchexec -r -e go,mod,sum -w cmd -w internal -w go.mod -w go.sum -- go r
 
 [tasks.dev]
 description = "Vite UI + Go API"
-run = 'vp build && concurrently -k -n web,api -c cyan,magenta "vp dev" "mise run api"'
+run = 'concurrently -k -n web,api -c cyan,magenta "vp dev" "mise run api"'
 
 [tasks.build]
-description = "Embedded UI + production Go binary"
-run = [
-  "vp build",
-  "CGO_ENABLED=0 go build -tags production -trimpath -ldflags=\"-s -w -X main.commit=${GIT_COMMIT:-$(git rev-parse HEAD)}\" -o dist/envp ./cmd/envp",
-]
+description = "Go API binary"
+run = "CGO_ENABLED=0 go build -trimpath -ldflags=\"-s -w -X main.commit=${GIT_COMMIT:-$(git rev-parse HEAD)}\" -o dist/envp ./cmd/envp"
 
 [tasks.start]
-description = "Run the production binary"
+description = "Run the API binary"
 run = "./dist/envp"
 
 [tasks.test]
@@ -36,7 +33,7 @@ description = "Frontend checks and golangci-lint"
 run = ["vp check", "golangci-lint run"]
 
 [tasks."test:e2e"]
-description = "Playwright against the production binary"
+description = "Playwright against docker compose (nginx + API)"
 run = "playwright test"
 
 [tasks."test:e2e:install"]

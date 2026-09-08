@@ -12,19 +12,11 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 )
-
-var testFiles = fstest.MapFS{
-	"index.html":        {Data: []byte("<!doctype html><title>Create</title>")},
-	"open.html":         {Data: []byte("<!doctype html><title>Open</title>")},
-	"assets/app-123.js": {Data: []byte("console.log('test')")},
-	"favicon.ico":       {Data: []byte{1, 2, 3}},
-}
 
 func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 	t.Helper()
@@ -38,7 +30,7 @@ func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 		}
 	})
 	rec := metrics.New()
-	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
+	handler, err := New(db, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,30 +184,16 @@ func TestOrigin(t *testing.T) {
 	}
 }
 
-func TestStaticFiles(t *testing.T) {
+func TestAPIOnlyPublicMux(t *testing.T) {
 	h, _ := testServer(t, Config{})
-	for _, tc := range []struct{ path, content, cache string }{
-		{"/", "Create", "no-cache"}, {"/open", "Open", "no-cache"}, {"/share/any-id", "Open", "no-cache"},
-		{"/robots.txt", "Disallow: /", "public, max-age=86400"},
-		{"/assets/app-123.js", "console.log", "public, max-age=31536000, immutable"}, {"/favicon.ico", "", ""},
-	} {
-		w := request(h, "GET", tc.path, "")
-		if w.Code != 200 || !strings.Contains(w.Body.String(), tc.content) || w.Header().Get("Cache-Control") != tc.cache {
-			t.Errorf("%s: %d %s %v", tc.path, w.Code, w.Body, w.Header())
-		}
-		if w.Header().Get("Referrer-Policy") != "no-referrer" || w.Header().Get("X-Robots-Tag") != "noindex, nofollow" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") {
-			t.Errorf("security headers: %s", tc.path)
-		}
-		w = request(h, "HEAD", tc.path, "")
-		if w.Code != 200 || w.Body.Len() != 0 {
-			t.Errorf("HEAD %s: %d %s", tc.path, w.Code, w.Body)
-		}
-	}
-	for _, path := range []string{"/assets/", "/assets/missing.js", "/missing", "/../go.mod", "/api/v1/missing"} {
+	for _, path := range []string{"/", "/open", "/share/any-id", "/robots.txt", "/assets/app.js", "/missing", "/../go.mod", "/api/v1/missing"} {
 		w := request(h, "GET", path, "")
-		assertError(t, w, 404, "not_found", "Not found.")
-		if strings.Contains(w.Header().Get("Cache-Control"), "immutable") {
-			t.Errorf("%s: immutable cache on 404", path)
+		if path == "/../go.mod" || path == "/api/v1/missing" {
+			assertError(t, w, 404, "not_found", "Not found.")
+			continue
+		}
+		if w.Code != 404 {
+			t.Errorf("%s: %d %s", path, w.Code, w.Body)
 		}
 	}
 }
@@ -303,7 +281,7 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 	defer func() { _ = db.Close() }()
 	rec := metrics.New()
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
-	h, err := New(db, testFiles, Config{}, logger, rec)
+	h, err := New(db, Config{}, logger, rec)
 	if err != nil {
 		t.Fatal(err)
 	}

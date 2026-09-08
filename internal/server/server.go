@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -82,12 +81,11 @@ type Server struct {
 
 type server struct {
 	db     *store.Store
-	files  fs.FS
 	config Config
 	log    *slog.Logger
 }
 
-func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *metrics.Recorder) (*Server, error) {
+func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recorder) (*Server, error) {
 	if config.PublicOrigin != "" {
 		origin, err := ParseOrigin(config.PublicOrigin)
 		if err != nil {
@@ -95,12 +93,7 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 		}
 		config.PublicOrigin = origin
 	}
-	for _, name := range []string{"index.html", "open.html"} {
-		if _, err := fs.Stat(files, name); err != nil {
-			return nil, fmt.Errorf("load UI %s (run vp build first): %w", name, err)
-		}
-	}
-	s := &server{db: db, files: files, config: config, log: logger}
+	s := &server{db: db, config: config, log: logger}
 	track := rec.Instrument
 
 	mux := http.NewServeMux()
@@ -108,11 +101,6 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	mux.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.recover(noStore(s.readShare))))
 	mux.Handle("GET /api/{path...}", track(metrics.RouteGet, s.recover(noStore(s.apiNotFound))))
 	mux.Handle("POST /api/{path...}", track(metrics.RouteCreate, s.recover(noStore(s.apiNotFound))))
-	mux.Handle("GET /{$}", track(metrics.RouteStatic, s.recover(s.page("index.html"))))
-	mux.Handle("GET /open", track(metrics.RouteStatic, s.recover(s.page("open.html"))))
-	mux.Handle("GET /share/{id}", track(metrics.RouteStatic, s.recover(s.page("open.html"))))
-	mux.Handle("GET /robots.txt", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.robots))))
-	mux.Handle("GET /", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.file))))
 
 	return &Server{Handler: headers(rejectUncleanPath(s, mux))}, nil
 }
@@ -209,38 +197,6 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) apiNotFound(w http.ResponseWriter, r *http.Request) {
 	s.error(w, r, errNotFound)
-}
-
-func (s *server) page(name string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache")
-		http.ServeFileFS(w, r, s.files, name)
-	}
-}
-
-const robotsTxt = "User-agent: *\nDisallow: /\n"
-
-func (s *server) robots(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	http.ServeContent(w, r, "robots.txt", time.Time{}, strings.NewReader(robotsTxt))
-}
-
-func (s *server) file(w http.ResponseWriter, r *http.Request) {
-	name := strings.TrimPrefix(r.URL.Path, "/")
-	if !fs.ValidPath(name) {
-		s.error(w, r, errNotFound)
-		return
-	}
-	info, err := fs.Stat(s.files, name)
-	if err != nil || info.IsDir() {
-		s.error(w, r, errNotFound)
-		return
-	}
-	if strings.HasPrefix(name, "assets/") {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	}
-	http.ServeFileFS(w, r, s.files, name)
 }
 
 func (s *server) expectedOrigin(r *http.Request) string {

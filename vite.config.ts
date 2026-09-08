@@ -58,7 +58,7 @@ export default defineConfig({
     __BUILD_COMMIT__: JSON.stringify(buildCommit),
   },
   build: {
-    outDir: resolve(__dirname, "internal/webui/client"),
+    outDir: resolve(__dirname, "dist/client"),
     emptyOutDir: true,
     rollupOptions: {
       input: {

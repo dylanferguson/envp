@@ -15,7 +15,6 @@ type Route string
 const (
 	RouteCreate Route = "create"
 	RouteGet    Route = "get"
-	RouteStatic Route = "static"
 )
 
 type Recorder struct {
@@ -67,9 +66,7 @@ func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
 
 func (r *Recorder) observe(route Route, status int, took time.Duration) {
 	r.requests.WithLabelValues(string(route), strconv.Itoa(status/100)+"xx").Inc()
-	if route != RouteStatic {
-		r.duration.WithLabelValues(string(route)).Observe(took.Seconds())
-	}
+	r.duration.WithLabelValues(string(route)).Observe(took.Seconds())
 	if route == RouteCreate && status == http.StatusCreated {
 		r.created.Inc()
 	}

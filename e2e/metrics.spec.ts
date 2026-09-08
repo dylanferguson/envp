@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const INTERNAL_URL = "http://127.0.0.1:18090";
+const INTERNAL_URL = "http://127.0.0.1:9090";
 
 test("keeps health and metrics off the public port", async ({ request }) => {
   expect((await request.get("/health")).status()).toBe(404);

@@ -17,12 +17,16 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
-COPY --from=web /app/internal/webui/client ./internal/webui/client
 ARG GIT_COMMIT=unknown
-RUN CGO_ENABLED=0 go build -tags production -trimpath -ldflags="-s -w -X main.commit=${GIT_COMMIT}" -o /envp ./cmd/envp
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.commit=${GIT_COMMIT}" -o /envp ./cmd/envp
 RUN mkdir /data && chown 65532:65532 /data
 
-FROM scratch
+FROM nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236 AS nginx
+COPY deploy/nginx/security_headers.conf /etc/nginx/security_headers.conf
+COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=web /app/dist/client /usr/share/nginx/html
+
+FROM scratch AS envp
 COPY --from=build /envp /envp
 COPY --from=build --chown=65532:65532 /data /data
 USER 65532:65532
