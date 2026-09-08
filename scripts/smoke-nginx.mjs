@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import http from "node:http";
 import { setTimeout } from "node:timers/promises";
 
 const compose = (...args) =>
@@ -29,27 +30,27 @@ async function ready() {
 try {
   await ready();
 
-  const flyDev = execFileSync(
-    "curl",
-    [
-      "-sS",
-      "-o",
-      "/dev/null",
-      "-w",
-      "%{http_code}",
-      "-X",
-      "POST",
-      "-H",
-      "Host: envp.fly.dev",
-      "-H",
-      "Content-Type: application/json",
-      "-d",
-      JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }),
-      "http://127.0.0.1:8080/api/v1/shares",
-    ],
-    { encoding: "utf8" },
-  );
-  assert.equal(flyDev, "403");
+  const flyDev = await new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        hostname: "127.0.0.1",
+        port: 8080,
+        method: "POST",
+        path: "/api/v1/shares",
+        headers: {
+          Host: "envp.fly.dev",
+          "Content-Type": "application/json",
+        },
+      },
+      (res) => {
+        res.resume();
+        res.on("end", () => resolve(res.statusCode));
+      },
+    );
+    req.on("error", reject);
+    req.end(JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }));
+  });
+  assert.equal(flyDev, 403);
 
   const first = await fetch("http://127.0.0.1:8080/api/v1/shares", {
     method: "POST",
