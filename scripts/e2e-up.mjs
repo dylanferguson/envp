@@ -19,4 +19,4 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 compose("up", "--build", "--wait");
-await new Promise(() => {});
+setInterval(() => {}, 1 << 30);

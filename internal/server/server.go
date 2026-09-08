@@ -74,17 +74,13 @@ var (
 	errPayloadTooLarge = apiError{http.StatusRequestEntityTooLarge, "payload_too_large", "Request body is too large."}
 )
 
-type Server struct {
-	http.Handler
-}
-
 type server struct {
 	db     *store.Store
 	config Config
 	log    *slog.Logger
 }
 
-func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recorder) (*Server, error) {
+func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recorder) (http.Handler, error) {
 	if config.PublicOrigin != "" {
 		origin, err := ParseOrigin(config.PublicOrigin)
 		if err != nil {
@@ -101,7 +97,7 @@ func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recor
 	mux.Handle("GET /api/{path...}", track(metrics.RouteGet, s.recover(noStore(s.apiNotFound))))
 	mux.Handle("POST /api/{path...}", track(metrics.RouteCreate, s.recover(noStore(s.apiNotFound))))
 
-	return &Server{Handler: headers(mux)}, nil
+	return headers(mux), nil
 }
 
 func noStore(next http.HandlerFunc) http.HandlerFunc {

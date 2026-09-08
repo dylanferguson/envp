@@ -36,13 +36,10 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - run: |
           image="registry.fly.io/envp:${GITHUB_SHA}"
-          nginx_image="registry.fly.io/envp:nginx-${GITHUB_SHA}"
           docker tag envp:go-scratch "$image"
-          docker tag envp-nginx "$nginx_image"
           docker tag envp-nginx registry.fly.io/envp:nginx
           flyctl auth docker
           docker push "$image"
-          docker push "$nginx_image"
           docker push registry.fly.io/envp:nginx
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
@@ -58,10 +55,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
-      - run: |
-          export NGINX_IMAGE="registry.fly.io/envp:nginx-${GITHUB_SHA}"
-          envsubst '$NGINX_IMAGE' < deploy/fly-machine.json > deploy/fly-machine.json.rendered
-          mv deploy/fly-machine.json.rendered deploy/fly-machine.json
-          flyctl deploy --image "registry.fly.io/envp:${GITHUB_SHA}" --ha=false
+      - run: flyctl deploy --image registry.fly.io/envp:${{ github.sha }} --ha=false
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
