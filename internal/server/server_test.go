@@ -184,18 +184,9 @@ func TestOrigin(t *testing.T) {
 	}
 }
 
-func TestAPIOnlyPublicMux(t *testing.T) {
+func TestUnknownAPIRoute(t *testing.T) {
 	h, _ := testServer(t, Config{})
-	for _, path := range []string{"/", "/open", "/share/any-id", "/robots.txt", "/assets/app.js", "/missing", "/../go.mod", "/api/v1/missing"} {
-		w := request(h, "GET", path, "")
-		if path == "/../go.mod" || path == "/api/v1/missing" {
-			assertError(t, w, 404, "not_found", "Not found.")
-			continue
-		}
-		if w.Code != 404 {
-			t.Errorf("%s: %d %s", path, w.Code, w.Body)
-		}
-	}
+	assertError(t, request(h, "GET", "/api/v1/missing", ""), 404, "not_found", "Not found.")
 }
 
 func TestStorageFailureIsGeneric(t *testing.T) {

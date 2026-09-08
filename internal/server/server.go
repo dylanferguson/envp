@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -102,7 +101,7 @@ func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recor
 	mux.Handle("GET /api/{path...}", track(metrics.RouteGet, s.recover(noStore(s.apiNotFound))))
 	mux.Handle("POST /api/{path...}", track(metrics.RouteCreate, s.recover(noStore(s.apiNotFound))))
 
-	return &Server{Handler: headers(rejectUncleanPath(s, mux))}, nil
+	return &Server{Handler: headers(mux)}, nil
 }
 
 func noStore(next http.HandlerFunc) http.HandlerFunc {
@@ -110,18 +109,6 @@ func noStore(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store")
 		next(w, r)
 	}
-}
-
-// Go's file server 301-redirects unclean paths. /../go.mod would advertise the
-// repo layout, so we answer JSON 404 instead.
-func rejectUncleanPath(s *server, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != path.Clean(r.URL.Path) {
-			s.error(w, r, errNotFound)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func (s *server) createShare(w http.ResponseWriter, r *http.Request) {

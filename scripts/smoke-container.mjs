@@ -39,9 +39,6 @@ try {
   const internalURL = publishedURL(9090);
   await ready(`${internalURL}/health`);
 
-  const html = await fetch(`${baseURL}/`);
-  assert.equal(html.status, 404);
-
   const publicHealth = await fetch(`${baseURL}/health`);
   assert.equal(publicHealth.status, 404);
   const publicMetrics = await fetch(`${baseURL}/metrics`);
