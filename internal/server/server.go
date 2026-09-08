@@ -144,7 +144,7 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 	mux.Handle("GET /", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.file))))
 
 	return &Server{
-		Handler: headers(rejectUncleanPath(s, mux)),
+		Handler: headers(requirePublicHost(s, rejectUncleanPath(s, mux))),
 		create:  createLimit,
 		read:    readLimit,
 	}, nil
@@ -274,6 +274,35 @@ func (s *server) file(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	}
 	http.ServeFileFS(w, r, s.files, name)
+}
+
+func requirePublicHost(s *server, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.config.PublicOrigin != "" && !hostMatchesOrigin(r.Host, s.config.PublicOrigin) {
+			s.error(w, r, errForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func hostMatchesOrigin(requestHost, publicOrigin string) bool {
+	want, err := url.Parse(publicOrigin)
+	if err != nil || want.Host == "" {
+		return false
+	}
+	gotHost := requestHost
+	gotPort := ""
+	if host, port, err := net.SplitHostPort(requestHost); err == nil {
+		gotHost, gotPort = host, port
+	}
+	if !strings.EqualFold(gotHost, want.Hostname()) {
+		return false
+	}
+	if want.Port() == "" {
+		return true
+	}
+	return gotPort == want.Port()
 }
 
 func (s *server) expectedOrigin(r *http.Request) string {

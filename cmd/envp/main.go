@@ -84,6 +84,9 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return c, err
 	}
+	if os.Getenv("FLY_APP_NAME") != "" && origin == "" {
+		return c, errors.New("PUBLIC_ORIGIN is required on Fly")
+	}
 	c.http.PublicOrigin = origin
 	return c, nil
 }

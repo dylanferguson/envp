@@ -41,3 +41,14 @@ func TestConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigRequiresOriginOnFly(t *testing.T) {
+	t.Setenv("PORT", "8080")
+	t.Setenv("INTERNAL_PORT", "9090")
+	t.Setenv("DB_PATH", "./data/shares.db")
+	t.Setenv("PUBLIC_ORIGIN", "")
+	t.Setenv("FLY_APP_NAME", "envp")
+	if _, err := loadConfig(); err == nil {
+		t.Fatal("loadConfig: expected error")
+	}
+}

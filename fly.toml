@@ -1,15 +1,5 @@
-# Change app and PUBLIC_ORIGIN together if deploying under another name.
-#
-# Topology: Cloudflare (client IP + per-IP rate limits) -> Fly [http_service] -> :8080.
-# The Go process is a share store. It does not read CF-Connecting-IP, Fly-Client-IP,
-# or X-Forwarded-For. There is no TRUST_PROXY; setting it has no effect.
-#
-# Cloudflare owns the per-client write/read ceiling and holds it across Fly cold
-# starts (auto_stop_machines / min_machines_running = 0). The in-process limiter
-# is a coarse fuse on RemoteAddr (on Fly, the proxy hop — one bucket for everyone).
-#
 # PUBLIC_ORIGIN must be the Cloudflare-proxied hostname, not *.fly.dev.
-# *.fly.dev bypasses Cloudflare; do not treat it as a public app URL.
+# The process does not trust forwarding headers. There is no TRUST_PROXY.
 app = "envp"
 primary_region = "syd"
 kill_signal = "SIGTERM"

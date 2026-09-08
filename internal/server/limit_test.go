@@ -74,3 +74,24 @@ func TestForwardedHeadersDoNotSplitFuse(t *testing.T) {
 	h.ServeHTTP(w, r)
 	assertError(t, w, 429, "rate_limited", "Too many requests. Try again later.")
 }
+
+func TestDistinctPeersHaveDistinctFuses(t *testing.T) {
+	h, _ := testServer(t, Config{})
+	create := func(remote string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
+		r.RemoteAddr = remote
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	for range createFuseTokens {
+		if w := create("192.0.2.1:1"); w.Code != 201 {
+			t.Fatalf("peer a: %d %s", w.Code, w.Body)
+		}
+	}
+	assertError(t, create("192.0.2.1:1"), 429, "rate_limited", "Too many requests. Try again later.")
+	if w := create("192.0.2.2:1"); w.Code != 201 {
+		t.Fatalf("peer b: %d %s", w.Code, w.Body)
+	}
+}

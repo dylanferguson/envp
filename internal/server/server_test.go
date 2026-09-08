@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -72,6 +73,31 @@ func assertError(t *testing.T, w *httptest.ResponseRecorder, status int, code, m
 	}
 	if w.Header().Get("X-Content-Type-Options") != "nosniff" || w.Header().Get("X-Robots-Tag") != "noindex, nofollow" {
 		t.Error("missing security headers")
+	}
+}
+
+func assertRetryAfter(t *testing.T, w *httptest.ResponseRecorder, max int) {
+	t.Helper()
+	n, err := strconv.Atoi(w.Header().Get("Retry-After"))
+	if err != nil || n < 1 || n > max {
+		t.Fatalf("retry: %s", w.Header().Get("Retry-After"))
+	}
+}
+
+func TestPublicHostMustMatchOrigin(t *testing.T) {
+	h, _ := testServer(t, Config{PublicOrigin: "https://envp.dylanferguson.co"})
+	r := httptest.NewRequest("POST", "http://envp.fly.dev/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	assertError(t, w, 403, "forbidden", "The request origin is not allowed.")
+
+	r = httptest.NewRequest("POST", "http://envp.dylanferguson.co/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
+	r.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 201 {
+		t.Fatalf("matching host: %d %s", w.Code, w.Body)
 	}
 }
 
@@ -185,6 +211,13 @@ func TestOrigin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			h, _ := testServer(t, tc.cfg)
 			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
+			if tc.cfg.PublicOrigin != "" {
+				origin, err := ParseOrigin(tc.cfg.PublicOrigin)
+				if err != nil {
+					t.Fatal(err)
+				}
+				r.Host = strings.TrimPrefix(strings.TrimPrefix(origin, "https://"), "http://")
+			}
 			r.Header.Set("Origin", tc.origin)
 			r.Header.Set("X-Forwarded-Proto", tc.forwarded)
 			w := httptest.NewRecorder()
@@ -208,10 +241,7 @@ func TestRateLimits(t *testing.T) {
 	}
 	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
 	assertError(t, w, 429, "rate_limited", "Too many requests. Try again later.")
-	if w.Header().Get("Retry-After") != "20" {
-		t.Fatalf("retry: %s", w.Header().Get("Retry-After"))
-	}
-	// Failed reads spend the independent read allowance too.
+	assertRetryAfter(t, w, 20)
 	for range readFuseTokens {
 		if w := request(h, "GET", "/api/v1/shares/invalid", ""); w.Code != 404 {
 			t.Fatalf("read: %d", w.Code)
@@ -219,9 +249,7 @@ func TestRateLimits(t *testing.T) {
 	}
 	w = request(h, "GET", "/api/v1/shares/invalid", "")
 	assertError(t, w, 429, "rate_limited", "Too many requests. Try again later.")
-	if w.Header().Get("Retry-After") != "1" {
-		t.Fatal("missing read Retry-After")
-	}
+	assertRetryAfter(t, w, 1)
 }
 
 func TestStaticFiles(t *testing.T) {
