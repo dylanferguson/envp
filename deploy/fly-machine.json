@@ -2,7 +2,7 @@
   "containers": [
     {
       "name": "nginx",
-      "image": "registry.fly.io/envp:nginx",
+      "image": "$NGINX_IMAGE",
       "depends_on": [
         {
           "name": "envp",

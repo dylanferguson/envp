@@ -57,17 +57,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
       - run: |
-          python3 - <<'PY'
-          import json, os
-          path = "deploy/fly-machine.json"
-          data = json.load(open(path))
-          sha = os.environ["GITHUB_SHA"]
-          for container in data["containers"]:
-              if container["name"] == "nginx":
-                  container["image"] = f"registry.fly.io/envp:nginx-{sha}"
-          json.dump(data, open(path, "w"), indent=2)
-          open(path, "a").write("\n")
-          PY
-          flyctl deploy --image registry.fly.io/envp:${{ github.sha }} --ha=false
+          export NGINX_IMAGE="registry.fly.io/envp:nginx-${GITHUB_SHA}"
+          envsubst '$NGINX_IMAGE' < deploy/fly-machine.json > deploy/fly-machine.json.rendered
+          mv deploy/fly-machine.json.rendered deploy/fly-machine.json
+          flyctl deploy --image "registry.fly.io/envp:${GITHUB_SHA}" --ha=false
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
