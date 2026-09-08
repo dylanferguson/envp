@@ -6,7 +6,6 @@
     disabled?: boolean;
     type?: "button" | "submit";
     onclick?: (event: MouseEvent) => void;
-    ariaLabel?: string;
     children: Snippet;
   };
 
@@ -15,7 +14,6 @@
     disabled = false,
     type = "button",
     onclick,
-    ariaLabel,
     children,
   }: Props = $props();
 </script>
@@ -25,7 +23,6 @@
   class:is-busy={busy}
   {disabled}
   {onclick}
-  aria-label={ariaLabel}
 >
   {@render children()}
 </button>

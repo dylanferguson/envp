@@ -3,27 +3,20 @@ import { MAX_PLAINTEXT_BYTES, type MaxReads, type TtlSeconds } from "../../lib/l
 import { ShareApiError, createShare } from "../../api/shares.js";
 import type { CreateState } from "./state.js";
 
-export type ShareFlowOutcome =
-  | { kind: "over_limit" }
-  | { kind: "done"; url: string; copied: boolean; expiresAt: number; maxReads: number }
-  | { kind: "error"; at: "encrypt" | "send" | "link"; message: string };
-
-export type ShareFlowProgress = { phase: "encrypting" } | { phase: "uploading"; bytes: number };
-
 export async function runShareFlow(
   envInput: string,
   ttlSeconds: TtlSeconds,
   maxReads: MaxReads,
   origin: string,
-  onProgress?: (progress: ShareFlowProgress) => void,
-): Promise<ShareFlowOutcome> {
+  onProgress?: (state: CreateState) => void,
+): Promise<CreateState | { phase: "over_limit" }> {
   const encoded = new TextEncoder().encode(envInput);
   if (encoded.length > MAX_PLAINTEXT_BYTES) {
-    return { kind: "over_limit" };
+    return { phase: "over_limit" };
   }
 
   onProgress?.({ phase: "encrypting" });
-  let at: "encrypt" | "send" | "link" = "encrypt";
+  let at: Extract<CreateState, { phase: "error" }>["at"] = "encrypt";
   try {
     const key = await generateKey();
     const envelope = await seal(encoded, key);
@@ -44,7 +37,7 @@ export async function runShareFlow(
     }
 
     return {
-      kind: "done",
+      phase: "done",
       url,
       copied,
       expiresAt: created.expiresAt,
@@ -52,34 +45,11 @@ export async function runShareFlow(
     };
   } catch (error) {
     if (error instanceof EnvelopeError) {
-      return { kind: "error", at: "encrypt", message: "Encryption failed" };
+      return { phase: "error", at: "encrypt", message: "Encryption failed" };
     }
     if (error instanceof ShareApiError) {
-      return { kind: "error", at: "send", message: error.message };
+      return { phase: "error", at: "send", message: error.message };
     }
-    return { kind: "error", at, message: "Something went wrong" };
+    return { phase: "error", at, message: "Something went wrong" };
   }
-}
-
-export function applyShareOutcome(outcome: ShareFlowOutcome): CreateState {
-  if (outcome.kind === "over_limit") {
-    return { phase: "idle" };
-  }
-  if (outcome.kind === "done") {
-    return {
-      phase: "done",
-      url: outcome.url,
-      copied: outcome.copied,
-      expiresAt: outcome.expiresAt,
-      maxReads: outcome.maxReads,
-    };
-  }
-  return { phase: "error", at: outcome.at, message: outcome.message };
-}
-
-export function applyShareProgress(progress: ShareFlowProgress): CreateState {
-  if (progress.phase === "encrypting") {
-    return { phase: "encrypting" };
-  }
-  return { phase: "uploading", bytes: progress.bytes };
 }

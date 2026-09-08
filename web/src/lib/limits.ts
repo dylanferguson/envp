@@ -59,6 +59,11 @@ export function parseShareId(value: string): ShareId | null {
   return value.toUpperCase() as ShareId;
 }
 
+export function shareIdFromPath(pathname: string): ShareId | null {
+  const match = pathname.match(/^\/share\/([^/]+)$/);
+  return match?.[1] ? parseShareId(match[1]) : null;
+}
+
 export function parseKeyFragment(value: string): KeyFragment | null {
   if (!KEY_FRAGMENT_RE.test(value)) {
     return null;
@@ -89,11 +94,7 @@ export function parseShareLink(input: string): ParsedShareLink | null {
   if (trimmed.startsWith("/") || trimmed.includes("://")) {
     try {
       const url = new URL(trimmed, "http://local");
-      const match = url.pathname.match(/^\/share\/([^/]+)$/);
-      if (!match?.[1]) {
-        return null;
-      }
-      return parsedShareLink(match[1], url.hash.slice(1));
+      return parsedShareLink(shareIdFromPath(url.pathname) ?? "", url.hash.slice(1));
     } catch {
       return null;
     }
@@ -131,4 +132,16 @@ export function formatShareBoundsLabel(
   now = Date.now(),
 ): string {
   return `${formatExpiresAtLabel(expiresAt, now)} or ${formatMaxReadsLabel(maxReads)}`;
+}
+
+export function formatInputSize(bytes: number): { text: string; over: boolean } {
+  if (bytes > MAX_PLAINTEXT_BYTES) {
+    return { text: `over ${MAX_PLAINTEXT_KIB} KiB`, over: true };
+  }
+  if (bytes === 0) {
+    return { text: `${MAX_PLAINTEXT_KIB} KiB max`, over: false };
+  }
+  const kib = bytes / 1024;
+  const label = kib >= 10 ? `${Math.round(kib)} KiB` : `${kib.toFixed(1)} KiB`;
+  return { text: label, over: false };
 }

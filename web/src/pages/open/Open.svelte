@@ -150,6 +150,6 @@
       {/snippet}
     </SwapStage>
 
-    <StatusLine text={reading.note} error={reading.tone === "error"} animated />
+    <StatusLine text={reading.note} error={reading.tone === "error"} />
   </div>
 </Layout>

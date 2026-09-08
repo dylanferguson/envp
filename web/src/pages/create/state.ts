@@ -1,5 +1,4 @@
-import type { DiagramFocus } from "../../lib/diagram-focus.js";
-import type { Reading, TreeLine } from "../../lib/signal.js";
+import type { DiagramFocus, Reading, TreeLine } from "../../lib/signal.js";
 
 export const CREATE_STEPS = ["paste", "encrypt", "send", "link"] as const;
 export type CreateStep = (typeof CREATE_STEPS)[number];
@@ -89,12 +88,4 @@ export function deriveCreateReading(state: CreateState): Reading<CreateStep> {
     return { ...base, step: state.at, note: state.message };
   }
   return base;
-}
-
-export function isCreateBusy(state: CreateState): boolean {
-  return state.phase === "encrypting" || state.phase === "uploading";
-}
-
-export function isCreateDone(state: CreateState): state is Extract<CreateState, { phase: "done" }> {
-  return state.phase === "done";
 }

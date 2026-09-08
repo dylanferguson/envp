@@ -1,6 +1,5 @@
 <script lang="ts">
   import { crossfade } from "svelte/transition";
-  import { BUILD_META, buildCommitUrl } from "../lib/build-meta.js";
   import type { SignalTone } from "../lib/signal.js";
 
   type Props = {
@@ -13,7 +12,7 @@
 
   const REPO_URL = "https://github.com/dylanferguson/envp";
   const SIGNAL_WIDTH_WORD = "uploading";
-  const commitHref = buildCommitUrl(REPO_URL, BUILD_META.commit);
+  const commitHref = `${REPO_URL}/commit/${__BUILD_COMMIT__}`;
   const [send, receive] = crossfade({ duration: 260 });
 </script>
 
@@ -44,9 +43,9 @@
               href={commitHref}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Deployed build {BUILD_META.commit}"
+              aria-label="Deployed build {__BUILD_COMMIT__}"
             >
-              {BUILD_META.commit}
+              {__BUILD_COMMIT__}
             </a>
           </span>
         </span>

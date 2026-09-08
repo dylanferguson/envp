@@ -10,18 +10,12 @@
   import SwapStage from "../../ui/SwapStage.svelte";
   import CreateDone from "./CreateDone.svelte";
   import CreateForm from "./CreateForm.svelte";
-  import {
-    applyShareOutcome,
-    applyShareProgress,
-    runShareFlow,
-  } from "./flow.js";
+  import { runShareFlow } from "./flow.js";
   import {
     CREATE_STEPS,
     CREATE_TREE,
     deriveCreateDiagramFocus,
     deriveCreateReading,
-    isCreateBusy,
-    isCreateDone,
     type CreateState,
   } from "./state.js";
 
@@ -34,8 +28,8 @@
   const diagramFocus = $derived(
     intro && state.phase === "idle" ? undefined : deriveCreateDiagramFocus(state),
   );
-  const isDone = $derived(isCreateDone(state));
-  const isBusy = $derived(isCreateBusy(state));
+  const isDone = $derived(state.phase === "done");
+  const isBusy = $derived(state.phase === "encrypting" || state.phase === "uploading");
 
   async function onShare(envInput: string, ttlSeconds: TtlSeconds, maxReads: MaxReads): Promise<void> {
     const outcome = await runShareFlow(
@@ -44,14 +38,14 @@
       maxReads,
       location.origin,
       (progress) => {
-        state = applyShareProgress(progress);
+        state = progress;
       },
     );
-    if (outcome.kind === "over_limit") {
+    if (outcome.phase === "over_limit") {
       return;
     }
-    state = applyShareOutcome(outcome);
-    if (outcome.kind === "done") {
+    state = outcome;
+    if (outcome.phase === "done") {
       if (outcome.copied) {
         showToast("link copied to clipboard");
       }
@@ -62,7 +56,7 @@
   }
 
   function copyShareLink(): void {
-    if (!isCreateDone(state)) {
+    if (state.phase !== "done") {
       return;
     }
     void navigator.clipboard.writeText(state.url).then(
@@ -72,7 +66,7 @@
         createDone?.selectLink();
       },
       () => {
-        if (isCreateDone(state)) {
+        if (state.phase === "done") {
           state = { ...state, copied: false };
         }
       },

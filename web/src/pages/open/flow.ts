@@ -1,6 +1,6 @@
 import {
   parseKeyFragment,
-  parseShareId,
+  shareIdFromPath,
   type KeyFragment,
   type ShareId,
 } from "../../lib/limits.js";
@@ -69,14 +69,14 @@ export async function runOpenFlow(
   return { phase: "tampered" };
 }
 
-export function resolveShareTarget(
+function resolveShareTarget(
   shareId: ShareId | undefined,
   keyFragment: KeyFragment | undefined,
   pathname: string,
   hash: string,
   isManual: boolean,
 ): OpenFailure | { kind: "ready"; shareId: ShareId; fragment: KeyFragment } {
-  const id = shareId ?? parseShareId(shareIdFromPath(pathname) ?? "");
+  const id = shareId ?? shareIdFromPath(pathname);
   if (!id) {
     return isManual ? { phase: "invalid_link" } : { phase: "gone" };
   }
@@ -89,26 +89,15 @@ export function resolveShareTarget(
   return { kind: "ready", shareId: id, fragment };
 }
 
-export function shareIdFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/share\/([^/]+)$/);
-  return match?.[1] ?? null;
-}
-
-export type DecryptOutcome =
-  | { kind: "stale" }
-  | { kind: "tampered" }
-  | { kind: "revealed"; envOutput: string };
-
-export type FetchShareOutcome =
+async function fetchShareEnvelope(
+  shareId: ShareId,
+  isStale: () => boolean,
+): Promise<
   | { kind: "envelope"; envelope: Uint8Array }
   | { kind: "missing" }
   | { kind: "fetch_error"; message: string }
-  | { kind: "stale" };
-
-export async function fetchShareEnvelope(
-  shareId: ShareId,
-  isStale: () => boolean,
-): Promise<FetchShareOutcome> {
+  | { kind: "stale" }
+> {
   try {
     const envelope = await getShare(shareId);
     if (isStale()) {
@@ -129,11 +118,11 @@ export async function fetchShareEnvelope(
   }
 }
 
-export async function decryptShareEnvelope(
+async function decryptShareEnvelope(
   envelope: Uint8Array,
   fragment: KeyFragment,
   isStale: () => boolean,
-): Promise<DecryptOutcome> {
+): Promise<{ kind: "stale" } | { kind: "tampered" } | { kind: "revealed"; envOutput: string }> {
   try {
     const key = await importKeyFromFragment(fragment);
     const plaintext = await open(envelope, key);
