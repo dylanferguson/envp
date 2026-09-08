@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GIT_COMMIT: ${{ github.sha }}
-      COMPOSE_BAKE: "true"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
@@ -41,7 +40,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: mise run check
       - run: mise run test
-      - run: docker compose -f compose.yaml -f compose.ci.yaml build
+      - uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        with:
+          files: compose.yaml
+          load: true
+          provenance: false
+          set: |
+            *.args.GIT_COMMIT=${{ github.sha }}
+            envp.cache-from=type=gha,scope=envp
+            envp.cache-to=type=gha,mode=max,scope=envp
+            nginx.cache-from=type=gha,scope=nginx
+            nginx.cache-to=type=gha,mode=max,scope=nginx
       - run: pnpm exec playwright install --only-shell
       - run: mise run test:e2e
         env:
