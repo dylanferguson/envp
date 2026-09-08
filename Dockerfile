@@ -17,6 +17,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
+# Compile without the commit stamp so this layer (and GOCACHE) stay cached
+# across SHAs. The next RUN only relinks with -X main.commit.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /envp ./cmd/envp
 ARG GIT_COMMIT=unknown
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.commit=${GIT_COMMIT}" -o /envp ./cmd/envp
 RUN mkdir /data && chown 65532:65532 /data

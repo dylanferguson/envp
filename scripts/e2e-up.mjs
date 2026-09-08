@@ -22,5 +22,5 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
   });
 }
 
-compose("up", "--build", "--wait");
+compose("up", ...(process.env.E2E_SKIP_BUILD ? ["--wait"] : ["--build", "--wait"]));
 setInterval(() => {}, 1 << 30);
