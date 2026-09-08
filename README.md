@@ -1,6 +1,6 @@
 # envp
 
-Browser-encrypted `.env` sharing. The key stays in the URL fragment; the server stores ciphertext, an id, and an expiry.
+Browser-encrypted `.env` sharing. The key stays in the URL fragment. The server stores ciphertext, an id, an expiry, and a bound on how many times the encrypted blob may be fetched.
 
 https://envp.dylanferguson.co
 

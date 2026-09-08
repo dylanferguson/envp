@@ -1,11 +1,18 @@
 <script lang="ts">
   import {
+    DEFAULT_MAX_READS,
     DEFAULT_TTL_SECONDS,
     formatExpiryLabel,
+    formatMaxReadsLabel,
     LONGEST_EXPIRY_LABEL,
+    LONGEST_READS_LABEL,
+    MAX_MAX_READS,
     MAX_TTL_SECONDS,
+    MIN_MAX_READS,
     MIN_TTL_SECONDS,
+    parseMaxReads,
     parseTtlSeconds,
+    type MaxReads,
     type TtlSeconds,
   } from "../../lib/limits.js";
   import { formatInputSize } from "../../lib/format-input-size.js";
@@ -20,7 +27,7 @@
     busy: boolean;
     statusText: string;
     statusError: boolean;
-    onShare: (envInput: string, ttlSeconds: TtlSeconds) => void;
+    onShare: (envInput: string, ttlSeconds: TtlSeconds, maxReads: MaxReads) => void;
   };
 
   let {
@@ -32,6 +39,7 @@
 
   let envInput = $state("");
   let ttlSeconds = $state<number>(DEFAULT_TTL_SECONDS);
+  let maxReads = $state<number>(DEFAULT_MAX_READS);
   let envTextarea = $state<HTMLTextAreaElement | null>(null);
 
   export function clearInput(): void {
@@ -46,15 +54,16 @@
   const inputSize = $derived(formatInputSize(inputBytes));
   const isOverLimit = $derived(inputSize.over);
   const validatedTtl = $derived(parseTtlSeconds(String(ttlSeconds)));
+  const validatedMaxReads = $derived(parseMaxReads(maxReads));
   const shareDisabled = $derived(
-    busy || isOverLimit || envInput.length === 0 || validatedTtl === null,
+    busy || isOverLimit || envInput.length === 0 || validatedTtl === null || validatedMaxReads === null,
   );
 
   function submit(): void {
-    if (shareDisabled || validatedTtl === null) {
+    if (shareDisabled || validatedTtl === null || validatedMaxReads === null) {
       return;
     }
-    onShare(envInput, validatedTtl);
+    onShare(envInput, validatedTtl, validatedMaxReads);
   }
 </script>
 
@@ -90,6 +99,20 @@
     sizer={LONGEST_EXPIRY_LABEL}
     align="start"
   />
+  <FieldLabel for="reads" compact>reads</FieldLabel>
+  <Slider
+    id="reads"
+    bind:value={maxReads}
+    min={MIN_MAX_READS}
+    max={MAX_MAX_READS}
+    step={1}
+    disabled={busy}
+  />
+  <Readout
+    text={formatMaxReadsLabel(maxReads)}
+    sizer={LONGEST_READS_LABEL}
+    align="start"
+  />
   <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
 </div>
 
@@ -115,24 +138,41 @@
   .controls {
     --controls-band: 0.85rem;
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 1rem;
+    column-gap: 1rem;
+    row-gap: 0.85rem;
+    min-width: 0;
     margin: 0 0 1.25rem;
   }
 
-  .controls :global(label.compact),
-  .controls :global(.readout-grid) {
+  .controls > :global(label.compact),
+  .controls > :global(.readout-grid) {
     min-height: var(--controls-band);
     line-height: 1;
   }
 
-  .controls :global(.slider) {
+  .controls > :global(.slider) {
     min-width: 0;
     height: var(--controls-band);
   }
 
-  .controls :global(button) {
+  .controls > :global(button) {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    align-self: center;
     line-height: 1;
+  }
+
+  @media (max-width: 40rem) {
+    .controls {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .controls > :global(button) {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      justify-self: end;
+    }
   }
 </style>

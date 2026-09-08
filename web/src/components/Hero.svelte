@@ -58,6 +58,7 @@
   <p class="deck">{deck}</p>
 </header>
 
+<div class="diagram-scroller">
 <pre
   class="diagram"
   class:is-animate={isAnimated}
@@ -72,6 +73,7 @@
    <span class="dia-you">╰──────┬──────╯</span>          <span class="dia-server">└───────────┘</span>          <span class="dia-them">╰──────┬──────╯</span>
           <span class="dia-key-path">└{keyPathLeft}{KEY_PATH_PREFIX}</span><span class="dia-key">{KEY_PATH_SUFFIX}</span><span class="dia-key-path">{keyPathRight}┘</span></pre
 >
+</div>
 
 <style>
   .hero {
@@ -98,9 +100,16 @@
     color: var(--phosphor);
   }
 
-  .diagram {
+  .diagram-scroller {
+    min-width: 0;
+    max-width: 100%;
     margin: 0 0 2rem;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .diagram {
+    margin: 0;
     color: var(--hairline-lit);
     font: inherit;
     font-size: clamp(0.56rem, 1.35vw, 0.7rem);

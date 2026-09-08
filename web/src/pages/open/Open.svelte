@@ -139,18 +139,17 @@
         <OpenForm bind:this={openForm} bind:linkInput onOpen={onOpenLink} />
       {/snippet}
       {#snippet alt()}
-        {#if !showForm}
+        {#if revealed}
           <OpenResult
             bind:this={openResult}
             {envOutput}
-            {revealed}
             onCopy={onCopy}
             onAgain={onAgain}
           />
         {/if}
       {/snippet}
     </SwapStage>
-  </div>
 
-  <StatusLine text={reading.note} error={reading.tone === "error"} animated />
+    <StatusLine text={reading.note} error={reading.tone === "error"} animated />
+  </div>
 </Layout>

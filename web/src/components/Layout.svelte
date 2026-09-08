@@ -25,8 +25,17 @@
 <style>
   .layout-main {
     flex: 1;
+    min-width: 0;
     width: min(var(--col), 100%);
     margin: 0 auto;
-    padding: 2rem 1.25rem 3.5rem;
+    padding: 1.5rem max(1rem, env(safe-area-inset-right))
+      calc(2.5rem + env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left));
+  }
+
+  @media (min-width: 40rem) {
+    .layout-main {
+      padding: 2rem max(1.25rem, env(safe-area-inset-right))
+        calc(3.5rem + env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left));
+    }
   }
 </style>

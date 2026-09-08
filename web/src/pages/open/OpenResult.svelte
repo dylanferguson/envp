@@ -5,12 +5,11 @@
 
   type Props = {
     envOutput: string;
-    revealed: boolean;
     onCopy: () => void;
     onAgain: () => void;
   };
 
-  let { envOutput, revealed, onCopy, onAgain }: Props = $props();
+  let { envOutput, onCopy, onAgain }: Props = $props();
 
   let copyField = $state<CopyField | null>(null);
 
@@ -31,14 +30,10 @@
     copyLabel="Copy .env to clipboard"
     {onCopy}
     multiline
-    hidden={!revealed}
-    showCopy={revealed}
   />
-  {#if revealed}
-    <div class="done-actions">
-      <Button onclick={onAgain}>open another</Button>
-    </div>
-  {/if}
+  <div class="done-actions">
+    <Button onclick={onAgain}>open another</Button>
+  </div>
 </div>
 
 <style>

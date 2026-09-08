@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { formatExpiresAtLabel } from "../../lib/limits.js";
+  import { formatShareBoundsLabel } from "../../lib/limits.js";
   import Button from "../../ui/Button.svelte";
   import CopyField from "../../ui/CopyField.svelte";
-  import Readout from "../../ui/Readout.svelte";
 
   type Props = {
     url: string;
     expiresAt: number;
+    maxReads: number;
     copied: boolean;
     onCopy: () => void;
     onAgain: () => void;
   };
 
-  let { url, expiresAt, copied, onCopy, onAgain }: Props = $props();
+  let { url, expiresAt, maxReads, copied, onCopy, onAgain }: Props = $props();
 
   let copyField = $state<CopyField | null>(null);
 
@@ -21,14 +21,14 @@
   }
 
   const title = $derived(!copied ? "copy, then send." : "");
-  const expiry = $derived(formatExpiresAtLabel(expiresAt));
+  const bounds = $derived(formatShareBoundsLabel(expiresAt, maxReads));
 </script>
 
 <div class="done">
   {#if title}
     <p class="done-title" aria-live="polite">{title}</p>
   {/if}
-  <p class="done-expiry"><Readout text={expiry} /></p>
+  <p class="done-meta">{bounds}</p>
   <CopyField
     bind:this={copyField}
     id="share-url"
@@ -51,8 +51,12 @@
     color: var(--fg);
   }
 
-  .done-expiry {
+  .done-meta {
     margin: 0 0 0.65rem;
+    font-size: var(--tick);
+    letter-spacing: var(--track);
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
   .done-actions {

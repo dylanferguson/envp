@@ -74,6 +74,7 @@
     position: sticky;
     top: 0;
     z-index: 3;
+    padding-top: env(safe-area-inset-top);
     background: var(--bg);
     border-bottom: 1px solid var(--hairline);
   }
@@ -81,15 +82,18 @@
   .nav-row {
     display: flex;
     align-items: center;
+    min-width: 0;
     width: min(var(--col), 100%);
     height: 2.75rem;
     margin: 0 auto;
-    padding-inline: 1.25rem;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 
   .nav-start {
     display: flex;
     align-items: center;
+    min-width: 0;
     gap: 1.5rem;
   }
 
@@ -267,6 +271,7 @@
 
   .signal {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 0.5rem;
     margin-left: auto;
@@ -335,6 +340,19 @@
     50%,
     100% {
       opacity: 0.25;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .nav-row {
+      padding-left: max(1.25rem, env(safe-area-inset-left));
+      padding-right: max(1.25rem, env(safe-area-inset-right));
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .nav-commit-wrap {
+      display: none;
     }
   }
 

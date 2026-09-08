@@ -25,6 +25,8 @@ import (
 const (
 	minTTLSeconds       = 60
 	maxTTLSeconds       = 86400
+	minMaxReads         = 1
+	maxMaxReads         = 100
 	maxPlaintextBytes   = 65536
 	envelopeHeaderBytes = 18
 	gcmTagBytes         = 16
@@ -39,13 +41,20 @@ type Config struct {
 
 type createRequest struct {
 	TTL      int64  `json:"ttl_seconds"`
+	MaxReads int64  `json:"max_reads"`
 	Envelope string `json:"envelope"`
 }
 
-type shareResponse struct {
+type createShareResponse struct {
 	ID        string `json:"id"`
 	ExpiresAt int64  `json:"expires_at"`
-	Envelope  string `json:"envelope,omitempty"`
+	MaxReads  int    `json:"max_reads"`
+}
+
+type getShareResponse struct {
+	ID        string `json:"id"`
+	ExpiresAt int64  `json:"expires_at"`
+	Envelope  string `json:"envelope"`
 }
 
 type errorBody struct {
@@ -156,7 +165,7 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req createRequest
-	if err := json.Unmarshal(body, &req); err != nil || req.TTL < minTTLSeconds || req.TTL > maxTTLSeconds {
+	if err := json.Unmarshal(body, &req); err != nil || req.TTL < minTTLSeconds || req.TTL > maxTTLSeconds || req.MaxReads < minMaxReads || req.MaxReads > maxMaxReads {
 		s.error(w, r, errInvalidRequest)
 		return
 	}
@@ -165,13 +174,13 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		s.error(w, r, errInvalidRequest)
 		return
 	}
-	share, err := s.store.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second)
+	share, err := s.store.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second, int(req.MaxReads))
 	if err != nil {
 		s.error(w, r, err)
 		return
 	}
 	w.Header().Set("Location", "/api/v1/shares/"+share.ID)
-	writeJSON(w, http.StatusCreated, shareResponse{ID: share.ID, ExpiresAt: share.ExpiresAt.UnixMilli()})
+	writeJSON(w, http.StatusCreated, createShareResponse{ID: share.ID, ExpiresAt: share.ExpiresAt.UnixMilli(), MaxReads: int(req.MaxReads)})
 }
 
 func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +189,18 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 		s.error(w, r, errShareNotFound)
 		return
 	}
-	share, err := s.store.Read(r.Context(), id.String())
+	if r.Method == http.MethodHead {
+		if err := s.store.Peek(r.Context(), id.String()); errors.Is(err, store.ErrNotFound) {
+			s.error(w, r, errShareNotFound)
+			return
+		} else if err != nil {
+			s.error(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	share, err := s.store.Consume(r.Context(), id.String())
 	if errors.Is(err, store.ErrNotFound) {
 		s.error(w, r, errShareNotFound)
 		return
@@ -189,11 +209,7 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 		s.error(w, r, err)
 		return
 	}
-	if r.Method == http.MethodHead {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	writeJSON(w, http.StatusOK, shareResponse{
+	writeJSON(w, http.StatusOK, getShareResponse{
 		ID: share.ID, ExpiresAt: share.ExpiresAt.UnixMilli(),
 		Envelope: base64.RawURLEncoding.EncodeToString(share.Envelope),
 	})

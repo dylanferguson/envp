@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatExpiryLabel, parseShareId, parseShareLink } from "../src/lib/limits.js";
+import {
+  formatExpiryLabel,
+  formatMaxReadsLabel,
+  formatShareBoundsLabel,
+  parseMaxReads,
+  parseShareId,
+  parseShareLink,
+  type UnixMillis,
+} from "../src/lib/limits.js";
 
 const SHARE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
@@ -26,6 +34,45 @@ describe("formatExpiryLabel", () => {
     expect(formatExpiryLabel(3570)).toBe("expires in 1h");
     expect(formatExpiryLabel(3569)).toBe("expires in 59m");
     expect(formatExpiryLabel(1800)).toBe("expires in 30m");
+  });
+});
+
+describe("parseMaxReads", () => {
+  it("accepts integers in range", () => {
+    expect(parseMaxReads(1)).toBe(1);
+    expect(parseMaxReads(20)).toBe(20);
+    expect(parseMaxReads(100)).toBe(100);
+  });
+
+  it("rejects out-of-range and non-integers", () => {
+    expect(parseMaxReads(0)).toBeNull();
+    expect(parseMaxReads(101)).toBeNull();
+    expect(parseMaxReads(20.5)).toBeNull();
+    expect(parseMaxReads("20")).toBeNull();
+  });
+});
+
+describe("formatMaxReadsLabel", () => {
+  it("uses singular for one read", () => {
+    expect(formatMaxReadsLabel(1)).toBe("1 read");
+  });
+
+  it("uses plural otherwise", () => {
+    expect(formatMaxReadsLabel(5)).toBe("5 reads");
+    expect(formatMaxReadsLabel(20)).toBe("20 reads");
+    expect(formatMaxReadsLabel(100)).toBe("100 reads");
+  });
+});
+
+describe("formatShareBoundsLabel", () => {
+  it("joins ttl and reads with or", () => {
+    const now = 1_000_000 as UnixMillis;
+    expect(formatShareBoundsLabel((now + 86_400_000) as UnixMillis, 82, now)).toBe(
+      "expires in 24h or 82 reads",
+    );
+    expect(formatShareBoundsLabel((now + 3_600_000) as UnixMillis, 1, now)).toBe(
+      "expires in 1h or 1 read",
+    );
   });
 });
 

@@ -37,12 +37,13 @@
 <style>
   .toast {
     position: fixed;
-    right: 1.25rem;
-    bottom: 1.25rem;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
     z-index: 4;
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
+    max-width: calc(100% - 2rem);
     margin: 0;
     padding: 0.75rem 1rem;
     background: var(--surface);

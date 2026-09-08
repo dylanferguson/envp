@@ -70,6 +70,19 @@
     outline: none;
   }
 
+  @media (pointer: coarse) {
+    .frame :global(input),
+    .frame :global(textarea) {
+      font-size: 16px;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .frame :global(textarea) {
+      min-height: 11rem;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .frame.is-busy,
     .frame :global(textarea) {

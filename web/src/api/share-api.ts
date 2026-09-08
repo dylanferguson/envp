@@ -1,7 +1,9 @@
 import { base64urlDecode, base64urlEncode } from "../lib/bytes.js";
 import {
   MAX_ENVELOPE_BYTES,
+  parseMaxReads,
   parseShareId,
+  type MaxReads,
   type ShareId,
   type TtlSeconds,
   type UnixMillis,
@@ -10,6 +12,7 @@ import {
 export type CreateShareResponse = {
   id: ShareId;
   expiresAt: UnixMillis;
+  maxReads: MaxReads;
 };
 
 export type GetShareResponse = {
@@ -18,9 +21,14 @@ export type GetShareResponse = {
   envelope: Uint8Array;
 };
 
-export function buildCreateShareBody(ttlSeconds: TtlSeconds, envelope: Uint8Array): string {
+export function buildCreateShareBody(
+  ttlSeconds: TtlSeconds,
+  maxReads: MaxReads,
+  envelope: Uint8Array,
+): string {
   return JSON.stringify({
     ttl_seconds: ttlSeconds,
+    max_reads: maxReads,
     envelope: base64urlEncode(envelope),
   });
 }
@@ -35,17 +43,19 @@ export function parseCreateShareResponse(body: unknown): CreateShareResponse | n
     typeof body.id !== "string" ||
     !("expires_at" in body) ||
     typeof body.expires_at !== "number" ||
-    !Number.isFinite(body.expires_at)
+    !Number.isFinite(body.expires_at) ||
+    !("max_reads" in body)
   ) {
     return null;
   }
 
   const id = parseShareId(body.id);
-  if (!id) {
+  const maxReads = parseMaxReads(body.max_reads);
+  if (!id || !maxReads) {
     return null;
   }
 
-  return { id, expiresAt: body.expires_at as UnixMillis };
+  return { id, expiresAt: body.expires_at as UnixMillis, maxReads };
 }
 
 export function parseGetShareResponse(body: unknown): GetShareResponse | null {

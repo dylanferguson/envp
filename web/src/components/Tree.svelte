@@ -69,6 +69,7 @@
 
 <style>
   .tree {
+    min-width: 0;
     margin: 0 0 2rem;
     overflow-x: auto;
     color: var(--muted);

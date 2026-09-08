@@ -67,4 +67,16 @@ test.describe("open share", () => {
 
     await expect(page.getByText("Not found. Expired, deleted, or never existed.")).toBeVisible();
   });
+
+  test("does not overflow a phone viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 402, height: 874 });
+    const paths = ["/", "/open", `/share/${UNKNOWN_SHARE_ID}#${VALID_KEY_FRAGMENT}`];
+    for (const path of paths) {
+      await page.goto(path);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, path).toBeLessThanOrEqual(1);
+    }
+  });
 });

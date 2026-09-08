@@ -34,6 +34,7 @@
     margin: 0 0 1.5rem;
     color: var(--muted);
     font-size: 0.85rem;
+    overflow-wrap: anywhere;
   }
 
   .status-text {
