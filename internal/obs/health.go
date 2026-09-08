@@ -42,8 +42,9 @@ func (p *healthProbe) result(ctx context.Context) error {
 }
 
 type healthReport struct {
-	Status string                   `json:"status"`
-	Checks map[string][]healthCheck `json:"checks"`
+	Status    string                   `json:"status"`
+	ReleaseID string                   `json:"releaseId"`
+	Checks    map[string][]healthCheck `json:"checks"`
 }
 
 type healthCheck struct {
@@ -65,7 +66,8 @@ func (r *Recorder) handleHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	report := healthReport{
-		Status: status,
+		Status:    status,
+		ReleaseID: r.releaseID,
 		Checks: map[string][]healthCheck{
 			healthComponent: {{
 				Status: status,

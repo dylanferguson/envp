@@ -20,6 +20,8 @@ import (
 	"github.com/dylanferguson/envp/internal/webui"
 )
 
+var commit = "unknown"
+
 type config struct {
 	port    int
 	obsPort int
@@ -111,7 +113,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 			logger.Error("close database", "error", err)
 		}
 	}()
-	rec, err := obs.New(obs.Options{DB: db.Ping})
+	id := commit
+	if len(id) > 7 {
+		id = id[:7]
+	}
+	rec, err := obs.New(obs.Options{DB: db.Ping, ReleaseID: id})
 	if err != nil {
 		return err
 	}
