@@ -5,7 +5,7 @@
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
-  import { hasSeenDiagram, markDiagramSeen } from "../../lib/diagram-seen.js";
+  import { persist } from "../../lib/persist.js";
   import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import SwapStage from "../../ui/SwapStage.svelte";
   import CreateDone from "./CreateDone.svelte";
@@ -19,10 +19,12 @@
     type CreateState,
   } from "./state.js";
 
+  const diagramSeen = persist("envp:diagram-seen", false);
+
   let state = $state<CreateState>({ phase: "idle" });
   let createForm = $state<CreateForm | null>(null);
   let createDone = $state<CreateDone | null>(null);
-  let intro = $state(!hasSeenDiagram());
+  let intro = $state(!diagramSeen.get(true));
 
   const reading = $derived(deriveCreateReading(state));
   const diagramFocus = $derived(
@@ -88,7 +90,7 @@
 
   onMount(() => {
     if (intro) {
-      markDiagramSeen();
+      diagramSeen.set(true);
     }
     void tick().then(() => {
       createForm?.focusInput();
