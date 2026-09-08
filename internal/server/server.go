@@ -30,11 +30,12 @@ const (
 	maxMaxReads        = 100
 	maxShareBytes      = 65570
 	maxCreateJSONBytes = 64 + (maxShareBytes*4+2)/3
+	createFuseTokens   = 100
+	readFuseTokens     = 200
 )
 
 type Config struct {
 	PublicOrigin string
-	TrustProxy   bool
 }
 
 type createRequest struct {
@@ -113,14 +114,14 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 		}
 	}
 	createLimit, err := memorystore.New(&memorystore.Config{
-		Tokens: 15, Interval: 20 * time.Second,
+		Tokens: createFuseTokens, Interval: 20 * time.Second,
 		SweepInterval: time.Minute, SweepMinTTL: 10 * time.Minute,
 	})
 	if err != nil {
 		return nil, err
 	}
 	readLimit, err := memorystore.New(&memorystore.Config{
-		Tokens: 30, Interval: time.Second / 2,
+		Tokens: readFuseTokens, Interval: time.Second / 2,
 		SweepInterval: time.Minute, SweepMinTTL: 10 * time.Minute,
 	})
 	if err != nil {
@@ -286,11 +287,6 @@ func (s *server) expectedOrigin(r *http.Request) string {
 	if r.TLS != nil {
 		scheme = "https"
 	}
-	if s.config.TrustProxy {
-		if proto := lastCSV(r.Header.Get("X-Forwarded-Proto")); proto == "http" || proto == "https" {
-			scheme = proto
-		}
-	}
 	return scheme + "://" + r.Host
 }
 
@@ -382,11 +378,4 @@ func ParseOrigin(raw string) (string, error) {
 		return u.Scheme + "://" + host, nil
 	}
 	return u.Scheme + "://" + net.JoinHostPort(host, port), nil
-}
-
-func lastCSV(header string) string {
-	if i := strings.LastIndex(header, ","); i >= 0 {
-		header = header[i+1:]
-	}
-	return strings.TrimSpace(header)
 }

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -180,8 +179,8 @@ func TestOrigin(t *testing.T) {
 		{"cross origin", "http://evil.example", "", Config{}, 403},
 		{"explicit origin", "https://example.com", "", Config{PublicOrigin: "https://example.com"}, 201},
 		{"canonical origin", "https://example.com", "", Config{PublicOrigin: "https://Example.com:443"}, 201},
-		{"untrusted protocol", "https://localhost", "https", Config{}, 403},
-		{"trusted protocol", "https://localhost", "https", Config{TrustProxy: true}, 201},
+		{"ignores forwarded proto", "https://localhost", "https", Config{}, 403},
+		{"public origin wins", "https://localhost", "https", Config{PublicOrigin: "https://localhost"}, 201},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h, _ := testServer(t, tc.cfg)
@@ -201,7 +200,7 @@ func TestOrigin(t *testing.T) {
 
 func TestRateLimits(t *testing.T) {
 	h, _ := testServer(t, Config{})
-	for range 15 {
+	for range createFuseTokens {
 		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
 		if w.Code != 201 {
 			t.Fatalf("create: %d", w.Code)
@@ -213,7 +212,7 @@ func TestRateLimits(t *testing.T) {
 		t.Fatalf("retry: %s", w.Header().Get("Retry-After"))
 	}
 	// Failed reads spend the independent read allowance too.
-	for range 30 {
+	for range readFuseTokens {
 		if w := request(h, "GET", "/api/v1/shares/invalid", ""); w.Code != 404 {
 			t.Fatalf("read: %d", w.Code)
 		}
@@ -263,14 +262,14 @@ func TestStorageFailureIsGeneric(t *testing.T) {
 }
 
 func TestConcurrentHTTPWrites(t *testing.T) {
-	h, _ := testServer(t, Config{TrustProxy: true})
+	h, _ := testServer(t, Config{})
 	var wg sync.WaitGroup
-	for i := range 50 {
+	for range 50 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", bytes.NewBufferString(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQID"}`))
-			r.Header.Set("X-Forwarded-For", "192.0.2."+strconv.Itoa(i+1))
+			r.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, r)
 			if w.Code != 201 {

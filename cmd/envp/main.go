@@ -85,7 +85,6 @@ func loadConfig() (config, error) {
 		return c, err
 	}
 	c.http.PublicOrigin = origin
-	c.http.TrustProxy = os.Getenv("TRUST_PROXY") == "true"
 	return c, nil
 }
 
