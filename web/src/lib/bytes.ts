@@ -5,10 +5,6 @@ export function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 export function base64urlEncode(bytes: Uint8Array): string {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(bytes).toString("base64url");
-  }
-
   let binary = "";
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
@@ -17,10 +13,6 @@ export function base64urlEncode(bytes: Uint8Array): string {
 }
 
 export function base64urlDecode(value: string): Uint8Array {
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(value, "base64url"));
-  }
-
   const padded =
     value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (value.length % 4)) % 4);
   const binary = atob(padded);

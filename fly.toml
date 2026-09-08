@@ -10,7 +10,7 @@ dockerfile = "Dockerfile"
 
 [env]
 PORT = "8080"
-OBS_PORT = "9090"
+INTERNAL_PORT = "9090"
 DB_PATH = "/data/shares.db"
 PUBLIC_ORIGIN = "https://envp.dylanferguson.co"
 TRUST_PROXY = "true"

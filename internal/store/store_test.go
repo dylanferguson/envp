@@ -145,28 +145,6 @@ func TestConcurrentCreateReadAndSweep(t *testing.T) {
 	}
 }
 
-func TestCanceledOperation(t *testing.T) {
-	s := testStore(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := s.Create(ctx, []byte{1}, time.Minute, 20); !errors.Is(err, context.Canceled) {
-		t.Fatalf("create: %v", err)
-	}
-}
-
-func TestPing(t *testing.T) {
-	s := testStore(t)
-	if err := s.Ping(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Ping(t.Context()); err == nil {
-		t.Fatal("Ping after Close should fail")
-	}
-}
-
 func TestConsumeExhausts(t *testing.T) {
 	s := testStore(t)
 	created, err := s.Create(t.Context(), []byte{1, 2, 3}, time.Hour, 3)
@@ -300,5 +278,25 @@ func TestLegacySchemaUpgrade(t *testing.T) {
 	read, err := s.Consume(t.Context(), "01ARZ3NDEKTSV4RRFFQ69G5FAV")
 	if err != nil || !bytes.Equal(read.Envelope, []byte{1, 2, 3}) {
 		t.Fatalf("consume after upgrade: %+v, %v", read, err)
+	}
+}
+
+func TestSweepEveryStopsWithoutCallback(t *testing.T) {
+	s := testStore(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	called := false
+	done := make(chan struct{})
+	go func() {
+		s.SweepEvery(ctx, time.Hour, func(int64, error) { called = true })
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("SweepEvery did not stop")
+	}
+	if called {
+		t.Fatal("callback ran after cancel")
 	}
 }

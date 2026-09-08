@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dylanferguson/envp/internal/obs"
+	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/server"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/dylanferguson/envp/internal/webui"
@@ -23,10 +23,10 @@ import (
 var commit = "unknown"
 
 type config struct {
-	port    int
-	obsPort int
-	dbPath  string
-	http    server.Config
+	port         int
+	internalPort int
+	dbPath       string
+	http         server.Config
 }
 
 func main() {
@@ -47,28 +47,32 @@ func healthcheck() int {
 	if err != nil {
 		return 1
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if err := obs.CheckHealth(ctx, "http://127.0.0.1:"+strconv.Itoa(cfg.obsPort)); err != nil {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + strconv.Itoa(cfg.internalPort) + "/health")
+	if err != nil {
+		return 1
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
 		return 1
 	}
 	return 0
 }
 
 func loadConfig() (config, error) {
-	c := config{port: 8080, obsPort: 9090, dbPath: "./data/shares.db"}
+	c := config{port: 8080, internalPort: 9090, dbPath: "./data/shares.db"}
 	port, err := envPort("PORT", c.port)
 	if err != nil {
 		return c, err
 	}
 	c.port = port
-	obsPort, err := envPort("OBS_PORT", c.obsPort)
+	internalPort, err := envPort("INTERNAL_PORT", c.internalPort)
 	if err != nil {
 		return c, err
 	}
-	c.obsPort = obsPort
-	if c.port == c.obsPort {
-		return c, errors.New("OBS_PORT must differ from PORT")
+	c.internalPort = internalPort
+	if c.port == c.internalPort {
+		return c, errors.New("INTERNAL_PORT must differ from PORT")
 	}
 	if value, ok := os.LookupEnv("DB_PATH"); ok {
 		if value == "" {
@@ -117,10 +121,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if len(id) > 7 {
 		id = id[:7]
 	}
-	rec, err := obs.New(obs.Options{DB: db.Ping, ReleaseID: id})
-	if err != nil {
-		return err
-	}
+	rec := metrics.New()
 	if n, err := db.Sweep(startup); err != nil {
 		return err
 	} else {
@@ -130,32 +131,46 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := handler.Close(); err != nil {
+			logger.Error("close limiters", "error", err)
+		}
+	}()
 	publicLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.port)))
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	obsLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.obsPort)))
+	internalLn, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.internalPort)))
 	if err != nil {
 		_ = publicLn.Close()
-		return fmt.Errorf("listen obs: %w", err)
+		return fmt.Errorf("listen internal: %w", err)
 	}
+	internal := http.NewServeMux()
+	internal.Handle("GET /metrics", rec.Handler())
+	internal.HandleFunc("GET /health", health(db.Ping, id))
 	publicServer := newHTTPServer(handler, logger)
-	obsServer := newHTTPServer(rec.Handler(), logger)
+	internalServer := newHTTPServer(internal, logger)
 	maintenance, stopMaintenance := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sweepLoop(maintenance, db, rec, logger)
+		db.SweepEvery(maintenance, time.Minute, func(n int64, err error) {
+			if err != nil {
+				logger.Error("sweep failed", "error", err)
+				return
+			}
+			rec.Swept(n)
+		})
 	}()
 	defer func() { stopMaintenance(); wg.Wait() }()
 	serveErr := make(chan error, 2)
 	go func() { serveErr <- publicServer.Serve(publicLn) }()
-	go func() { serveErr <- obsServer.Serve(obsLn) }()
-	logger.Info("listening", "address", publicLn.Addr().String(), "obs", obsLn.Addr().String())
+	go func() { serveErr <- internalServer.Serve(internalLn) }()
+	logger.Info("listening", "public", publicLn.Addr().String(), "internal", internalLn.Addr().String())
 	select {
 	case err := <-serveErr:
-		shutdownErr := shutdownHTTP(publicServer, obsServer)
+		shutdownErr := shutdownHTTP(publicServer, internalServer)
 		if !errors.Is(err, http.ErrServerClosed) {
 			return errors.Join(err, shutdownErr)
 		}
@@ -163,7 +178,19 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	case <-ctx.Done():
 	}
 	logger.Info("shutting down")
-	return shutdownHTTP(publicServer, obsServer)
+	return shutdownHTTP(publicServer, internalServer)
+}
+
+func health(ping func(context.Context) error, releaseID string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		status, code := "pass", http.StatusOK
+		if ping(req.Context()) != nil {
+			status, code = "fail", http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_, _ = fmt.Fprintf(w, `{"status":%q,"releaseId":%q}`, status, releaseID)
+	}
 }
 
 func newHTTPServer(handler http.Handler, logger *slog.Logger) *http.Server {
@@ -188,22 +215,4 @@ func shutdownHTTP(servers ...*http.Server) error {
 		}
 	}
 	return err
-}
-
-func sweepLoop(ctx context.Context, db *store.Store, rec *obs.Recorder, logger *slog.Logger) {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			n, err := db.Sweep(ctx)
-			if err != nil && ctx.Err() == nil {
-				logger.Error("sweep failed", "error", err)
-				continue
-			}
-			rec.Swept(n)
-		}
-	}
 }

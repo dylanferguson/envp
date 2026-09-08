@@ -7,18 +7,11 @@ import {
 } from "./helpers.js";
 
 test.describe("open share", () => {
-  test("selects decrypted output after open", async ({ page }) => {
-    const url = await createShare(page);
-    await page.goto(url);
-    const output = page.getByRole("textbox", { name: "decrypted .env" });
-    await expect(output).toBeVisible();
-    await expect(output).toBeFocused();
-  });
-
   test("roundtrips create → open via share URL", async ({ page }) => {
     const url = await createShare(page);
     await page.goto(url);
     await expectDecryptedEnv(page);
+    await expect(page.getByRole("textbox", { name: "decrypted .env" })).toBeFocused();
   });
 
   test("opens a pasted link on /open", async ({ page }) => {
@@ -53,7 +46,7 @@ test.describe("open share", () => {
 
     await page.unroute(endpoint);
     await page.getByRole("button", { name: "open" }).click();
-    await expect(page.getByText("Not found. Expired, deleted, or never existed.")).toBeVisible();
+    await expect(page.getByText("Not found. Spent, expired, or never existed.")).toBeVisible();
   });
 
   test("reports a missing key fragment", async ({ page }) => {
@@ -65,7 +58,7 @@ test.describe("open share", () => {
   test("reports a share that does not exist", async ({ page }) => {
     await page.goto(`/share/${UNKNOWN_SHARE_ID}#${VALID_KEY_FRAGMENT}`);
 
-    await expect(page.getByText("Not found. Expired, deleted, or never existed.")).toBeVisible();
+    await expect(page.getByText("Not found. Spent, expired, or never existed.")).toBeVisible();
   });
 
   test("does not overflow a phone viewport", async ({ page }) => {

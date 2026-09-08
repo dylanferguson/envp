@@ -1,7 +1,4 @@
-import type { DiagramFocus } from "../../lib/diagram-focus.js";
-import type { Reading, TreeLine } from "../../lib/signal.js";
-
-export type { DiagramFocus };
+import type { DiagramFocus, Reading, TreeLine } from "../../lib/signal.js";
 
 export const OPEN_STEPS = ["key", "fetch", "unlock", "env"] as const;
 export type OpenStep = (typeof OPEN_STEPS)[number];
@@ -51,7 +48,7 @@ export const OPEN_READINGS: Record<OpenState["phase"], Reading<OpenStep>> = {
     tone: "error",
     step: "fetch",
     kind: "error",
-    note: "Not found. Expired, deleted, or never existed.",
+    note: "Not found. Spent, expired, or never existed.",
   },
   fetch_error: {
     word: "fault",

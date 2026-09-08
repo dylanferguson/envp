@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { DiagramFocus } from "../lib/diagram-focus.js";
+  import type { DiagramFocus } from "../lib/signal.js";
 
   type Props = {
     lead: string;

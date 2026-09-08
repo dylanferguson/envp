@@ -4,10 +4,9 @@
   type Props = {
     text: string;
     error?: boolean;
-    animated?: boolean;
   };
 
-  let { text, error = false, animated = false }: Props = $props();
+  let { text, error = false }: Props = $props();
 </script>
 
 <div
@@ -16,15 +15,11 @@
   class:has-note={text.length > 0}
   aria-live="polite"
 >
-  {#if animated}
-    {#key text}
-      {#if text}
-        <span class="status-text" in:fade={{ duration: 220 }}>{text}</span>
-      {/if}
-    {/key}
-  {:else if text}
-    {text}
-  {/if}
+  {#key text}
+    {#if text}
+      <span class="status-text" in:fade={{ duration: 220 }}>{text}</span>
+    {/if}
+  {/key}
 </div>
 
 <style>

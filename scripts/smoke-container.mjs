@@ -36,7 +36,7 @@ function publishedURL(containerPort) {
 
 try {
   const baseURL = publishedURL(8080);
-  const obsURL = publishedURL(9090);
+  const internalURL = publishedURL(9090);
   const html = await ready(baseURL);
   assert.match(await html.text(), /<html/);
 
@@ -45,7 +45,7 @@ try {
   const publicMetrics = await fetch(`${baseURL}/metrics`);
   assert.equal(publicMetrics.status, 404);
 
-  const health = await fetch(`${obsURL}/health`);
+  const health = await fetch(`${internalURL}/health`);
   assert.equal(health.status, 200);
   const healthBody = await health.json();
   assert.equal(healthBody.status, "pass");
@@ -58,7 +58,7 @@ try {
   assert.equal(create.status, 201);
   const { id } = await create.json();
 
-  const metrics = await fetch(`${obsURL}/metrics`);
+  const metrics = await fetch(`${internalURL}/metrics`);
   assert.equal(metrics.status, 200);
   const metricsBody = await metrics.text();
   assert.match(metricsBody, /http_requests_total/);

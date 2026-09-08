@@ -7,8 +7,6 @@
     onCopy: () => void;
     selectOnMount?: boolean;
     multiline?: boolean;
-    hidden?: boolean;
-    showCopy?: boolean;
   };
 
   let {
@@ -19,8 +17,6 @@
     onCopy,
     selectOnMount = false,
     multiline = false,
-    hidden = false,
-    showCopy = true,
   }: Props = $props();
 
   let field = $state<HTMLTextAreaElement | null>(null);
@@ -37,14 +33,10 @@
   }
 
   function scheduleSelect(node: HTMLTextAreaElement): () => void {
-    // Select immediately for an already-visible field (for example, after copying).
     applySelect(node);
-    // Keep the two-frame retry for selection during the done-screen swap.
-    // A Svelte tick flushes DOM updates but does not wait for the browser to paint.
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(() => applySelect(node));
     });
-    // Reapply once the pane transition settles; frame retries alone were insufficient.
     const timer = setTimeout(() => applySelect(node), SWAP_SELECT_DELAY_MS);
     return () => {
       cancelAnimationFrame(raf);
@@ -84,7 +76,6 @@
 
 <div
   class="field-shell copy-field"
-  class:is-hidden={hidden}
   class:is-multiline={multiline}
 >
   <textarea
@@ -98,54 +89,31 @@
     spellcheck={false}
     aria-label={label}
   ></textarea>
-  {#if showCopy}
-    <button type="button" class="field-copy" onclick={onCopy} aria-label={copyLabel}>
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <rect
-          x="5.25"
-          y="5.25"
-          width="7.5"
-          height="7.5"
-          rx="0.75"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.25"
-        />
-        <path
-          d="M3.5 11V4.25A.75.75 0 0 1 4.25 3.5H11"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.25"
-        />
-      </svg>
-    </button>
-  {/if}
+  <button type="button" class="field-copy" onclick={onCopy} aria-label={copyLabel}>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <rect
+        x="5.25"
+        y="5.25"
+        width="7.5"
+        height="7.5"
+        rx="0.75"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.25"
+      />
+      <path
+        d="M3.5 11V4.25A.75.75 0 0 1 4.25 3.5H11"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.25"
+      />
+    </svg>
+  </button>
 </div>
 
 <style>
   .copy-field {
     position: relative;
-    transition:
-      opacity 0.35s ease,
-      min-height 0.4s ease;
-  }
-
-  .copy-field.is-hidden {
-    opacity: 0;
-    min-height: 0;
-    border-color: transparent;
-    pointer-events: none;
-  }
-
-  .copy-field.is-hidden .copy-output {
-    min-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-    transition:
-      opacity 0.35s ease,
-      min-height 0.4s ease,
-      padding 0.4s ease;
   }
 
   .copy-output {
@@ -172,10 +140,6 @@
     min-height: 16rem;
     resize: vertical;
     field-sizing: auto;
-  }
-
-  .copy-field.is-hidden.is-multiline .copy-output {
-    min-height: 0;
   }
 
   @media (pointer: coarse) {

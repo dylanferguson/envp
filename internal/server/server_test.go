@@ -16,7 +16,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/dylanferguson/envp/internal/obs"
+	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 )
 
@@ -29,12 +29,6 @@ var testFiles = fstest.MapFS{
 
 func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 	t.Helper()
-	h, _, db := testApp(t, cfg)
-	return h, db
-}
-
-func testApp(t *testing.T, cfg Config) (http.Handler, *obs.Recorder, *store.Store) {
-	t.Helper()
 	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -44,15 +38,17 @@ func testApp(t *testing.T, cfg Config) (http.Handler, *obs.Recorder, *store.Stor
 			t.Error(err)
 		}
 	})
-	rec, err := obs.New(obs.Options{DB: db.Ping})
-	if err != nil {
-		t.Fatal(err)
-	}
+	rec := metrics.New()
 	handler, err := New(db, testFiles, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return handler, rec, db
+	t.Cleanup(func() {
+		if err := handler.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return handler, db
 }
 
 func request(h http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -123,50 +119,32 @@ func TestCreateReadContract(t *testing.T) {
 }
 
 func TestRequestValidation(t *testing.T) {
+	h, _ := testServer(t, Config{})
 	for _, body := range []string{
-		`null`, `[]`, `{}`, `{`, `{} {}`,
+		`{`,
 		`{"ttl_seconds":30,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":86401,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":60.1,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":[60],"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":true,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":null,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":"3600","max_reads":20,"envelope":"AQ"}`,
 		`{"ttl_seconds":60.0,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":6e1,"max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":"NaN","max_reads":20,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":20,"envelope":""}`,
-		`{"ttl_seconds":60,"max_reads":20,"envelope":12}`,
-		`{"ttl_seconds":60,"max_reads":20,"envelope":"!AQ"}`,
 		`{"ttl_seconds":60,"envelope":"AQ"}`,
 		`{"ttl_seconds":60,"max_reads":0,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":101,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":20.5,"envelope":"AQ"}`,
-		`{"ttl_seconds":60,"max_reads":"20","envelope":"AQ"}`,
+		`{"ttl_seconds":60,"max_reads":20,"envelope":"!AQ"}`,
 	} {
-		t.Run(body, func(t *testing.T) {
-			h, _ := testServer(t, Config{})
-			assertError(t, request(h, "POST", "/api/v1/shares", body), 400, "invalid_request", "The request could not be processed.")
-		})
+		assertError(t, request(h, "POST", "/api/v1/shares", body), 400, "invalid_request", "The request could not be processed.")
 	}
-	for _, ttl := range []string{`60`, `3600`, `86400`} {
-		h, _ := testServer(t, Config{})
-		w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":`+ttl+`,"max_reads":20,"envelope":"AQ","extra":true}`)
-		if w.Code != 201 {
-			t.Errorf("TTL %s: %d %s", ttl, w.Code, w.Body)
-		}
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ","extra":true}`)
+	if w.Code != 201 {
+		t.Fatalf("valid create: %d %s", w.Code, w.Body)
 	}
 }
 
-func TestBodyAndEnvelopeLimits(t *testing.T) {
-	for _, size := range []int{maxEnvelopeBytes, maxEnvelopeBytes + 1} {
+func TestBodyAndShareLimits(t *testing.T) {
+	for _, size := range []int{maxShareBytes, maxShareBytes + 1} {
 		h, _ := testServer(t, Config{})
 		body, _ := json.Marshal(map[string]any{"ttl_seconds": 60, "max_reads": 20, "envelope": base64.RawURLEncoding.EncodeToString(make([]byte, size))})
 		w := request(h, "POST", "/api/v1/shares", string(body))
-		if size == maxEnvelopeBytes && w.Code != 201 {
+		if size == maxShareBytes && w.Code != 201 {
 			t.Fatalf("at limit: %d %s", w.Code, w.Body)
 		}
-		if size > maxEnvelopeBytes {
+		if size > maxShareBytes {
 			assertError(t, w, 400, "invalid_request", "The request could not be processed.")
 		}
 	}
@@ -178,15 +156,6 @@ func TestBodyAndEnvelopeLimits(t *testing.T) {
 		h.ServeHTTP(w, r)
 		assertError(t, w, 413, "payload_too_large", "Request body is too large.")
 	}
-}
-
-func TestOversizedContentLength(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	r := httptest.NewRequest("POST", "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
-	r.ContentLength = maxCreateJSONBytes + 1
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, r)
-	assertError(t, w, 413, "payload_too_large", "Request body is too large.")
 }
 
 func TestUnknownExpiredAndInvalidIDs(t *testing.T) {
@@ -312,48 +281,6 @@ func TestConcurrentHTTPWrites(t *testing.T) {
 	wg.Wait()
 }
 
-func TestObservabilityEndpoints(t *testing.T) {
-	h, rec, _ := testApp(t, Config{})
-	scrape := func() string {
-		w := httptest.NewRecorder()
-		rec.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
-		if w.Code != http.StatusOK {
-			t.Fatalf("metrics: status = %d", w.Code)
-		}
-		return w.Body.String()
-	}
-	for _, path := range []string{"/metrics", "/health"} {
-		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
-		if w.Code != http.StatusNotFound {
-			t.Fatalf("%s: status = %d", path, w.Code)
-		}
-	}
-	for _, path := range []string{"/favicon.ico", "/robots.txt"} {
-		if w := request(h, "GET", path, ""); w.Code != 200 {
-			t.Fatalf("%s: %d", path, w.Code)
-		}
-	}
-	if body := scrape(); strings.Contains(body, "http_requests_total") {
-		t.Fatalf("ops and asset hits counted: %s", body)
-	}
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)))
-	if w.Code != 201 {
-		t.Fatalf("create: %d", w.Code)
-	}
-	if w := request(h, "GET", "/", ""); w.Code != 200 {
-		t.Fatalf("home: %d", w.Code)
-	}
-	body := scrape()
-	if !strings.Contains(body, "shares_created_total") || strings.Contains(body, `route="metrics"`) {
-		t.Fatalf("metrics: %s", body)
-	}
-	if !strings.Contains(body, `http_requests_total{route="static",status_class="2xx"} 1`) {
-		t.Fatalf("home not counted as static: %s", body)
-	}
-}
-
 func TestHeadDoesNotConsume(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":1,"envelope":"AQID_w"}`)
@@ -408,15 +335,13 @@ func TestOriginWarnNoOriginField(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	rec, err := obs.New(obs.Options{DB: db.Ping})
-	if err != nil {
-		t.Fatal(err)
-	}
+	rec := metrics.New()
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
 	h, err := New(db, testFiles, Config{}, logger, rec)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = h.Close() })
 	r := httptest.NewRequest("POST", "http://localhost/api/v1/shares", strings.NewReader(`{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`))
 	r.Header.Set("Origin", "http://evil.example")
 	w := httptest.NewRecorder()

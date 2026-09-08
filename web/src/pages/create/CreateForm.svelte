@@ -3,6 +3,7 @@
     DEFAULT_MAX_READS,
     DEFAULT_TTL_SECONDS,
     formatExpiryLabel,
+    formatInputSize,
     formatMaxReadsLabel,
     LONGEST_EXPIRY_LABEL,
     LONGEST_READS_LABEL,
@@ -15,7 +16,6 @@
     type MaxReads,
     type TtlSeconds,
   } from "../../lib/limits.js";
-  import { formatInputSize } from "../../lib/format-input-size.js";
   import Button from "../../ui/Button.svelte";
   import FieldLabel from "../../ui/FieldLabel.svelte";
   import Frame from "../../ui/Frame.svelte";
@@ -116,7 +116,7 @@
   <Button busy={busy} disabled={shareDisabled} onclick={submit}>share</Button>
 </div>
 
-<StatusLine text={statusText} error={statusError} animated />
+<StatusLine text={statusText} error={statusError} />
 
 <style>
   section {

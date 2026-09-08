@@ -1,8 +1,7 @@
-// Package server exposes the share API and serves the browser application.
 package server
 
 import (
-	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -17,21 +16,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanferguson/envp/internal/obs"
+	"github.com/dylanferguson/envp/internal/metrics"
 	"github.com/dylanferguson/envp/internal/store"
 	"github.com/oklog/ulid/v2"
+	"github.com/sethvargo/go-limiter"
+	"github.com/sethvargo/go-limiter/memorystore"
 )
 
 const (
-	minTTLSeconds       = 60
-	maxTTLSeconds       = 86400
-	minMaxReads         = 1
-	maxMaxReads         = 100
-	maxPlaintextBytes   = 65536
-	envelopeHeaderBytes = 18
-	gcmTagBytes         = 16
-	maxEnvelopeBytes    = envelopeHeaderBytes + maxPlaintextBytes + gcmTagBytes
-	maxCreateJSONBytes  = 64 + (maxEnvelopeBytes*4+2)/3
+	minTTLSeconds      = 60
+	maxTTLSeconds      = 86400
+	minMaxReads        = 1
+	maxMaxReads        = 100
+	maxShareBytes      = 65570
+	maxCreateJSONBytes = 64 + (maxShareBytes*4+2)/3
 )
 
 type Config struct {
@@ -83,16 +81,25 @@ var (
 	errRateLimited     = apiError{http.StatusTooManyRequests, "rate_limited", "Too many requests. Try again later."}
 )
 
-type server struct {
-	store  *store.Store
-	config Config
-	log    *slog.Logger
-	files  fs.FS
-	static http.Handler
-	shells map[string][]byte
+type Server struct {
+	http.Handler
+	create limiter.Store
+	read   limiter.Store
 }
 
-func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *obs.Recorder) (http.Handler, error) {
+func (h *Server) Close() error {
+	ctx := context.Background()
+	return errors.Join(h.create.Close(ctx), h.read.Close(ctx))
+}
+
+type server struct {
+	db     *store.Store
+	files  fs.FS
+	config Config
+	log    *slog.Logger
+}
+
+func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *metrics.Recorder) (*Server, error) {
 	if config.PublicOrigin != "" {
 		origin, err := ParseOrigin(config.PublicOrigin)
 		if err != nil {
@@ -100,48 +107,65 @@ func New(db *store.Store, files fs.FS, config Config, logger *slog.Logger, rec *
 		}
 		config.PublicOrigin = origin
 	}
-	s := &server{
-		store: db, config: config, log: logger,
-		files: files, static: http.FileServerFS(files), shells: make(map[string][]byte),
-	}
 	for _, name := range []string{"index.html", "open.html"} {
-		data, err := fs.ReadFile(files, name)
-		if err != nil {
+		if _, err := fs.Stat(files, name); err != nil {
 			return nil, fmt.Errorf("load UI %s (run vp build first): %w", name, err)
 		}
-		s.shells[name] = data
+	}
+	createLimit, err := memorystore.New(&memorystore.Config{
+		Tokens: 15, Interval: 20 * time.Second,
+		SweepInterval: time.Minute, SweepMinTTL: 10 * time.Minute,
+	})
+	if err != nil {
+		return nil, err
+	}
+	readLimit, err := memorystore.New(&memorystore.Config{
+		Tokens: 30, Interval: time.Second / 2,
+		SweepInterval: time.Minute, SweepMinTTL: 10 * time.Minute,
+	})
+	if err != nil {
+		_ = createLimit.Close(context.Background())
+		return nil, err
 	}
 
+	s := &server{db: db, files: files, config: config, log: logger}
 	track := rec.Instrument
 
-	api := http.NewServeMux()
-	api.Handle("POST /api/v1/shares", track(obs.RouteCreate, s.limit(newLimiter(20*time.Second, 15), s.createShare)))
-	api.Handle("GET /api/v1/shares/{id}", track(obs.RouteGet, s.limit(newLimiter(time.Second/2, 30), s.readShare)))
+	mux := http.NewServeMux()
+	mux.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.recover(s.limit(createLimit, noStore(s.createShare)))))
+	mux.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.recover(s.limit(readLimit, noStore(s.readShare)))))
+	mux.Handle("GET /api/{path...}", track(metrics.RouteGet, s.recover(noStore(s.apiNotFound))))
+	mux.Handle("POST /api/{path...}", track(metrics.RouteCreate, s.recover(noStore(s.apiNotFound))))
+	mux.Handle("GET /{$}", track(metrics.RouteStatic, s.recover(s.page("index.html"))))
+	mux.Handle("GET /open", track(metrics.RouteStatic, s.recover(s.page("open.html"))))
+	mux.Handle("GET /share/{id}", track(metrics.RouteStatic, s.recover(s.page("open.html"))))
+	mux.Handle("GET /robots.txt", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.robots))))
+	mux.Handle("GET /", track(metrics.RouteStatic, s.recover(http.HandlerFunc(s.file))))
 
-	pages := http.NewServeMux()
-	pages.Handle("GET /{$}", track(obs.RouteStatic, s.shell("index.html")))
-	pages.Handle("GET /open", track(obs.RouteStatic, s.shell("open.html")))
-	pages.Handle("GET /share/{id}", track(obs.RouteStatic, s.shell("open.html")))
-	pages.HandleFunc("GET /robots.txt", s.robots)
-	pages.HandleFunc("GET /", s.file)
+	return &Server{
+		Handler: headers(rejectUncleanPath(s, mux)),
+		create:  createLimit,
+		read:    readLimit,
+	}, nil
+}
 
-	return s.recover(headers(func(w http.ResponseWriter, r *http.Request) {
+func noStore(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		next(w, r)
+	}
+}
+
+// Go's file server 301-redirects unclean paths. /../go.mod would advertise the
+// repo layout, so we answer JSON 404 instead.
+func rejectUncleanPath(s *server, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != path.Clean(r.URL.Path) {
 			s.error(w, r, errNotFound)
 			return
 		}
-		isAPI := r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/")
-		if !isAPI {
-			pages.ServeHTTP(w, r)
-			return
-		}
-		w.Header().Set("Cache-Control", "no-store")
-		if _, pattern := api.Handler(r); pattern == "" {
-			s.error(w, r, errNotFound)
-			return
-		}
-		api.ServeHTTP(w, r)
-	})), nil
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
@@ -170,11 +194,11 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	envelope, err := base64.RawURLEncoding.DecodeString(req.Envelope)
-	if err != nil || len(envelope) == 0 || len(envelope) > maxEnvelopeBytes {
+	if err != nil || len(envelope) == 0 || len(envelope) > maxShareBytes {
 		s.error(w, r, errInvalidRequest)
 		return
 	}
-	share, err := s.store.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second, int(req.MaxReads))
+	share, err := s.db.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second, int(req.MaxReads))
 	if err != nil {
 		s.error(w, r, err)
 		return
@@ -190,7 +214,7 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodHead {
-		if err := s.store.Peek(r.Context(), id.String()); errors.Is(err, store.ErrNotFound) {
+		if err := s.db.Peek(r.Context(), id.String()); errors.Is(err, store.ErrNotFound) {
 			s.error(w, r, errShareNotFound)
 			return
 		} else if err != nil {
@@ -200,7 +224,7 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	share, err := s.store.Consume(r.Context(), id.String())
+	share, err := s.db.Consume(r.Context(), id.String())
 	if errors.Is(err, store.ErrNotFound) {
 		s.error(w, r, errShareNotFound)
 		return
@@ -215,10 +239,14 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *server) shell(name string) http.HandlerFunc {
+func (s *server) apiNotFound(w http.ResponseWriter, r *http.Request) {
+	s.error(w, r, errNotFound)
+}
+
+func (s *server) page(name string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache")
-		http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(s.shells[name]))
+		http.ServeFileFS(w, r, s.files, name)
 	}
 }
 
@@ -243,10 +271,8 @@ func (s *server) file(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(name, "assets/") {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	} else if strings.HasSuffix(name, ".html") {
-		w.Header().Set("Cache-Control", "no-cache")
 	}
-	s.static.ServeHTTP(w, r)
+	http.ServeFileFS(w, r, s.files, name)
 }
 
 func (s *server) expectedOrigin(r *http.Request) string {
@@ -322,7 +348,7 @@ func (w *headerWriter) Write(b []byte) (int, error) {
 
 func (w *headerWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
-func headers(next http.HandlerFunc) http.Handler {
+func headers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
@@ -339,7 +365,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// ParseOrigin canonicalizes an http(s) origin. Empty input is allowed.
 func ParseOrigin(raw string) (string, error) {
 	if raw == "" {
 		return "", nil
