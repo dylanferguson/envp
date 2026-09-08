@@ -15,7 +15,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
-    command: "COMPOSE_PROJECT_NAME=envp-e2e docker compose up --build",
+    command: "node scripts/e2e-up.mjs",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 
+const env = { ...process.env, COMPOSE_PROJECT_NAME: "envp-nginx-smoke" };
 const compose = (...args) =>
   execFileSync("docker", ["compose", ...args], {
+    env,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });

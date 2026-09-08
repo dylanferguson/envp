@@ -20,6 +20,8 @@ jobs:
       - run: mise run test
       - run: pnpm exec playwright install --with-deps chromium
       - run: mise run test:e2e
+      - run: docker compose -p envp-e2e down --volumes --remove-orphans
+        if: always()
       - run: mise run docker:build
         env:
           GIT_COMMIT: ${{ github.sha }}
