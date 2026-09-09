@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   test:
@@ -22,6 +23,7 @@ jobs:
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.9.2
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
@@ -38,8 +40,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: mise run check
       - run: mise run test
-      - run: mise run test:e2e:install
+      - uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        with:
+          files: compose.yaml
+          load: true
+          provenance: false
+          # GHA cache is wired via `set` below; local compose is unchanged.
+          set: |
+            *.args.GIT_COMMIT=${{ github.sha }}
+            envp.cache-from=type=gha,scope=envp
+            envp.cache-to=type=gha,mode=max,scope=envp
+            nginx.cache-from=type=gha,scope=nginx
+            nginx.cache-to=type=gha,mode=max,scope=nginx
+      - run: pnpm exec playwright install --only-shell
       - run: mise run test:e2e
+        env:
+          E2E_SKIP_BUILD: "1"
       - run: docker compose -p envp-e2e down --volumes --remove-orphans
         if: always()
       - run: mise run docker:build
