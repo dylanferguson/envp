@@ -84,9 +84,9 @@ try {
   const raw = compose("logs", "--no-color", "--no-log-prefix", "nginx");
   const apiRaw = compose("logs", "--no-color", "--no-log-prefix", "envp");
   const records = jsonRecords(raw, "nginx");
-  const apiRecords = jsonRecords(apiRaw, "envp");
+  const apiRecords = jsonRecords(apiRaw, "api");
   assert.ok(apiRecords.some((rec) => rec.msg === "listening"));
-  assert.equal(jsonRecords(raw, "envp").length, 0);
+  assert.equal(jsonRecords(raw, "api").length, 0);
   assert.equal(jsonRecords(apiRaw, "nginx").length, 0);
   assert.ok(
     records.some(
