@@ -13,15 +13,19 @@ import (
 
 const createHandler = "/api/v1/shares"
 
+type Job string
+
+const JobSweep Job = "sweep"
+
 type Recorder struct {
-	requests    *prometheus.CounterVec
-	duration    *prometheus.HistogramVec
-	created     prometheus.Counter
-	expired     prometheus.Counter
-	cleanups    *prometheus.CounterVec
-	cleanupDur  prometheus.Histogram
-	lastCleanup prometheus.Gauge
-	handler     http.Handler
+	requests       *prometheus.CounterVec
+	duration       *prometheus.HistogramVec
+	created        prometheus.Counter
+	jobRuns        *prometheus.CounterVec
+	jobProcessed   *prometheus.CounterVec
+	jobDuration    *prometheus.HistogramVec
+	jobLastSuccess *prometheus.GaugeVec
+	handler        http.Handler
 }
 
 func New() *Recorder {
@@ -41,43 +45,47 @@ func New() *Recorder {
 			Name: "shares_created_total",
 			Help: "Shares created.",
 		}),
-		expired: auto.NewCounter(prometheus.CounterOpts{
-			Name: "shares_expired_deleted_total",
-			Help: "Expired or exhausted shares deleted by cleanup.",
-		}),
-		cleanups: auto.NewCounterVec(prometheus.CounterOpts{
-			Name: "shares_cleanup_runs_total",
-			Help: "Share cleanup runs by result.",
-		}, []string{"result"}),
-		cleanupDur: auto.NewHistogram(prometheus.HistogramOpts{
-			Name:    "shares_cleanup_duration_seconds",
-			Help:    "Share cleanup run duration in seconds.",
+		jobRuns: auto.NewCounterVec(prometheus.CounterOpts{
+			Name: "job_runs_total",
+			Help: "Job runs by name and result.",
+		}, []string{"name", "result"}),
+		jobProcessed: auto.NewCounterVec(prometheus.CounterOpts{
+			Name: "job_processed_total",
+			Help: "Items processed by job name.",
+		}, []string{"name"}),
+		jobDuration: auto.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "job_duration_seconds",
+			Help:    "Job run duration in seconds by name.",
 			Buckets: []float64{0.001, 0.005, 0.02, 0.1, 0.5, 2},
-		}),
-		lastCleanup: auto.NewGauge(prometheus.GaugeOpts{
-			Name: "shares_cleanup_last_success_timestamp_seconds",
-			Help: "Unix timestamp of the last successful share cleanup.",
-		}),
+		}, []string{"name"}),
+		jobLastSuccess: auto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "job_last_success_timestamp_seconds",
+			Help: "Unix timestamp of the last successful job run by name.",
+		}, []string{"name"}),
 	}
-	rec.cleanups.WithLabelValues("success")
-	rec.cleanups.WithLabelValues("error")
+	rec.jobRuns.WithLabelValues(string(JobSweep), "success")
+	rec.jobRuns.WithLabelValues(string(JobSweep), "error")
+	rec.jobProcessed.WithLabelValues(string(JobSweep))
+	rec.jobDuration.WithLabelValues(string(JobSweep))
+	rec.jobLastSuccess.WithLabelValues(string(JobSweep))
 	rec.handler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	return rec
 }
 
 func (r *Recorder) Handler() http.Handler { return r.handler }
 
-func (r *Recorder) RecordCleanup(deleted int64, took time.Duration, err error) {
-	r.cleanupDur.Observe(took.Seconds())
-	if deleted > 0 {
-		r.expired.Add(float64(deleted))
+func (r *Recorder) RecordJob(name Job, processed int64, took time.Duration, err error) {
+	job := string(name)
+	r.jobDuration.WithLabelValues(job).Observe(took.Seconds())
+	if processed > 0 {
+		r.jobProcessed.WithLabelValues(job).Add(float64(processed))
 	}
 	if err != nil {
-		r.cleanups.WithLabelValues("error").Inc()
+		r.jobRuns.WithLabelValues(job, "error").Inc()
 		return
 	}
-	r.cleanups.WithLabelValues("success").Inc()
-	r.lastCleanup.SetToCurrentTime()
+	r.jobRuns.WithLabelValues(job, "success").Inc()
+	r.jobLastSuccess.WithLabelValues(job).SetToCurrentTime()
 }
 
 func (r *Recorder) Instrument(next http.Handler) http.Handler {

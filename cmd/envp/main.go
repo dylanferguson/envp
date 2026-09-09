@@ -128,7 +128,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	rec := metrics.New()
 	sweepStarted := time.Now()
 	n, err := db.Sweep(startup)
-	rec.RecordCleanup(n, time.Since(sweepStarted), err)
+	rec.RecordJob(metrics.JobSweep, n, time.Since(sweepStarted), err)
 	if err != nil {
 		return err
 	}
@@ -156,9 +156,9 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	go func() {
 		defer wg.Done()
 		db.SweepEvery(maintenance, time.Minute, func(n int64, took time.Duration, err error) {
-			rec.RecordCleanup(n, took, err)
+			rec.RecordJob(metrics.JobSweep, n, took, err)
 			if err != nil {
-				logger.Error("share cleanup failed", "error", err)
+				logger.Error("sweep failed", "error", err)
 			}
 		})
 	}()

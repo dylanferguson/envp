@@ -700,13 +700,13 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(shares_expired_deleted_total{app=~\"^$app$\"}[$__rate_interval]))",
+          "expr": "sum(rate(job_processed_total{app=~\"^$app$\",name=\"sweep\"}[$__rate_interval]))",
           "interval": "",
-          "legendFormat": "expired",
+          "legendFormat": "sweep",
           "refId": "B"
         }
       ],
-      "title": "Shares created and expired",
+      "title": "Shares created and swept",
       "type": "timeseries"
     },
     {
