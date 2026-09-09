@@ -38,9 +38,10 @@ type createRequest struct {
 }
 
 type createShareResponse struct {
-	ID        string `json:"id"`
-	ExpiresAt int64  `json:"expires_at"`
-	MaxReads  int    `json:"max_reads"`
+	ID          string `json:"id"`
+	ExpiresAt   int64  `json:"expires_at"`
+	MaxReads    int    `json:"max_reads"`
+	DeleteToken string `json:"delete_token"`
 }
 
 type getShareResponse struct {
@@ -94,8 +95,10 @@ func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recor
 	mux := http.NewServeMux()
 	mux.Handle("POST /api/v1/shares", track(s.recover(noStore(s.createShare))))
 	mux.Handle("GET /api/v1/shares/{id}", track(s.recover(noStore(s.readShare))))
+	mux.Handle("DELETE /api/v1/shares/{id}", track(s.recover(noStore(s.revokeShare))))
 	mux.Handle("GET /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
 	mux.Handle("POST /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
+	mux.Handle("DELETE /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
 
 	return headers(mux), nil
 }
@@ -107,14 +110,21 @@ func noStore(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (s *server) originForbidden(w http.ResponseWriter, r *http.Request) bool {
+	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
+		s.log.Warn("origin rejected", "method", r.Method)
+		s.error(w, r, errForbidden)
+		return true
+	}
+	return false
+}
+
 func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength > maxCreateJSONBytes {
 		s.error(w, r, errPayloadTooLarge)
 		return
 	}
-	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
-		s.log.Warn("origin rejected", "method", r.Method)
-		s.error(w, r, errForbidden)
+	if s.originForbidden(w, r) {
 		return
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxCreateJSONBytes))
@@ -137,13 +147,45 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 		s.error(w, r, errInvalidRequest)
 		return
 	}
-	share, err := s.db.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second, int(req.MaxReads))
+	created, err := s.db.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second, int(req.MaxReads))
 	if err != nil {
 		s.error(w, r, err)
 		return
 	}
-	w.Header().Set("Location", "/api/v1/shares/"+share.ID)
-	writeJSON(w, http.StatusCreated, createShareResponse{ID: share.ID, ExpiresAt: share.ExpiresAt.UnixMilli(), MaxReads: int(req.MaxReads)})
+	w.Header().Set("Location", "/api/v1/shares/"+created.ID)
+	writeJSON(w, http.StatusCreated, createShareResponse{
+		ID: created.ID, ExpiresAt: created.ExpiresAt.UnixMilli(), MaxReads: int(req.MaxReads),
+		DeleteToken: base64.RawURLEncoding.EncodeToString(created.DeleteToken),
+	})
+}
+
+func (s *server) revokeShare(w http.ResponseWriter, r *http.Request) {
+	if s.originForbidden(w, r) {
+		return
+	}
+	id, err := ulid.ParseStrict(r.PathValue("id"))
+	if err != nil {
+		s.error(w, r, errShareNotFound)
+		return
+	}
+	raw := r.Header.Get("X-Envp-Delete-Token")
+	if raw == "" {
+		s.error(w, r, errShareNotFound)
+		return
+	}
+	token, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil || len(token) != 32 {
+		s.error(w, r, errShareNotFound)
+		return
+	}
+	if err := s.db.Revoke(r.Context(), id.String(), store.HashDeleteToken(token)); errors.Is(err, store.ErrNotFound) {
+		s.error(w, r, errShareNotFound)
+		return
+	} else if err != nil {
+		s.error(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
