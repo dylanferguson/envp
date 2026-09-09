@@ -254,7 +254,7 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total{app=~\"^$app$\",status_class=\"5xx\"}[$__rate_interval]))",
+          "expr": "sum(rate(http_requests_total{app=~\"^$app$\",status=~\"^5..\"}[$__rate_interval]))",
           "interval": "",
           "legendFormat": "5xx rate",
           "refId": "A"
@@ -441,13 +441,13 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total{app=~\"^$app$\"}[$__rate_interval])) by (method, handler, status_class)",
+          "expr": "sum(rate(http_requests_total{app=~\"^$app$\",handler!=\"\",status!=\"\"}[$__rate_interval])) by (method, handler, status)",
           "interval": "",
-          "legendFormat": "{{method}} {{handler}} {{status_class}}",
+          "legendFormat": "{{method}} {{handler}} {{status}}",
           "refId": "A"
         }
       ],
-      "title": "HTTP requests",
+      "title": "Request status",
       "type": "timeseries"
     },
     {
@@ -583,7 +583,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 13
       },
@@ -603,7 +603,7 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\"}[$__rate_interval])) by (le, method, handler))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\",handler!=\"\"}[$__rate_interval])) by (le, method, handler))",
           "interval": "",
           "legendFormat": "p50 {{method}} {{handler}}",
           "refId": "A"
@@ -611,13 +611,13 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\"}[$__rate_interval])) by (le, method, handler))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\",handler!=\"\"}[$__rate_interval])) by (le, method, handler))",
           "interval": "",
           "legendFormat": "p95 {{method}} {{handler}}",
           "refId": "B"
         }
       ],
-      "title": "Share latency",
+      "title": "Request latency",
       "type": "timeseries"
     },
     {
@@ -673,8 +673,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 13
+        "x": 0,
+        "y": 21
       },
       "id": 11,
       "options": {
@@ -692,21 +692,110 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(shares_created_total{app=~\"^$app$\"}[$__rate_interval]))",
+          "expr": "sum(rate(job_processed_total{app=~\"^$app$\",name!=\"\"}[$__rate_interval])) by (name)",
           "interval": "",
-          "legendFormat": "created",
+          "legendFormat": "{{name}}",
           "refId": "A"
         },
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(job_processed_total{app=~\"^$app$\",name=\"sweep\"}[$__rate_interval]))",
+          "expr": "sum(rate(job_runs_total{app=~\"^$app$\",name!=\"\"}[$__rate_interval])) by (name, result)",
           "interval": "",
-          "legendFormat": "sweep",
+          "legendFormat": "{{name}} {{result}}",
           "refId": "B"
         }
       ],
-      "title": "Shares created and swept",
+      "title": "Job status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${source}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 15,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "${source}",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(job_duration_seconds_bucket{app=~\"^$app$\",name!=\"\"}[$__rate_interval])) by (le, name))",
+          "interval": "",
+          "legendFormat": "p50 {{name}}",
+          "refId": "A"
+        },
+        {
+          "datasource": "${source}",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.95, sum(rate(job_duration_seconds_bucket{app=~\"^$app$\",name!=\"\"}[$__rate_interval])) by (le, name))",
+          "interval": "",
+          "legendFormat": "p95 {{name}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Job latency",
       "type": "timeseries"
     },
     {
@@ -716,7 +805,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 29
       },
       "id": 12,
       "panels": [],
@@ -777,7 +866,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 30
       },
       "id": 13,
       "options": {
@@ -858,7 +947,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 30
       },
       "id": 14,
       "options": {

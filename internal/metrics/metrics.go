@@ -34,8 +34,8 @@ func New() *Recorder {
 	rec := &Recorder{
 		requests: auto.NewCounterVec(prometheus.CounterOpts{
 			Name: "http_requests_total",
-			Help: "HTTP requests by method, handler, and status class.",
-		}, []string{"method", "handler", "status_class"}),
+			Help: "HTTP requests by method, handler, and status.",
+		}, []string{"method", "handler", "status"}),
 		duration: auto.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "HTTP request duration in seconds by method and handler.",
@@ -102,8 +102,7 @@ func (r *Recorder) Instrument(next http.Handler) http.Handler {
 }
 
 func (r *Recorder) observe(method, handler string, status int, took time.Duration) {
-	class := strconv.Itoa(status/100) + "xx"
-	r.requests.WithLabelValues(method, handler, class).Inc()
+	r.requests.WithLabelValues(method, handler, strconv.Itoa(status)).Inc()
 	r.duration.WithLabelValues(method, handler).Observe(took.Seconds())
 	if method == http.MethodPost && handler == createHandler && status == http.StatusCreated {
 		r.created.Inc()
