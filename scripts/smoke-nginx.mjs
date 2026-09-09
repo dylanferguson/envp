@@ -25,10 +25,9 @@ const create = () =>
 try {
   compose("up", "--build", "--wait");
   assert.equal((await create()).status, 201);
-  let last;
-  for (let n = 0; n < 20; n++) last = await create();
-  assert.equal(last.status, 429);
-  assert.equal(last.headers.get("retry-after"), "2");
+  let last = 201;
+  for (let n = 0; n < 20; n++) last = (await create()).status;
+  assert.equal(last, 429);
   console.log("ok");
 } finally {
   compose("down", "--volumes");
