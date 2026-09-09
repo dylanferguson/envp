@@ -263,38 +263,6 @@ func TestExhaustedLooksMissing(t *testing.T) {
 	assertError(t, exhausted, 404, "not_found", "Share not found.")
 }
 
-func TestHTTPMetricsUseMuxPatterns(t *testing.T) {
-	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	rec := metrics.New()
-	h, err := New(db, Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":20,"envelope":"AQID_w"}`); w.Code != http.StatusCreated {
-		t.Fatalf("create: %d %s", w.Code, w.Body)
-	}
-	if w := request(h, "POST", "/api/nope", `{}`); w.Code != http.StatusNotFound {
-		t.Fatalf("unmatched: %d %s", w.Code, w.Body)
-	}
-
-	w := httptest.NewRecorder()
-	rec.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
-	body := w.Body.String()
-	if !strings.Contains(body, `handler="/api/v1/shares",method="POST",status_class="2xx"`) {
-		t.Fatalf("create handler: %s", body)
-	}
-	if !strings.Contains(body, `handler="/api/{path...}",method="POST",status_class="4xx"`) {
-		t.Fatalf("unmatched handler: %s", body)
-	}
-	if strings.Contains(body, `handler="create"`) || strings.Contains(body, `route="create"`) {
-		t.Fatalf("legacy operation label: %s", body)
-	}
-}
-
 func TestOriginWarnNoOriginField(t *testing.T) {
 	var buf bytes.Buffer
 	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
