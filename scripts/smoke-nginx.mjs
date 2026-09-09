@@ -25,18 +25,16 @@ const create = () =>
 const logFields = ["time", "level", "msg", "status", "method", "route"];
 
 const nginxRecords = (text) =>
-  text
-    .split("\n")
-    .flatMap((line) => {
-      const start = line.indexOf("{");
-      if (start === -1) return [];
-      try {
-        const rec = JSON.parse(line.slice(start));
-        return rec && typeof rec === "object" && rec.msg ? [rec] : [];
-      } catch {
-        return [];
-      }
-    });
+  text.split("\n").flatMap((line) => {
+    const start = line.indexOf("{");
+    if (start === -1) return [];
+    try {
+      const rec = JSON.parse(line.slice(start));
+      return rec && typeof rec === "object" && rec.msg ? [rec] : [];
+    } catch {
+      return [];
+    }
+  });
 
 try {
   compose("up", "--build", "--wait");
@@ -44,7 +42,10 @@ try {
   assert.equal(created.status, 201);
   const { id } = await created.json();
   assert.equal((await fetch("http://127.0.0.1:8080/missing")).status, 404);
-  assert.equal((await fetch("http://127.0.0.1:8080/", { headers: { Host: "envp.fly.dev" } })).status, 403);
+  assert.equal(
+    (await fetch("http://127.0.0.1:8080/", { headers: { Host: "envp.fly.dev" } })).status,
+    403,
+  );
   assert.equal(
     (
       await fetch("http://127.0.0.1:8080/api/v1/shares", {
@@ -61,9 +62,21 @@ try {
 
   const raw = compose("logs", "--no-color", "nginx");
   const records = nginxRecords(raw);
-  assert.ok(records.some((rec) => rec.msg === "payload too large" && rec.status === 413 && rec.route === "create"));
-  assert.ok(records.some((rec) => rec.msg === "rate limited" && rec.status === 429 && rec.route === "create"));
-  assert.ok(!records.some((rec) => rec.status === 200 || rec.status === 201 || rec.status === 403 || rec.status === 404));
+  assert.ok(
+    records.some(
+      (rec) => rec.msg === "payload too large" && rec.status === 413 && rec.route === "create",
+    ),
+  );
+  assert.ok(
+    records.some(
+      (rec) => rec.msg === "rate limited" && rec.status === 429 && rec.route === "create",
+    ),
+  );
+  assert.ok(
+    !records.some(
+      (rec) => rec.status === 200 || rec.status === 201 || rec.status === 403 || rec.status === 404,
+    ),
+  );
   assert.ok(!raw.includes(id));
   assert.ok(!raw.includes('"GET / HTTP/1.1"'));
   for (const rec of records) {
