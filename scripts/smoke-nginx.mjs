@@ -50,10 +50,8 @@ const logFields = [
 
 const jsonRecords = (text, logger) =>
   text.split("\n").flatMap((line) => {
-    const start = line.indexOf("{");
-    if (start === -1) return [];
     try {
-      const rec = JSON.parse(line.slice(start));
+      const rec = JSON.parse(line);
       return rec && rec.logger === logger ? [rec] : [];
     } catch {
       return [];
@@ -81,8 +79,8 @@ try {
   for (let n = 0; n < 20; n++) last = (await create()).status;
   assert.equal(last, 429);
 
-  const raw = compose("logs", "--no-color", "nginx");
-  const apiRaw = compose("logs", "--no-color", "envp");
+  const raw = compose("logs", "--no-color", "--no-log-prefix", "nginx");
+  const apiRaw = compose("logs", "--no-color", "--no-log-prefix", "envp");
   const records = jsonRecords(raw, "nginx");
   const apiRecords = jsonRecords(apiRaw, "envp");
   assert.ok(apiRecords.some((rec) => rec.msg === "listening"));
