@@ -4,6 +4,7 @@ package store
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -26,11 +27,23 @@ type Share struct {
 	ExpiresAt time.Time
 }
 
+type DeleteTokenHash [32]byte
+
+type Created struct {
+	Share
+	DeleteToken []byte
+}
+
+func HashDeleteToken(token []byte) DeleteTokenHash {
+	return sha256.Sum256(token)
+}
+
 type Store struct {
 	db            *sql.DB
 	insert        *sql.Stmt
 	consumeShare  *sql.Stmt
 	peekShare     *sql.Stmt
+	revokeShare   *sql.Stmt
 	deleteExpired *sql.Stmt
 	now           func() time.Time
 }
@@ -70,7 +83,8 @@ func (s *Store) init(ctx context.Context) error {
 			id TEXT PRIMARY KEY,
 			envelope BLOB NOT NULL,
 			expires_at INTEGER NOT NULL,
-			remaining_reads INTEGER NOT NULL
+			remaining_reads INTEGER NOT NULL,
+			delete_token_hash BLOB NOT NULL
 		) STRICT;
 		CREATE INDEX IF NOT EXISTS shares_expires_at ON shares (expires_at);
 	`)
@@ -86,7 +100,15 @@ func (s *Store) init(ctx context.Context) error {
 			return fmt.Errorf("add remaining_reads column: %w", err)
 		}
 	}
-	s.insert, err = s.db.PrepareContext(ctx, "INSERT INTO shares (id, envelope, expires_at, remaining_reads) VALUES (?, ?, ?, ?)")
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('shares') WHERE name = 'delete_token_hash'`).Scan(&columnCount); err != nil {
+		return fmt.Errorf("check delete_token_hash column: %w", err)
+	}
+	if columnCount == 0 {
+		if _, err := s.db.ExecContext(ctx, `ALTER TABLE shares ADD COLUMN delete_token_hash BLOB`); err != nil {
+			return fmt.Errorf("add delete_token_hash column: %w", err)
+		}
+	}
+	s.insert, err = s.db.PrepareContext(ctx, "INSERT INTO shares (id, envelope, expires_at, remaining_reads, delete_token_hash) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return fmt.Errorf("prepare create: %w", err)
 	}
@@ -100,6 +122,12 @@ func (s *Store) init(ctx context.Context) error {
 	s.peekShare, err = s.db.PrepareContext(ctx, "SELECT 1 FROM shares WHERE id = ? AND expires_at > ? AND remaining_reads > 0")
 	if err != nil {
 		return fmt.Errorf("prepare peek: %w", err)
+	}
+	s.revokeShare, err = s.db.PrepareContext(ctx, `
+		DELETE FROM shares
+		WHERE id = ? AND delete_token_hash = ? AND expires_at > ? AND remaining_reads > 0`)
+	if err != nil {
+		return fmt.Errorf("prepare revoke: %w", err)
 	}
 	s.deleteExpired, err = s.db.PrepareContext(ctx, "DELETE FROM shares WHERE id IN (SELECT id FROM shares WHERE expires_at <= ? OR remaining_reads <= 0 LIMIT 500)")
 	if err != nil {
@@ -121,17 +149,37 @@ func (s *Store) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration, maxReads int) (Share, error) {
+func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration, maxReads int) (Created, error) {
 	now := s.now()
 	id, err := ulid.New(ulid.Timestamp(now), rand.Reader)
 	if err != nil {
-		return Share{}, fmt.Errorf("generate share ID: %w", err)
+		return Created{}, fmt.Errorf("generate share ID: %w", err)
 	}
+	deleteToken := make([]byte, 32)
+	if _, err := rand.Read(deleteToken); err != nil {
+		return Created{}, fmt.Errorf("generate delete token: %w", err)
+	}
+	tokenHash := HashDeleteToken(deleteToken)
 	share := Share{ID: id.String(), Envelope: envelope, ExpiresAt: now.Add(ttl).Truncate(time.Millisecond)}
-	if _, err := s.insert.ExecContext(ctx, share.ID, share.Envelope, share.ExpiresAt.UnixMilli(), maxReads); err != nil {
-		return Share{}, fmt.Errorf("create share: %w", err)
+	if _, err := s.insert.ExecContext(ctx, share.ID, share.Envelope, share.ExpiresAt.UnixMilli(), maxReads, tokenHash[:]); err != nil {
+		return Created{}, fmt.Errorf("create share: %w", err)
 	}
-	return share, nil
+	return Created{Share: share, DeleteToken: deleteToken}, nil
+}
+
+func (s *Store) Revoke(ctx context.Context, id string, tokenHash DeleteTokenHash) error {
+	result, err := s.revokeShare.ExecContext(ctx, id, tokenHash[:], s.now().UnixMilli())
+	if err != nil {
+		return fmt.Errorf("revoke share: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("count revoked shares: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) Consume(ctx context.Context, id string) (Share, error) {
