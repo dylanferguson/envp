@@ -50,8 +50,10 @@ const logFields = [
 
 const jsonRecords = (text, logger) =>
   text.split("\n").flatMap((line) => {
+    const start = line.indexOf("{");
+    if (start === -1) return [];
     try {
-      const rec = JSON.parse(line);
+      const rec = JSON.parse(line.slice(start));
       return rec && rec.logger === logger ? [rec] : [];
     } catch {
       return [];
@@ -94,6 +96,7 @@ try {
         rec.route === "create" &&
         rec.upstream_status === "-",
     ),
+    JSON.stringify(records),
   );
   assert.ok(
     records.some(
@@ -103,6 +106,7 @@ try {
         rec.route === "create" &&
         rec.upstream_status === "-",
     ),
+    JSON.stringify(records),
   );
   assert.ok(
     !records.some(
