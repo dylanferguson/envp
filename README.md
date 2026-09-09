@@ -5,8 +5,8 @@
 <h1 align="center">envp</h1>
 
 <p align="center">
-  Browser-encrypted <code>.env</code> sharing.<br>
-  The key stays in the URL fragment. The server never sees it.
+  Securely share your .env<br>
+  Encrypt with the browser, and share a link with a key the server never sees.
 </p>
 
 <p align="center">
@@ -14,10 +14,8 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="envp in the browser: paste a .env, set ttl and reads, then share" width="920">
+  <img src="assets/screenshot.png" alt="envp" width="640">
 </p>
-
-Paste a `.env`. The browser encrypts it. You get a link with the key after `#`. The server stores ciphertext, an expiry, and a bound on how many times the blob may be fetched.
 
 ## Run locally
 
