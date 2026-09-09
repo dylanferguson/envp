@@ -3,6 +3,7 @@ package metrics
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,19 +11,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type Route string
+const createHandler = "/api/v1/shares"
 
-const (
-	RouteCreate Route = "create"
-	RouteGet    Route = "get"
-)
+type Job string
+
+const JobSweep Job = "sweep"
 
 type Recorder struct {
-	requests *prometheus.CounterVec
-	duration *prometheus.HistogramVec
-	created  prometheus.Counter
-	swept    prometheus.Counter
-	handler  http.Handler
+	requests       *prometheus.CounterVec
+	duration       *prometheus.HistogramVec
+	created        prometheus.Counter
+	jobRuns        *prometheus.CounterVec
+	jobProcessed   *prometheus.CounterVec
+	jobDuration    *prometheus.HistogramVec
+	jobLastSuccess *prometheus.GaugeVec
+	handler        http.Handler
 }
 
 func New() *Recorder {
@@ -30,28 +33,62 @@ func New() *Recorder {
 	auto := promauto.With(reg)
 	rec := &Recorder{
 		requests: auto.NewCounterVec(prometheus.CounterOpts{
-			Name: "http_requests_total", Help: "HTTP requests by route and status class.",
-		}, []string{"route", "status_class"}),
+			Name: "http_requests_total",
+			Help: "HTTP requests by method, handler, and status class.",
+		}, []string{"method", "handler", "status_class"}),
 		duration: auto.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "http_request_duration_seconds", Help: "HTTP latency.",
+			Name:    "http_request_duration_seconds",
+			Help:    "HTTP request duration in seconds by method and handler.",
 			Buckets: []float64{0.005, 0.02, 0.1, 0.5, 2},
-		}, []string{"route"}),
-		created: auto.NewCounter(prometheus.CounterOpts{Name: "shares_created_total", Help: "Shares created."}),
-		swept:   auto.NewCounter(prometheus.CounterOpts{Name: "sweep_deleted_total", Help: "Shares swept."}),
+		}, []string{"method", "handler"}),
+		created: auto.NewCounter(prometheus.CounterOpts{
+			Name: "shares_created_total",
+			Help: "Shares created.",
+		}),
+		jobRuns: auto.NewCounterVec(prometheus.CounterOpts{
+			Name: "job_runs_total",
+			Help: "Job runs by name and result.",
+		}, []string{"name", "result"}),
+		jobProcessed: auto.NewCounterVec(prometheus.CounterOpts{
+			Name: "job_processed_total",
+			Help: "Items processed by job name.",
+		}, []string{"name"}),
+		jobDuration: auto.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "job_duration_seconds",
+			Help:    "Job run duration in seconds by name.",
+			Buckets: []float64{0.001, 0.005, 0.02, 0.1, 0.5, 2},
+		}, []string{"name"}),
+		jobLastSuccess: auto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "job_last_success_timestamp_seconds",
+			Help: "Unix timestamp of the last successful job run by name.",
+		}, []string{"name"}),
 	}
+	rec.jobRuns.WithLabelValues(string(JobSweep), "success")
+	rec.jobRuns.WithLabelValues(string(JobSweep), "error")
+	rec.jobProcessed.WithLabelValues(string(JobSweep))
+	rec.jobDuration.WithLabelValues(string(JobSweep))
+	rec.jobLastSuccess.WithLabelValues(string(JobSweep))
 	rec.handler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	return rec
 }
 
 func (r *Recorder) Handler() http.Handler { return r.handler }
 
-func (r *Recorder) Swept(n int64) {
-	if n > 0 {
-		r.swept.Add(float64(n))
+func (r *Recorder) RecordJob(name Job, processed int64, took time.Duration, err error) {
+	job := string(name)
+	r.jobDuration.WithLabelValues(job).Observe(took.Seconds())
+	if processed > 0 {
+		r.jobProcessed.WithLabelValues(job).Add(float64(processed))
 	}
+	if err != nil {
+		r.jobRuns.WithLabelValues(job, "error").Inc()
+		return
+	}
+	r.jobRuns.WithLabelValues(job, "success").Inc()
+	r.jobLastSuccess.WithLabelValues(job).SetToCurrentTime()
 }
 
-func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
+func (r *Recorder) Instrument(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
@@ -60,16 +97,30 @@ func (r *Recorder) Instrument(route Route, next http.Handler) http.Handler {
 		if status == 0 {
 			status = http.StatusOK
 		}
-		r.observe(route, status, time.Since(start))
+		r.observe(req.Method, handlerLabel(req.Pattern, req.Method), status, time.Since(start))
 	})
 }
 
-func (r *Recorder) observe(route Route, status int, took time.Duration) {
-	r.requests.WithLabelValues(string(route), strconv.Itoa(status/100)+"xx").Inc()
-	r.duration.WithLabelValues(string(route)).Observe(took.Seconds())
-	if route == RouteCreate && status == http.StatusCreated {
+func (r *Recorder) observe(method, handler string, status int, took time.Duration) {
+	class := strconv.Itoa(status/100) + "xx"
+	r.requests.WithLabelValues(method, handler, class).Inc()
+	r.duration.WithLabelValues(method, handler).Observe(took.Seconds())
+	if method == http.MethodPost && handler == createHandler && status == http.StatusCreated {
 		r.created.Inc()
 	}
+}
+
+func handlerLabel(pattern, method string) string {
+	if pattern == "" {
+		return "unmatched"
+	}
+	if rest, ok := strings.CutPrefix(pattern, method+" "); ok {
+		return rest
+	}
+	if i := strings.IndexByte(pattern, '/'); i >= 0 {
+		return pattern[i:]
+	}
+	return pattern
 }
 
 type statusWriter struct {

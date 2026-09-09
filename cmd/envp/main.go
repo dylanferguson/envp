@@ -126,10 +126,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		id = id[:7]
 	}
 	rec := metrics.New()
-	if n, err := db.Sweep(startup); err != nil {
+	sweepStarted := time.Now()
+	n, err := db.Sweep(startup)
+	rec.RecordJob(metrics.JobSweep, n, time.Since(sweepStarted), err)
+	if err != nil {
 		return err
-	} else {
-		rec.Swept(n)
 	}
 	handler, err := server.New(db, cfg.http, logger, rec)
 	if err != nil {
@@ -154,12 +155,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		db.SweepEvery(maintenance, time.Minute, func(n int64, err error) {
+		db.SweepEvery(maintenance, time.Minute, func(n int64, took time.Duration, err error) {
+			rec.RecordJob(metrics.JobSweep, n, took, err)
 			if err != nil {
 				logger.Error("sweep failed", "error", err)
-				return
 			}
-			rec.Swept(n)
 		})
 	}()
 	defer func() { stopMaintenance(); wg.Wait() }()

@@ -179,7 +179,7 @@ func (s *Store) Sweep(ctx context.Context) (int64, error) {
 	}
 }
 
-func (s *Store) SweepEvery(ctx context.Context, every time.Duration, after func(deleted int64, err error)) {
+func (s *Store) SweepEvery(ctx context.Context, every time.Duration, after func(deleted int64, took time.Duration, err error)) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
@@ -187,11 +187,13 @@ func (s *Store) SweepEvery(ctx context.Context, every time.Duration, after func(
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			start := time.Now()
 			n, err := s.Sweep(ctx)
+			took := time.Since(start)
 			if err != nil && ctx.Err() != nil {
 				return
 			}
-			after(n, err)
+			after(n, took, err)
 		}
 	}
 }

@@ -92,10 +92,10 @@ func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recor
 	track := rec.Instrument
 
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/shares", track(metrics.RouteCreate, s.recover(noStore(s.createShare))))
-	mux.Handle("GET /api/v1/shares/{id}", track(metrics.RouteGet, s.recover(noStore(s.readShare))))
-	mux.Handle("GET /api/{path...}", track(metrics.RouteGet, s.recover(noStore(s.apiNotFound))))
-	mux.Handle("POST /api/{path...}", track(metrics.RouteCreate, s.recover(noStore(s.apiNotFound))))
+	mux.Handle("POST /api/v1/shares", track(s.recover(noStore(s.createShare))))
+	mux.Handle("GET /api/v1/shares/{id}", track(s.recover(noStore(s.readShare))))
+	mux.Handle("GET /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
+	mux.Handle("POST /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
 
 	return headers(mux), nil
 }

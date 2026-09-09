@@ -441,9 +441,9 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(http_requests_total{app=~\"^$app$\"}[$__rate_interval])) by (route, status_class)",
+          "expr": "sum(rate(http_requests_total{app=~\"^$app$\"}[$__rate_interval])) by (method, handler, status_class)",
           "interval": "",
-          "legendFormat": "{{route}} {{status_class}}",
+          "legendFormat": "{{method}} {{handler}} {{status_class}}",
           "refId": "A"
         }
       ],
@@ -603,17 +603,17 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\"}[$__rate_interval])) by (le, route))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\"}[$__rate_interval])) by (le, method, handler))",
           "interval": "",
-          "legendFormat": "p50 {{route}}",
+          "legendFormat": "p50 {{method}} {{handler}}",
           "refId": "A"
         },
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\"}[$__rate_interval])) by (le, route))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=~\"^$app$\"}[$__rate_interval])) by (le, method, handler))",
           "interval": "",
-          "legendFormat": "p95 {{route}}",
+          "legendFormat": "p95 {{method}} {{handler}}",
           "refId": "B"
         }
       ],
@@ -700,9 +700,9 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(sweep_deleted_total{app=~\"^$app$\"}[$__rate_interval]))",
+          "expr": "sum(rate(job_processed_total{app=~\"^$app$\",name=\"sweep\"}[$__rate_interval]))",
           "interval": "",
-          "legendFormat": "swept",
+          "legendFormat": "sweep",
           "refId": "B"
         }
       ],
