@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseMaxReads, parseShareId, parseShareLink } from "../src/lib/limits.js";
+import { base64urlEncode } from "../src/lib/envelope.js";
+import {
+  parseDeleteToken,
+  parseMaxReads,
+  parseShareId,
+  parseShareLink,
+} from "../src/lib/limits.js";
 
 const SHARE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
@@ -18,6 +24,15 @@ describe("parseMaxReads", () => {
     expect(parseMaxReads(100)).toBe(100);
     expect(parseMaxReads(0)).toBeNull();
     expect(parseMaxReads("20")).toBeNull();
+  });
+});
+
+describe("parseDeleteToken", () => {
+  it("accepts 32 decoded bytes and rejects shorter input", () => {
+    const token = base64urlEncode(new Uint8Array(32));
+    expect(parseDeleteToken(token)).toBe(token);
+    expect(parseDeleteToken("short")).toBeNull();
+    expect(parseDeleteToken(SHARE_ID)).toBeNull();
   });
 });
 

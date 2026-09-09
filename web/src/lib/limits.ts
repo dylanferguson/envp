@@ -1,9 +1,14 @@
+import { base64urlDecode } from "./bytes.js";
+
 export type ShareId = string & { readonly __brand: "ShareId" };
 export type TtlSeconds = number & { readonly __brand: "TtlSeconds" };
 export type MaxReads = number & { readonly __brand: "MaxReads" };
 export type UnixMillis = number & { readonly __brand: "UnixMillis" };
 export type KeyFragment = string & { readonly __brand: "KeyFragment" };
+export type DeleteToken = string & { readonly __brand: "DeleteToken" };
 export type EnvelopeBytes = Uint8Array & { readonly __brand: "EnvelopeBytes" };
+
+const DELETE_TOKEN_BYTES = 32;
 
 export const MAX_PLAINTEXT_BYTES = 65536;
 export const MAX_PLAINTEXT_KIB = MAX_PLAINTEXT_BYTES / 1024;
@@ -69,6 +74,18 @@ export function parseKeyFragment(value: string): KeyFragment | null {
     return null;
   }
   return value as KeyFragment;
+}
+
+export function parseDeleteToken(value: string): DeleteToken | null {
+  try {
+    const bytes = base64urlDecode(value);
+    if (bytes.length !== DELETE_TOKEN_BYTES) {
+      return null;
+    }
+    return value as DeleteToken;
+  } catch {
+    return null;
+  }
 }
 
 export type ParsedShareLink = {

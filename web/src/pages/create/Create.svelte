@@ -8,12 +8,14 @@
   import { once } from "../../lib/once.js";
   import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import SwapStage from "../../ui/SwapStage.svelte";
+  import { revokeShare, ShareApiError } from "../../api/shares.js";
   import CreateDone from "./CreateDone.svelte";
   import CreateForm from "./CreateForm.svelte";
   import { runShareFlow } from "./flow.js";
   import {
     CREATE_STEPS,
     CREATE_TREE,
+    applyRevokeResult,
     deriveCreateDiagramFocus,
     deriveCreateReading,
     type CreateState,
@@ -73,6 +75,31 @@
     );
   }
 
+  function copyDeleteToken(): void {
+    if (state.phase !== "done") {
+      return;
+    }
+    void navigator.clipboard.writeText(state.deleteToken).then(() => {
+      showToast("revoke token copied to clipboard");
+    });
+  }
+
+  async function onRevoke(): Promise<void> {
+    if (state.phase !== "done" || state.revoke.phase === "revoking" || state.revoke.phase === "revoked") {
+      return;
+    }
+    const shareId = state.shareId;
+    const deleteToken = state.deleteToken;
+    state = { ...state, revoke: { phase: "revoking" } };
+    try {
+      await revokeShare(shareId, deleteToken);
+      state = applyRevokeResult(state, shareId, { phase: "revoked" });
+    } catch (error) {
+      const message = error instanceof ShareApiError ? error.message : "Something went wrong";
+      state = applyRevokeResult(state, shareId, { phase: "error", message });
+    }
+  }
+
   function onAgain(): void {
     dismissToast();
     createForm?.clearInput();
@@ -123,10 +150,14 @@
           <CreateDone
             bind:this={createDone}
             url={state.url}
+            deleteToken={state.deleteToken}
             expiresAt={state.expiresAt}
             maxReads={state.maxReads}
             copied={state.copied}
+            revoke={state.revoke}
             onCopy={copyShareLink}
+            onCopyToken={copyDeleteToken}
+            onRevoke={onRevoke}
             onAgain={onAgain}
           />
         {/if}

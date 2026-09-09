@@ -1,13 +1,29 @@
+import type { DeleteToken, ShareId } from "../../lib/limits.js";
 import type { DiagramFocus, Reading, TreeLine } from "../../lib/signal.js";
 
 export const CREATE_STEPS = ["paste", "encrypt", "send", "link"] as const;
 export type CreateStep = (typeof CREATE_STEPS)[number];
 
+export type RevokeState =
+  | { phase: "idle" }
+  | { phase: "revoking" }
+  | { phase: "revoked" }
+  | { phase: "error"; message: string };
+
 export type CreateState =
   | { phase: "idle" }
   | { phase: "encrypting" }
   | { phase: "uploading"; bytes: number }
-  | { phase: "done"; url: string; copied: boolean; expiresAt: number; maxReads: number }
+  | {
+      phase: "done";
+      shareId: ShareId;
+      url: string;
+      copied: boolean;
+      expiresAt: number;
+      maxReads: number;
+      deleteToken: DeleteToken;
+      revoke: RevokeState;
+    }
   | { phase: "error"; at: "encrypt" | "send" | "link"; message: string };
 
 const READINGS: Record<CreateState["phase"], Reading<CreateStep>> = {
@@ -74,6 +90,17 @@ export function deriveCreateDiagramFocus(state: CreateState): DiagramFocus {
     return CREATE_ERROR_FOCUS[state.at];
   }
   return CREATE_DIAGRAM_FOCUS[state.phase];
+}
+
+export function applyRevokeResult(
+  state: CreateState,
+  shareId: ShareId,
+  revoke: RevokeState,
+): CreateState {
+  if (state.phase !== "done" || state.shareId !== shareId) {
+    return state;
+  }
+  return { ...state, revoke };
 }
 
 export function deriveCreateReading(state: CreateState): Reading<CreateStep> {

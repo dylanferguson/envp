@@ -61,6 +61,25 @@ test.describe("create share", () => {
     expect(selection.length).toBeGreaterThan(0);
   });
 
+  test("revokes a share from the done screen", async ({ page, context }) => {
+    await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
+    await page.getByRole("button", { name: "share" }).click();
+    const shareLink = page.getByRole("textbox", { name: "share link" });
+    await expect(shareLink).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "revoke token" })).toBeVisible();
+    const url = await shareLink.inputValue();
+    expect(url).not.toContain(
+      await page.getByRole("textbox", { name: "revoke token" }).inputValue(),
+    );
+
+    await page.getByRole("button", { name: "revoke share" }).click();
+    await expect(page.getByText("share revoked.", { exact: true })).toBeVisible();
+
+    const openPage = await context.newPage();
+    await openPage.goto(url);
+    await expect(openPage.getByText("Not found. Spent, expired, or never existed.")).toBeVisible();
+  });
+
   test("starts a new share from the done screen", async ({ page }) => {
     await page.getByRole("slider", { name: "ttl", exact: true }).fill("7200");
     await page.getByRole("slider", { name: "reads", exact: true }).fill("50");

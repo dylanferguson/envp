@@ -38,10 +38,13 @@ export async function runShareFlow(
 
     return {
       phase: "done",
+      shareId: created.id,
       url,
       copied,
       expiresAt: created.expiresAt,
       maxReads: created.maxReads,
+      deleteToken: created.deleteToken,
+      revoke: { phase: "idle" },
     };
   } catch (error) {
     if (error instanceof EnvelopeError) {

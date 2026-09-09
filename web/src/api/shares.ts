@@ -1,8 +1,10 @@
 import { base64urlDecode, base64urlEncode } from "../lib/bytes.js";
 import {
   MAX_ENVELOPE_BYTES,
+  parseDeleteToken,
   parseMaxReads,
   parseShareId,
+  type DeleteToken,
   type MaxReads,
   type ShareId,
   type TtlSeconds,
@@ -15,6 +17,7 @@ export type CreateShareResponse = {
   id: ShareId;
   expiresAt: UnixMillis;
   maxReads: MaxReads;
+  deleteToken: DeleteToken;
 };
 
 export class ShareApiError extends Error {
@@ -69,10 +72,12 @@ export async function createShare(
   const body = asObject(await response.json());
   const meta = body ? parseShareMeta(body) : null;
   const maxReadsOut = body ? parseMaxReads(body.max_reads) : null;
-  if (!meta || !maxReadsOut) {
+  const deleteToken =
+    body && typeof body.delete_token === "string" ? parseDeleteToken(body.delete_token) : null;
+  if (!meta || !maxReadsOut || !deleteToken) {
     throw new ShareApiError(0);
   }
-  return { ...meta, maxReads: maxReadsOut };
+  return { ...meta, maxReads: maxReadsOut, deleteToken };
 }
 
 export async function getShare(id: ShareId): Promise<Uint8Array | null> {
@@ -103,4 +108,15 @@ export async function getShare(id: ShareId): Promise<Uint8Array | null> {
   return envelope;
 }
 
-export type { ShareId };
+export async function revokeShare(id: ShareId, token: DeleteToken): Promise<void> {
+  const response = await fetch(`${API_V1_SHARES}/${id}`, {
+    method: "DELETE",
+    headers: { "X-Envp-Delete-Token": token },
+  });
+  if (response.status === 204 || response.status === 404) {
+    return;
+  }
+  throw new ShareApiError(response.status, response.statusText);
+}
+
+export type { ShareId, DeleteToken };
