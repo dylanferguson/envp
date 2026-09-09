@@ -307,7 +307,7 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(increase(rate_limit_exceeded_total{app=~\"^$app$\"}[$__range]))",
+          "expr": "sum(increase(fly_edge_http_responses_count{app=~\"^$app$\",status=\"429\"}[$__range]))",
           "interval": "",
           "legendFormat": "Rate limited",
           "refId": "A"
@@ -522,9 +522,9 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(rate_limit_exceeded_total{app=~\"^$app$\"}[$__rate_interval])) by (route)",
+          "expr": "sum(rate(fly_edge_http_responses_count{app=~\"^$app$\",status=\"429\"}[$__rate_interval]))",
           "interval": "",
-          "legendFormat": "{{route}}",
+          "legendFormat": "429",
           "refId": "A"
         }
       ],
