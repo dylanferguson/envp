@@ -36,15 +36,25 @@ const statusWithHost = (host) =>
     req.end();
   });
 
-const logFields = ["time", "level", "msg", "status", "method", "route"];
+const logFields = [
+  "time",
+  "level",
+  "msg",
+  "logger",
+  "status",
+  "method",
+  "route",
+  "request_time",
+  "upstream_status",
+];
 
-const nginxRecords = (text) =>
+const jsonRecords = (text, logger) =>
   text.split("\n").flatMap((line) => {
     const start = line.indexOf("{");
     if (start === -1) return [];
     try {
       const rec = JSON.parse(line.slice(start));
-      return rec && typeof rec === "object" && rec.msg ? [rec] : [];
+      return rec && rec.logger === logger ? [rec] : [];
     } catch {
       return [];
     }
@@ -72,15 +82,28 @@ try {
   assert.equal(last, 429);
 
   const raw = compose("logs", "--no-color", "nginx");
-  const records = nginxRecords(raw);
+  const apiRaw = compose("logs", "--no-color", "envp");
+  const records = jsonRecords(raw, "nginx");
+  const apiRecords = jsonRecords(apiRaw, "envp");
+  assert.ok(apiRecords.some((rec) => rec.msg === "listening"));
+  assert.equal(jsonRecords(raw, "envp").length, 0);
+  assert.equal(jsonRecords(apiRaw, "nginx").length, 0);
   assert.ok(
     records.some(
-      (rec) => rec.msg === "payload too large" && rec.status === 413 && rec.route === "create",
+      (rec) =>
+        rec.msg === "payload too large" &&
+        rec.status === 413 &&
+        rec.route === "create" &&
+        rec.upstream_status === "-",
     ),
   );
   assert.ok(
     records.some(
-      (rec) => rec.msg === "rate limited" && rec.status === 429 && rec.route === "create",
+      (rec) =>
+        rec.msg === "rate limited" &&
+        rec.status === 429 &&
+        rec.route === "create" &&
+        rec.upstream_status === "-",
     ),
   );
   assert.ok(
@@ -92,6 +115,7 @@ try {
   assert.ok(!raw.includes('"GET / HTTP/1.1"'));
   for (const rec of records) {
     assert.deepEqual(Object.keys(rec).sort(), [...logFields].sort());
+    assert.equal(typeof rec.request_time, "number");
   }
   console.log("ok");
 } finally {
