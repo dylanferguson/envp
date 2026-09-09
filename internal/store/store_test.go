@@ -288,7 +288,7 @@ func TestSweepEveryStopsWithoutCallback(t *testing.T) {
 	called := false
 	done := make(chan struct{})
 	go func() {
-		s.SweepEvery(ctx, time.Hour, func(int64, error) { called = true })
+		s.SweepEvery(ctx, time.Hour, func(int64, time.Duration, error) { called = true })
 		close(done)
 	}()
 	select {
