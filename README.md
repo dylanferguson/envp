@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="envp" width="640">
+  <img src="docs/screenshot.png" alt="envp" width="640">
 </p>
 
 ## Run locally

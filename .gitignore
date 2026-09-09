@@ -8,5 +8,4 @@ playwright/.cache/
 target/
 .pnpm-store/
 .vite/
-docs/
 *.pem
