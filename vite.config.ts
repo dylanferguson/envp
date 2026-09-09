@@ -27,6 +27,9 @@ function shareOpenPage(): Plugin {
         if (req.url && /^\/share\/[^/]+\/?(\?.*)?$/.test(req.url)) {
           req.url = "/open.html";
         }
+        if (req.url && /^\/revoke\/[^/]+\/?(\?.*)?$/.test(req.url)) {
+          req.url = "/index.html";
+        }
         next();
       });
     },

@@ -1,21 +1,19 @@
 <script lang="ts">
   import "../../app.css";
   import { onMount, tick } from "svelte";
-  import type { MaxReads, TtlSeconds } from "../../lib/limits.js";
+  import { parseRevokeLink, type MaxReads, type TtlSeconds } from "../../lib/limits.js";
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
   import { once } from "../../lib/once.js";
   import { dismissToast, showToast } from "../../lib/toast.svelte.js";
   import SwapStage from "../../ui/SwapStage.svelte";
-  import { revokeShare, ShareApiError } from "../../api/shares.js";
   import CreateDone from "./CreateDone.svelte";
   import CreateForm from "./CreateForm.svelte";
   import { runShareFlow } from "./flow.js";
   import {
     CREATE_STEPS,
     CREATE_TREE,
-    applyRevokeResult,
     deriveCreateDiagramFocus,
     deriveCreateReading,
     type CreateState,
@@ -30,7 +28,9 @@
   const diagramFocus = $derived(
     intro && state.phase === "idle" ? undefined : deriveCreateDiagramFocus(state),
   );
-  const isDone = $derived(state.phase === "done");
+  const showDone = $derived(
+    state.phase === "done" || state.phase === "confirm" || state.phase === "gone",
+  );
   const isBusy = $derived(state.phase === "encrypting" || state.phase === "uploading");
 
   async function onShare(envInput: string, ttlSeconds: TtlSeconds, maxReads: MaxReads): Promise<void> {
@@ -57,51 +57,12 @@
     }
   }
 
-  function copyShareLink(): void {
-    if (state.phase !== "done") {
-      return;
-    }
-    void navigator.clipboard.writeText(state.url).then(
-      () => {
-        state = { ...state, copied: true };
-        showToast("link copied to clipboard");
-        createDone?.selectLink();
-      },
-      () => {
-        if (state.phase === "done") {
-          state = { ...state, copied: false };
-        }
-      },
-    );
-  }
-
-  function copyDeleteToken(): void {
-    if (state.phase !== "done") {
-      return;
-    }
-    void navigator.clipboard.writeText(state.deleteToken).then(() => {
-      showToast("revoke token copied to clipboard");
-    });
-  }
-
-  async function onRevoke(): Promise<void> {
-    if (state.phase !== "done" || state.revoke.phase === "revoking" || state.revoke.phase === "revoked") {
-      return;
-    }
-    const shareId = state.shareId;
-    const deleteToken = state.deleteToken;
-    state = { ...state, revoke: { phase: "revoking" } };
-    try {
-      await revokeShare(shareId, deleteToken);
-      state = applyRevokeResult(state, shareId, { phase: "revoked" });
-    } catch (error) {
-      const message = error instanceof ShareApiError ? error.message : "Something went wrong";
-      state = applyRevokeResult(state, shareId, { phase: "error", message });
-    }
-  }
-
   function onAgain(): void {
     dismissToast();
+    if (state.phase === "confirm" || state.phase === "gone") {
+      location.assign("/");
+      return;
+    }
     createForm?.clearInput();
     state = { phase: "idle" };
     createForm?.focusInput();
@@ -114,6 +75,13 @@
   });
 
   onMount(() => {
+    if (/^\/revoke(\/|$)/.test(location.pathname)) {
+      const parsed = parseRevokeLink(location.pathname, location.hash);
+      state = parsed
+        ? { phase: "confirm", shareId: parsed.shareId, deleteToken: parsed.deleteToken }
+        : { phase: "gone" };
+      return;
+    }
     void tick().then(() => {
       createForm?.focusInput();
     });
@@ -135,7 +103,7 @@
       kind={reading.kind}
     />
 
-    <SwapStage showAlt={isDone}>
+    <SwapStage showAlt={showDone}>
       {#snippet primary()}
         <CreateForm
           bind:this={createForm}
@@ -146,20 +114,28 @@
         />
       {/snippet}
       {#snippet alt()}
-        {#if isDone}
+        {#if state.phase === "done"}
           <CreateDone
             bind:this={createDone}
-            url={state.url}
+            kind="created"
+            shareId={state.shareId}
             deleteToken={state.deleteToken}
+            url={state.url}
+            revokeUrl={state.revokeUrl}
             expiresAt={state.expiresAt}
             maxReads={state.maxReads}
             copied={state.copied}
-            revoke={state.revoke}
-            onCopy={copyShareLink}
-            onCopyToken={copyDeleteToken}
-            onRevoke={onRevoke}
-            onAgain={onAgain}
+            {onAgain}
           />
+        {:else if state.phase === "confirm"}
+          <CreateDone
+            kind="confirm"
+            shareId={state.shareId}
+            deleteToken={state.deleteToken}
+            {onAgain}
+          />
+        {:else if state.phase === "gone"}
+          <CreateDone kind="gone" {onAgain} />
         {/if}
       {/snippet}
     </SwapStage>

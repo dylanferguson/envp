@@ -110,21 +110,14 @@ func noStore(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *server) originForbidden(w http.ResponseWriter, r *http.Request) bool {
-	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
-		s.log.Warn("origin rejected", "method", r.Method)
-		s.error(w, r, errForbidden)
-		return true
-	}
-	return false
-}
-
 func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength > maxCreateJSONBytes {
 		s.error(w, r, errPayloadTooLarge)
 		return
 	}
-	if s.originForbidden(w, r) {
+	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
+		s.log.Warn("origin rejected", "method", r.Method)
+		s.error(w, r, errForbidden)
 		return
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxCreateJSONBytes))
@@ -160,7 +153,9 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) revokeShare(w http.ResponseWriter, r *http.Request) {
-	if s.originForbidden(w, r) {
+	if origin := r.Header.Get("Origin"); origin != "" && origin != s.expectedOrigin(r) {
+		s.log.Warn("origin rejected", "method", r.Method)
+		s.error(w, r, errForbidden)
 		return
 	}
 	id, err := ulid.ParseStrict(r.PathValue("id"))

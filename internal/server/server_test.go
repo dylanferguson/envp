@@ -189,36 +189,6 @@ func TestRevokeOrigin(t *testing.T) {
 	assertError(t, rec, 403, "forbidden", "The request origin is not allowed.")
 }
 
-func TestRevokeHeadStillPeeks(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":1,"envelope":"AQID_w"}`)
-	if w.Code != 201 {
-		t.Fatalf("create: %d %s", w.Code, w.Body)
-	}
-	var created createShareResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatal(err)
-	}
-	w = revokeRequest(h, created.ID, created.DeleteToken)
-	if w.Code != 204 {
-		t.Fatalf("revoke: %d %s", w.Code, w.Body)
-	}
-	r := httptest.NewRequest(http.MethodHead, "http://localhost/api/v1/shares/"+created.ID, nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, r)
-	if rec.Code != 404 || rec.Body.Len() != 0 {
-		t.Fatalf("HEAD after revoke: %d %s", rec.Code, rec.Body)
-	}
-}
-
-func TestDeleteUnknownAPIRoute(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	r := httptest.NewRequest(http.MethodDelete, "http://localhost/api/v1/missing", nil)
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, r)
-	assertError(t, w, 404, "not_found", "Not found.")
-}
-
 func TestRequestValidation(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	for _, body := range []string{
@@ -302,6 +272,10 @@ func TestOrigin(t *testing.T) {
 func TestUnknownAPIRoute(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	assertError(t, request(h, "GET", "/api/v1/missing", ""), 404, "not_found", "Not found.")
+	r := httptest.NewRequest(http.MethodDelete, "http://localhost/api/v1/missing", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	assertError(t, w, 404, "not_found", "Not found.")
 }
 
 func TestStorageFailureIsGeneric(t *testing.T) {

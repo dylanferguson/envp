@@ -1,4 +1,4 @@
-import { base64urlDecode } from "./bytes.js";
+import { base64urlDecode, base64urlEncode } from "./bytes.js";
 
 export type ShareId = string & { readonly __brand: "ShareId" };
 export type TtlSeconds = number & { readonly __brand: "TtlSeconds" };
@@ -79,13 +79,29 @@ export function parseKeyFragment(value: string): KeyFragment | null {
 export function parseDeleteToken(value: string): DeleteToken | null {
   try {
     const bytes = base64urlDecode(value);
-    if (bytes.length !== DELETE_TOKEN_BYTES) {
+    if (bytes.length !== DELETE_TOKEN_BYTES || base64urlEncode(bytes) !== value) {
       return null;
     }
     return value as DeleteToken;
   } catch {
     return null;
   }
+}
+
+export function parseRevokeLink(
+  pathname: string,
+  hash: string,
+): { shareId: ShareId; deleteToken: DeleteToken } | null {
+  const match = pathname.match(/^\/revoke\/([^/]+)\/?$/);
+  if (!match) {
+    return null;
+  }
+  const shareId = parseShareId(match[1]);
+  const deleteToken = parseDeleteToken(hash.startsWith("#") ? hash.slice(1) : hash);
+  if (!shareId || !deleteToken) {
+    return null;
+  }
+  return { shareId, deleteToken };
 }
 
 export type ParsedShareLink = {

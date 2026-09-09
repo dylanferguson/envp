@@ -3,6 +3,7 @@ import { base64urlEncode } from "../src/lib/envelope.js";
 import {
   parseDeleteToken,
   parseMaxReads,
+  parseRevokeLink,
   parseShareId,
   parseShareLink,
 } from "../src/lib/limits.js";
@@ -27,12 +28,17 @@ describe("parseMaxReads", () => {
   });
 });
 
-describe("parseDeleteToken", () => {
-  it("accepts 32 decoded bytes and rejects shorter input", () => {
+describe("parseRevokeLink", () => {
+  it("reads /revoke/{id}#{token} and rejects a missing token", () => {
     const token = base64urlEncode(new Uint8Array(32));
-    expect(parseDeleteToken(token)).toBe(token);
+    expect(parseRevokeLink(`/revoke/${SHARE_ID}`, `#${token}`)).toEqual({
+      shareId: SHARE_ID,
+      deleteToken: token,
+    });
+    expect(parseRevokeLink(`/revoke/${SHARE_ID}`, "#short")).toBeNull();
+    expect(parseRevokeLink(`/share/${SHARE_ID}`, `#${token}`)).toBeNull();
     expect(parseDeleteToken("short")).toBeNull();
-    expect(parseDeleteToken(SHARE_ID)).toBeNull();
+    expect(parseDeleteToken(`${token}=`)).toBeNull();
   });
 });
 

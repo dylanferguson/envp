@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { revokeShare } from "../src/api/shares.js";
 import { base64urlEncode } from "../src/lib/envelope.js";
 import { parseShareId } from "../src/lib/limits.js";
 import { runShareFlow } from "../src/pages/create/flow.js";
@@ -35,12 +36,28 @@ describe("runShareFlow", () => {
       copied: true,
       maxReads: 5,
       deleteToken: DELETE_TOKEN,
-      revoke: { phase: "idle" },
     });
     if (result.phase !== "done") {
       throw new Error("expected done");
     }
     expect(result.url).toMatch(new RegExp(`^${origin}/share/${SHARE_ID}#[A-Za-z0-9_-]{43}$`));
+    expect(result.revokeUrl).toBe(`${origin}/revoke/${SHARE_ID}#${DELETE_TOKEN}`);
     expect(result.url).not.toContain(DELETE_TOKEN);
+  });
+});
+
+describe("revokeShare", () => {
+  it("returns revoked on 204 and gone on 404", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(revokeShare(SHARE_ID, DELETE_TOKEN as never)).resolves.toBe("revoked");
+    await expect(revokeShare(SHARE_ID, DELETE_TOKEN as never)).resolves.toBe("gone");
+    expect(fetch).toHaveBeenCalledWith(`/api/v1/shares/${SHARE_ID}`, {
+      method: "DELETE",
+      headers: { "X-Envp-Delete-Token": DELETE_TOKEN },
+    });
   });
 });

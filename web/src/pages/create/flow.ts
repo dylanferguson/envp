@@ -26,6 +26,7 @@ export async function runShareFlow(
     onProgress?.({ phase: "uploading", bytes: envelope.length });
     const created = await createShare(envelope, ttlSeconds, maxReads);
     const url = `${origin}/share/${created.id}#${fragment}`;
+    const revokeUrl = `${origin}/revoke/${created.id}#${created.deleteToken}`;
     at = "link";
 
     let copied = false;
@@ -40,11 +41,11 @@ export async function runShareFlow(
       phase: "done",
       shareId: created.id,
       url,
+      revokeUrl,
       copied,
       expiresAt: created.expiresAt,
       maxReads: created.maxReads,
       deleteToken: created.deleteToken,
-      revoke: { phase: "idle" },
     };
   } catch (error) {
     if (error instanceof EnvelopeError) {

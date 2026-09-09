@@ -8,6 +8,7 @@ export type RevokeState =
   | { phase: "idle" }
   | { phase: "revoking" }
   | { phase: "revoked" }
+  | { phase: "gone" }
   | { phase: "error"; message: string };
 
 export type CreateState =
@@ -18,12 +19,14 @@ export type CreateState =
       phase: "done";
       shareId: ShareId;
       url: string;
+      revokeUrl: string;
       copied: boolean;
       expiresAt: number;
       maxReads: number;
       deleteToken: DeleteToken;
-      revoke: RevokeState;
     }
+  | { phase: "confirm"; shareId: ShareId; deleteToken: DeleteToken }
+  | { phase: "gone" }
   | { phase: "error"; at: "encrypt" | "send" | "link"; message: string };
 
 const READINGS: Record<CreateState["phase"], Reading<CreateStep>> = {
@@ -55,6 +58,20 @@ const READINGS: Record<CreateState["phase"], Reading<CreateStep>> = {
     kind: "hold",
     note: "",
   },
+  confirm: {
+    word: "sealed",
+    tone: "ok",
+    step: "link",
+    kind: "hold",
+    note: "",
+  },
+  gone: {
+    word: "fault",
+    tone: "error",
+    step: "link",
+    kind: "error",
+    note: "",
+  },
   error: {
     word: "fault",
     tone: "error",
@@ -71,12 +88,16 @@ export const CREATE_TREE: readonly TreeLine<CreateStep>[] = [
   { step: "link", twig: "│   └── ", label: "share link" },
 ];
 
-const CREATE_DIAGRAM_FOCUS: Record<Exclude<CreateState["phase"], "error">, DiagramFocus> = {
+const CREATE_DIAGRAM_FOCUS: Record<
+  Exclude<CreateState["phase"], "error" | "gone">,
+  DiagramFocus
+> = {
   idle: "paste",
   encrypting: "seal",
   // Upload is usually a few ms; keep seal so the diagram doesn't flash the server.
   uploading: "seal",
   done: "share",
+  confirm: "share",
 };
 
 const CREATE_ERROR_FOCUS: Record<Extract<CreateState, { phase: "error" }>["at"], DiagramFocus> = {
@@ -89,18 +110,10 @@ export function deriveCreateDiagramFocus(state: CreateState): DiagramFocus {
   if (state.phase === "error") {
     return CREATE_ERROR_FOCUS[state.at];
   }
-  return CREATE_DIAGRAM_FOCUS[state.phase];
-}
-
-export function applyRevokeResult(
-  state: CreateState,
-  shareId: ShareId,
-  revoke: RevokeState,
-): CreateState {
-  if (state.phase !== "done" || state.shareId !== shareId) {
-    return state;
+  if (state.phase === "gone") {
+    return "share";
   }
-  return { ...state, revoke };
+  return CREATE_DIAGRAM_FOCUS[state.phase];
 }
 
 export function deriveCreateReading(state: CreateState): Reading<CreateStep> {

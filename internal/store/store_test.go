@@ -300,10 +300,7 @@ func TestRevoke(t *testing.T) {
 	if err := s.Revoke(t.Context(), created.ID, HashDeleteToken(created.DeleteToken)); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second revoke: %v", err)
 	}
-}
 
-func TestRevokeExpiredAndExhausted(t *testing.T) {
-	s := testStore(t)
 	now := time.UnixMilli(1_000_000)
 	s.now = func() time.Time { return now }
 	expired, err := s.Create(t.Context(), []byte{1}, time.Minute, 20)

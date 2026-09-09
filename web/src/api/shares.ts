@@ -108,13 +108,18 @@ export async function getShare(id: ShareId): Promise<Uint8Array | null> {
   return envelope;
 }
 
-export async function revokeShare(id: ShareId, token: DeleteToken): Promise<void> {
+export type RevokeResult = "revoked" | "gone";
+
+export async function revokeShare(id: ShareId, token: DeleteToken): Promise<RevokeResult> {
   const response = await fetch(`${API_V1_SHARES}/${id}`, {
     method: "DELETE",
     headers: { "X-Envp-Delete-Token": token },
   });
-  if (response.status === 204 || response.status === 404) {
-    return;
+  if (response.status === 204) {
+    return "revoked";
+  }
+  if (response.status === 404) {
+    return "gone";
   }
   throw new ShareApiError(response.status, response.statusText);
 }
