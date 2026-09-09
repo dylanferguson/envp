@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import http from "node:http";
 
 const gitCommit =
   process.env.GIT_COMMIT || execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
@@ -22,6 +23,19 @@ const create = () =>
     body: JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }),
   });
 
+const statusWithHost = (host) =>
+  new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: "127.0.0.1", port: 8080, path: "/", headers: { host } },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode);
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+
 const logFields = ["time", "level", "msg", "status", "method", "route"];
 
 const nginxRecords = (text) =>
@@ -42,10 +56,7 @@ try {
   assert.equal(created.status, 201);
   const { id } = await created.json();
   assert.equal((await fetch("http://127.0.0.1:8080/missing")).status, 404);
-  assert.equal(
-    (await fetch("http://127.0.0.1:8080/", { headers: { Host: "envp.fly.dev" } })).status,
-    403,
-  );
+  assert.equal(await statusWithHost("envp.fly.dev"), 403);
   assert.equal(
     (
       await fetch("http://127.0.0.1:8080/api/v1/shares", {
