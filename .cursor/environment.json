@@ -7,5 +7,8 @@
       "command": "~/.local/bin/mise run dev"
     }
   ],
-  "ports": [5173, 8080]
+  "ports": [
+    { "name": "web", "port": 5173 },
+    { "name": "api", "port": 8080 }
+  ]
 }
