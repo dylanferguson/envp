@@ -22,6 +22,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.commit=${GIT_COMMIT
 RUN mkdir /data && chown 65532:65532 /data
 
 FROM nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236 AS nginx
+COPY deploy/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY deploy/nginx/security_headers.conf /etc/nginx/security_headers.conf
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=web /app/dist/client /usr/share/nginx/html
