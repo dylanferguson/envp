@@ -97,7 +97,7 @@ func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recor
 	mux.Handle("GET /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
 	mux.Handle("POST /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
 
-	return headers(mux), nil
+	return nosniff(mux), nil
 }
 
 func noStore(next http.HandlerFunc) http.HandlerFunc {
@@ -250,13 +250,9 @@ func (w *headerWriter) Write(b []byte) (int, error) {
 
 func (w *headerWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
-func headers(next http.Handler) http.Handler {
+func nosniff(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := w.Header()
-		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("Referrer-Policy", "no-referrer")
-		h.Set("X-Robots-Tag", "noindex, nofollow")
-		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		next.ServeHTTP(w, r)
 	})
 }

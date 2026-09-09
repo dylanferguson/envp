@@ -57,8 +57,8 @@ func assertError(t *testing.T, w *httptest.ResponseRecorder, status int, code, m
 	if body.Error.Code != code || body.Error.Message != message {
 		t.Fatalf("error = %+v", body.Error)
 	}
-	if w.Header().Get("X-Content-Type-Options") != "nosniff" || w.Header().Get("X-Robots-Tag") != "noindex, nofollow" {
-		t.Error("missing security headers")
+	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Error("missing nosniff")
 	}
 }
 
