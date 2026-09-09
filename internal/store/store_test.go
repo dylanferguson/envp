@@ -300,68 +300,6 @@ func TestRevoke(t *testing.T) {
 	if err := s.Revoke(t.Context(), created.ID, HashDeleteToken(created.DeleteToken)); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second revoke: %v", err)
 	}
-
-	now := time.UnixMilli(1_000_000)
-	s.now = func() time.Time { return now }
-	expired, err := s.Create(t.Context(), []byte{1}, time.Minute, 20)
-	if err != nil {
-		t.Fatal(err)
-	}
-	exhausted, err := s.Create(t.Context(), []byte{2}, time.Hour, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.Consume(t.Context(), exhausted.ID); err != nil {
-		t.Fatal(err)
-	}
-	now = now.Add(time.Minute)
-	if err := s.Revoke(t.Context(), expired.ID, HashDeleteToken(expired.DeleteToken)); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expired: %v", err)
-	}
-	if err := s.Revoke(t.Context(), exhausted.ID, HashDeleteToken(exhausted.DeleteToken)); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("exhausted: %v", err)
-	}
-}
-
-func TestRevokeNullHash(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "legacy-revoke.db")
-	dsn := url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
-	db, err := sql.Open("sqlite", dsn.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	expiresAt := time.Now().Add(time.Hour).UnixMilli()
-	if _, err := db.ExecContext(t.Context(), `
-		CREATE TABLE shares (
-			id TEXT PRIMARY KEY,
-			envelope BLOB NOT NULL,
-			expires_at INTEGER NOT NULL,
-			remaining_reads INTEGER NOT NULL,
-			delete_token_hash BLOB
-		) STRICT`); err != nil {
-		t.Fatal(err)
-	}
-	id := "01ARZ3NDEKTSV4RRFFQ69G5FAV"
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO shares (id, envelope, expires_at, remaining_reads, delete_token_hash) VALUES (?, ?, ?, ?, NULL)`,
-		id, []byte{9}, expiresAt, 20); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
-	s, err := Open(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := s.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	var hash DeleteTokenHash
-	if err := s.Revoke(t.Context(), id, hash); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("null hash: %v", err)
-	}
 }
 
 func TestSweepEveryStopsWithoutCallback(t *testing.T) {

@@ -1,12 +1,19 @@
 <script lang="ts">
   import "../../app.css";
   import { onMount, tick } from "svelte";
-  import { parseRevokeLink, type MaxReads, type TtlSeconds } from "../../lib/limits.js";
+  import {
+    parseRevokeLink,
+    type DeleteToken,
+    type MaxReads,
+    type ShareId,
+    type TtlSeconds,
+  } from "../../lib/limits.js";
   import Layout from "../../components/Layout.svelte";
   import Hero from "../../components/Hero.svelte";
   import Tree from "../../components/Tree.svelte";
   import { once } from "../../lib/once.js";
   import { dismissToast, showToast } from "../../lib/toast.svelte.js";
+  import Button from "../../ui/Button.svelte";
   import SwapStage from "../../ui/SwapStage.svelte";
   import CreateDone from "./CreateDone.svelte";
   import CreateForm from "./CreateForm.svelte";
@@ -20,6 +27,7 @@
   } from "./state.js";
 
   let state = $state<CreateState>({ phase: "idle" });
+  let landing = $state<{ shareId: ShareId; deleteToken: DeleteToken } | "gone" | null>(null);
   let createForm = $state<CreateForm | null>(null);
   let createDone = $state<CreateDone | null>(null);
   let intro = $state(once("envp:diagram-seen"));
@@ -28,9 +36,7 @@
   const diagramFocus = $derived(
     intro && state.phase === "idle" ? undefined : deriveCreateDiagramFocus(state),
   );
-  const showDone = $derived(
-    state.phase === "done" || state.phase === "confirm" || state.phase === "gone",
-  );
+  const isDone = $derived(state.phase === "done");
   const isBusy = $derived(state.phase === "encrypting" || state.phase === "uploading");
 
   async function onShare(envInput: string, ttlSeconds: TtlSeconds, maxReads: MaxReads): Promise<void> {
@@ -57,9 +63,27 @@
     }
   }
 
+  function copyShareLink(): void {
+    if (state.phase !== "done") {
+      return;
+    }
+    void navigator.clipboard.writeText(state.url).then(
+      () => {
+        state = { ...state, copied: true };
+        showToast("link copied to clipboard");
+        createDone?.selectLink();
+      },
+      () => {
+        if (state.phase === "done") {
+          state = { ...state, copied: false };
+        }
+      },
+    );
+  }
+
   function onAgain(): void {
     dismissToast();
-    if (state.phase === "confirm" || state.phase === "gone") {
+    if (landing !== null) {
       location.assign("/");
       return;
     }
@@ -76,10 +100,7 @@
 
   onMount(() => {
     if (/^\/revoke(\/|$)/.test(location.pathname)) {
-      const parsed = parseRevokeLink(location.pathname, location.hash);
-      state = parsed
-        ? { phase: "confirm", shareId: parsed.shareId, deleteToken: parsed.deleteToken }
-        : { phase: "gone" };
+      landing = parseRevokeLink(location.pathname, location.hash) ?? "gone";
       return;
     }
     void tick().then(() => {
@@ -103,7 +124,7 @@
       kind={reading.kind}
     />
 
-    <SwapStage showAlt={showDone}>
+    <SwapStage showAlt={isDone || landing !== null}>
       {#snippet primary()}
         <CreateForm
           bind:this={createForm}
@@ -114,10 +135,9 @@
         />
       {/snippet}
       {#snippet alt()}
-        {#if state.phase === "done"}
+        {#if isDone}
           <CreateDone
             bind:this={createDone}
-            kind="created"
             shareId={state.shareId}
             deleteToken={state.deleteToken}
             url={state.url}
@@ -125,19 +145,25 @@
             expiresAt={state.expiresAt}
             maxReads={state.maxReads}
             copied={state.copied}
+            onCopy={copyShareLink}
             {onAgain}
           />
-        {:else if state.phase === "confirm"}
-          <CreateDone
-            kind="confirm"
-            shareId={state.shareId}
-            deleteToken={state.deleteToken}
-            {onAgain}
-          />
-        {:else if state.phase === "gone"}
-          <CreateDone kind="gone" {onAgain} />
+        {:else if landing === "gone"}
+          <p class="done-title">Not found. Spent, expired, or never existed.</p>
+          <Button onclick={onAgain}>share again</Button>
+        {:else if landing}
+          <CreateDone shareId={landing.shareId} deleteToken={landing.deleteToken} {onAgain} />
         {/if}
       {/snippet}
     </SwapStage>
   </div>
 </Layout>
+
+<style>
+  .done-title {
+    margin: 0 0 0.65rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--fg);
+  }
+</style>

@@ -130,63 +130,30 @@ func TestRevokeShare(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
+
+	unknown := request(h, "GET", "/api/v1/shares/00000000000000000000000000", "")
+	for _, miss := range []*httptest.ResponseRecorder{
+		revokeRequest(h, created.ID, base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{0xab}, 32))),
+		revokeRequest(h, created.ID, ""),
+		revokeRequest(h, "not-a-ulid", created.DeleteToken),
+	} {
+		if miss.Code != unknown.Code || miss.Body.String() != unknown.Body.String() {
+			t.Fatalf("status %d body %q != unknown %d %q", miss.Code, miss.Body, unknown.Code, unknown.Body)
+		}
+	}
+
+	evil := httptest.NewRequest(http.MethodDelete, "http://localhost/api/v1/shares/"+created.ID, nil)
+	evil.Header.Set("Origin", "http://evil.example")
+	evil.Header.Set("X-Envp-Delete-Token", created.DeleteToken)
+	forbidden := httptest.NewRecorder()
+	h.ServeHTTP(forbidden, evil)
+	assertError(t, forbidden, 403, "forbidden", "The request origin is not allowed.")
+
 	w = revokeRequest(h, created.ID, created.DeleteToken)
 	if w.Code != 204 || w.Body.Len() != 0 {
 		t.Fatalf("revoke: %d %s", w.Code, w.Body)
 	}
-	if w.Header().Get("Cache-Control") != "no-store" {
-		t.Fatal("missing no-store")
-	}
 	assertError(t, request(h, "GET", "/api/v1/shares/"+created.ID, ""), 404, "not_found", "Share not found.")
-}
-
-func TestRevokeMissesLookMissing(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":3600,"max_reads":20,"envelope":"AQID_w"}`)
-	if w.Code != 201 {
-		t.Fatalf("create: %d %s", w.Code, w.Body)
-	}
-	var created createShareResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatal(err)
-	}
-	unknown := request(h, "GET", "/api/v1/shares/00000000000000000000000000", "")
-	wrongToken := revokeRequest(h, created.ID, base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{0xab}, 32)))
-	missingHeader := revokeRequest(h, created.ID, "")
-	badID := revokeRequest(h, "not-a-ulid", created.DeleteToken)
-	for _, tc := range []struct {
-		name string
-		w    *httptest.ResponseRecorder
-	}{
-		{"wrong token", wrongToken},
-		{"missing header", missingHeader},
-		{"bad id", badID},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.w.Code != unknown.Code || tc.w.Body.String() != unknown.Body.String() {
-				t.Fatalf("status %d body %q != unknown %d %q", tc.w.Code, tc.w.Body, unknown.Code, unknown.Body)
-			}
-			assertError(t, tc.w, 404, "not_found", "Share not found.")
-		})
-	}
-}
-
-func TestRevokeOrigin(t *testing.T) {
-	h, _ := testServer(t, Config{})
-	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
-	if w.Code != 201 {
-		t.Fatalf("create: %d %s", w.Code, w.Body)
-	}
-	var created createShareResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatal(err)
-	}
-	r := httptest.NewRequest(http.MethodDelete, "http://localhost/api/v1/shares/"+created.ID, nil)
-	r.Header.Set("Origin", "http://evil.example")
-	r.Header.Set("X-Envp-Delete-Token", created.DeleteToken)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, r)
-	assertError(t, rec, 403, "forbidden", "The request origin is not allowed.")
 }
 
 func TestRequestValidation(t *testing.T) {

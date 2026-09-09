@@ -1,4 +1,4 @@
-import { base64urlDecode, base64urlEncode } from "./bytes.js";
+import { base64urlDecode } from "./bytes.js";
 
 export type ShareId = string & { readonly __brand: "ShareId" };
 export type TtlSeconds = number & { readonly __brand: "TtlSeconds" };
@@ -79,7 +79,7 @@ export function parseKeyFragment(value: string): KeyFragment | null {
 export function parseDeleteToken(value: string): DeleteToken | null {
   try {
     const bytes = base64urlDecode(value);
-    if (bytes.length !== DELETE_TOKEN_BYTES || base64urlEncode(bytes) !== value) {
+    if (bytes.length !== DELETE_TOKEN_BYTES) {
       return null;
     }
     return value as DeleteToken;

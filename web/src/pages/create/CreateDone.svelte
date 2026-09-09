@@ -5,117 +5,98 @@
   import Button from "../../ui/Button.svelte";
   import CopyField from "../../ui/CopyField.svelte";
   import FieldLabel from "../../ui/FieldLabel.svelte";
-  import type { RevokeState } from "./state.js";
 
-  type Props =
-    | {
-        kind: "created";
-        shareId: ShareId;
-        deleteToken: DeleteToken;
-        url: string;
-        revokeUrl: string;
-        expiresAt: number;
-        maxReads: number;
-        copied: boolean;
-        onAgain: () => void;
-      }
-    | {
-        kind: "confirm";
-        shareId: ShareId;
-        deleteToken: DeleteToken;
-        onAgain: () => void;
-      }
-    | {
-        kind: "gone";
-        onAgain: () => void;
-      };
+  type Props = {
+    shareId: ShareId;
+    deleteToken: DeleteToken;
+    onAgain: () => void;
+    url?: string;
+    revokeUrl?: string;
+    expiresAt?: number;
+    maxReads?: number;
+    copied?: boolean;
+    onCopy?: () => void;
+  };
 
-  let props: Props = $props();
+  let {
+    shareId,
+    deleteToken,
+    onAgain,
+    url,
+    revokeUrl,
+    expiresAt,
+    maxReads,
+    copied = false,
+    onCopy,
+  }: Props = $props();
 
-  let linkField = $state<CopyField | null>(null);
-  let copied = $state(props.kind === "created" && props.copied);
-  let revoke = $state<RevokeState>({ phase: "idle" });
+  let copyField = $state<CopyField | null>(null);
+  let revoke = $state<"idle" | "revoking" | "revoked" | "gone" | { error: string }>("idle");
 
   export function selectLink(): void {
-    linkField?.selectAll();
+    copyField?.selectAll();
   }
 
-  const revoked = $derived(revoke.phase === "revoked");
-  const missing = $derived(revoke.phase === "gone" || props.kind === "gone");
-  const revoking = $derived(revoke.phase === "revoking");
-  const bounds = $derived(
-    props.kind === "created" ? formatShareBoundsLabel(props.expiresAt, props.maxReads) : "",
+  const created = $derived(url !== undefined);
+  const title = $derived(
+    revoke === "revoked"
+      ? "share revoked."
+      : revoke === "gone"
+        ? "Not found. Spent, expired, or never existed."
+        : !created
+          ? "revoke this share?"
+          : !copied
+            ? "copy, then send."
+            : "",
   );
-
-  function copyShareLink(): void {
-    if (props.kind !== "created") {
-      return;
-    }
-    void navigator.clipboard.writeText(props.url).then(
-      () => {
-        copied = true;
-        showToast("link copied to clipboard");
-        selectLink();
-      },
-      () => {
-        copied = false;
-      },
-    );
-  }
+  const bounds = $derived(
+    expiresAt !== undefined && maxReads !== undefined
+      ? formatShareBoundsLabel(expiresAt, maxReads)
+      : "",
+  );
+  const done = $derived(revoke === "revoked" || revoke === "gone");
 
   function copyRevokeLink(): void {
-    if (props.kind !== "created") {
+    if (revokeUrl === undefined) {
       return;
     }
-    void navigator.clipboard.writeText(props.revokeUrl).then(() => {
+    void navigator.clipboard.writeText(revokeUrl).then(() => {
       showToast("revoke link copied to clipboard");
     });
   }
 
   async function onRevoke(): Promise<void> {
-    if (
-      props.kind === "gone" ||
-      revoke.phase === "revoking" ||
-      revoke.phase === "revoked" ||
-      revoke.phase === "gone"
-    ) {
+    if (revoke === "revoking" || done) {
       return;
     }
-    revoke = { phase: "revoking" };
+    revoke = "revoking";
     try {
-      revoke = { phase: await revokeShare(props.shareId, props.deleteToken) };
+      revoke = await revokeShare(shareId, deleteToken);
     } catch (error) {
-      const message = error instanceof ShareApiError ? error.message : "Something went wrong";
-      revoke = { phase: "error", message };
+      revoke = { error: error instanceof ShareApiError ? error.message : "Something went wrong" };
     }
   }
 </script>
 
 <div class="done">
-  {#if revoked}
-    <p class="done-title" aria-live="polite">share revoked.</p>
-  {:else if missing}
-    <p class="done-title" aria-live="polite">Not found. Spent, expired, or never existed.</p>
-  {:else if props.kind === "confirm"}
-    <p class="done-title" aria-live="polite">revoke this share?</p>
-  {:else if !copied}
-    <p class="done-title" aria-live="polite">copy, then send.</p>
+  {#if title}
+    <p class="done-title" aria-live="polite">{title}</p>
   {/if}
-  {#if revoke.phase === "error"}
-    <p class="done-error" aria-live="polite">{revoke.message}</p>
+  {#if typeof revoke === "object"}
+    <p class="done-error" aria-live="polite">{revoke.error}</p>
   {/if}
-  {#if props.kind === "created" && !revoked && !missing}
+  {#if created && !done}
     <p class="done-meta">{bounds}</p>
     <div class="done-fields">
       <div>
         <FieldLabel for="share-url">share link</FieldLabel>
         <CopyField
-          bind:this={linkField}
+          bind:this={copyField}
           id="share-url"
-          value={props.url}
+          value={url ?? ""}
           label="share link"
           copyLabel="Copy link to clipboard"
-          onCopy={copyShareLink}
+          onCopy={onCopy ?? (() => {})}
           selectOnMount
         />
       </div>
@@ -123,7 +104,7 @@
         <FieldLabel for="revoke-url">revoke link</FieldLabel>
         <CopyField
           id="revoke-url"
-          value={props.revokeUrl}
+          value={revokeUrl ?? ""}
           label="revoke link"
           copyLabel="Copy revoke link to clipboard"
           onCopy={copyRevokeLink}
@@ -132,10 +113,10 @@
     </div>
   {/if}
   <div class="done-actions">
-    {#if props.kind !== "gone" && !revoked && !missing}
-      <Button busy={revoking} disabled={revoking} onclick={onRevoke}>revoke share</Button>
+    {#if !done}
+      <Button busy={revoke === "revoking"} disabled={revoke === "revoking"} onclick={onRevoke}>revoke share</Button>
     {/if}
-    <Button disabled={revoking} onclick={props.onAgain}>share again</Button>
+    <Button disabled={revoke === "revoking"} onclick={onAgain}>share again</Button>
   </div>
 </div>
 

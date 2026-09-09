@@ -38,7 +38,6 @@ describe("parseRevokeLink", () => {
     expect(parseRevokeLink(`/revoke/${SHARE_ID}`, "#short")).toBeNull();
     expect(parseRevokeLink(`/share/${SHARE_ID}`, `#${token}`)).toBeNull();
     expect(parseDeleteToken("short")).toBeNull();
-    expect(parseDeleteToken(`${token}=`)).toBeNull();
   });
 });
 

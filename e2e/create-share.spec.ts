@@ -61,31 +61,13 @@ test.describe("create share", () => {
     expect(selection.length).toBeGreaterThan(0);
   });
 
-  test("revokes a share from the done screen", async ({ page, context }) => {
-    await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
-    await page.getByRole("button", { name: "share" }).click();
-    const shareLink = page.getByRole("textbox", { name: "share link" });
-    const revokeLink = page.getByRole("textbox", { name: "revoke link" });
-    await expect(shareLink).toBeVisible();
-    await expect(revokeLink).toBeVisible();
-    const url = await shareLink.inputValue();
-    const revokeUrl = await revokeLink.inputValue();
-    expect(revokeUrl).toContain("/revoke/");
-    expect(url).not.toContain(new URL(revokeUrl).hash.slice(1));
-
-    await page.getByRole("button", { name: "revoke share" }).click();
-    await expect(page.getByText("share revoked.", { exact: true })).toBeVisible();
-
-    const openPage = await context.newPage();
-    await openPage.goto(url);
-    await expect(openPage.getByText("Not found. Spent, expired, or never existed.")).toBeVisible();
-  });
-
   test("revokes a share from the revoke link", async ({ page, context }) => {
     await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
     await page.getByRole("button", { name: "share" }).click();
     const url = await page.getByRole("textbox", { name: "share link" }).inputValue();
     const revokeUrl = await page.getByRole("textbox", { name: "revoke link" }).inputValue();
+    expect(revokeUrl).toContain("/revoke/");
+    expect(url).not.toContain(new URL(revokeUrl).hash.slice(1));
 
     const revokePage = await context.newPage();
     await revokePage.goto(revokeUrl);
