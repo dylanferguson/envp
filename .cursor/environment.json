@@ -1,0 +1,11 @@
+{
+  "name": "envp",
+  "install": "curl -fsSL https://mise.run | MISE_QUIET=1 sh && ~/.local/bin/mise trust && ~/.local/bin/mise install && ~/.local/bin/mise exec -- pnpm install --frozen-lockfile",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "~/.local/bin/mise run dev"
+    }
+  ],
+  "ports": [5173, 8080]
+}
