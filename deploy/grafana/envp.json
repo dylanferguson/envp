@@ -625,6 +625,112 @@
       "fieldConfig": {
         "defaults": {
           "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "id": 16,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": "${source}",
+          "exemplar": true,
+          "expr": "sum(increase(job_processed_total{app=~\"^$app$\",name!=\"\"}[$__range])) by (name)",
+          "interval": "",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Job processed",
+      "type": "stat"
+    },
+    {
+      "datasource": "${source}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "dateTimeFromNow"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 17,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": "${source}",
+          "exemplar": true,
+          "expr": "max by (name) (job_last_success_timestamp_seconds{app=~\"^$app$\",name!=\"\"} > 0)",
+          "interval": "",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Job last success",
+      "type": "stat"
+    },
+    {
+      "datasource": "${source}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
             "mode": "palette-classic"
           },
           "custom": {
@@ -674,7 +780,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 21
+        "y": 25
       },
       "id": 11,
       "options": {
@@ -692,18 +798,10 @@
         {
           "datasource": "${source}",
           "exemplar": true,
-          "expr": "sum(rate(job_processed_total{app=~\"^$app$\",name!=\"\"}[$__rate_interval])) by (name)",
-          "interval": "",
-          "legendFormat": "{{name}}",
-          "refId": "A"
-        },
-        {
-          "datasource": "${source}",
-          "exemplar": true,
           "expr": "sum(rate(job_runs_total{app=~\"^$app$\",name!=\"\"}[$__rate_interval])) by (name, result)",
           "interval": "",
           "legendFormat": "{{name}} {{result}}",
-          "refId": "B"
+          "refId": "A"
         }
       ],
       "title": "Job status",
@@ -763,7 +861,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 21
+        "y": 25
       },
       "id": 15,
       "options": {
@@ -805,7 +903,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 33
       },
       "id": 12,
       "panels": [],
@@ -866,7 +964,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 34
       },
       "id": 13,
       "options": {
@@ -947,7 +1045,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 34
       },
       "id": 14,
       "options": {
