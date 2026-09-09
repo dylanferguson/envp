@@ -24,6 +24,28 @@ test.describe("open share", () => {
     await expectDecryptedEnv(page);
   });
 
+  test("keeps a large decrypted .env in a scrollable field", async ({ page }) => {
+    const largeEnv = Array.from({ length: 80 }, (_, i) => `KEY_${i}=value-${i}`).join("\n") + "\n";
+    const url = await createShare(page, largeEnv);
+    await page.goto(url);
+    await expectDecryptedEnv(page, largeEnv);
+
+    const output = page.getByRole("textbox", { name: "decrypted .env" });
+    const viewportHeight = page.viewportSize()?.height ?? 720;
+    const metrics = await output.evaluate((el: HTMLTextAreaElement) => {
+      const style = getComputedStyle(el);
+      return {
+        clientHeight: el.clientHeight,
+        scrollHeight: el.scrollHeight,
+        overflowY: style.overflowY,
+      };
+    });
+
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+    expect(["auto", "scroll"]).toContain(metrics.overflowY);
+    expect(metrics.clientHeight).toBeLessThan(viewportHeight * 0.75);
+  });
+
   test("reports an invalid pasted link", async ({ page }) => {
     await page.goto("/open");
     await page.getByRole("textbox", { name: "paste shared link" }).fill("not-a-share-link");

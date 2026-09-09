@@ -138,8 +138,10 @@
 
   .copy-field.is-multiline .copy-output {
     min-height: 16rem;
+    max-height: 70vh;
     resize: vertical;
-    field-sizing: auto;
+    overflow: auto;
+    field-sizing: fixed;
   }
 
   @media (pointer: coarse) {

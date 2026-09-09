@@ -17,9 +17,9 @@ export function decodeBase64Url(value: string): Uint8Array {
   return new Uint8Array(Buffer.from(base64 + padding, "base64"));
 }
 
-export async function createShare(page: Page): Promise<string> {
+export async function createShare(page: Page, env = SAMPLE_ENV): Promise<string> {
   await page.goto("/");
-  await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
+  await page.getByRole("textbox", { name: "paste your .env" }).fill(env);
   await page.getByRole("button", { name: "share" }).click();
   const shareLink = page.getByRole("textbox", { name: "share link" });
   await expect(shareLink).toBeVisible();
