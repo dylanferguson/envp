@@ -1,0 +1,6 @@
+.wrangler/
+.dev.vars
+public/*
+!public/index.html
+!public/open.html
+worker-configuration.d.ts

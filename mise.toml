@@ -29,8 +29,12 @@ description = "Frontend unit tests and Go tests"
 run = ["vp test run", "go test -race ./..."]
 
 [tasks.check]
-description = "Frontend checks and golangci-lint"
-run = ["vp check", "golangci-lint run"]
+description = "Wrangler types, frontend checks, and golangci-lint"
+run = [
+  "pnpm --dir templates/cloudflare exec wrangler types --strict-vars false",
+  "vp check",
+  "golangci-lint run",
+]
 
 [tasks."test:e2e"]
 description = "Playwright against docker compose (nginx + API)"
@@ -45,3 +49,15 @@ run = 'GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD)}" docker compose build'
 
 [tasks."docker:run"]
 run = "docker compose up --build"
+
+[tasks."cf:build"]
+description = "Vite UI into the Cloudflare Worker public/ directory"
+run = "vp build && mkdir -p templates/cloudflare/public && cp -a dist/client/. templates/cloudflare/public/"
+
+[tasks."cf:dev"]
+description = "Wrangler Worker + D1 + built UI"
+run = "mise run cf:build && pnpm --dir templates/cloudflare exec wrangler d1 migrations apply envp --local && pnpm --dir templates/cloudflare exec wrangler dev --port 8787"
+
+[tasks."cf:test"]
+description = "Cloudflare Worker tests"
+run = "pnpm --dir templates/cloudflare test"

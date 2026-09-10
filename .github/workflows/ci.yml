@@ -40,6 +40,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: mise run check
       - run: mise run test
+      - run: mise run cf:test
       - uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
         with:
           files: compose.yaml
