@@ -1,9 +1,15 @@
+packages:
+  - "."
+  - "templates/cloudflare"
+
 allowBuilds:
   esbuild: true
   lefthook: true
+  workerd: true
 onlyBuiltDependencies:
   - esbuild
   - lefthook
+  - workerd
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@0.3.0
   vitest: 4.1.11

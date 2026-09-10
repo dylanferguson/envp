@@ -34,3 +34,14 @@ docker compose up --build
 ```
 
 App on [http://127.0.0.1:8080](http://127.0.0.1:8080). Set `PUBLIC_ORIGIN` when the hostname is not localhost.
+
+## Cloudflare Worker
+
+D1 instead of SQLite, same UI. See [`templates/cloudflare`](templates/cloudflare).
+
+```bash
+pnpm --dir templates/cloudflare install
+mise run cf:dev
+```
+
+App on [http://127.0.0.1:8787](http://127.0.0.1:8787).

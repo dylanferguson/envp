@@ -1,0 +1,19 @@
+{
+  "name": "envp-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "wrangler types --strict-vars false && vitest run && tsc --noEmit",
+    "typecheck": "wrangler types --strict-vars false && tsc --noEmit",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.1.6",
+    "typescript": "^5.9.3",
+    "vitest": "catalog:",
+    "wrangler": "^4.37.1"
+  }
+}

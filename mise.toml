@@ -45,3 +45,19 @@ run = 'GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD)}" docker compose build'
 
 [tasks."docker:run"]
 run = "docker compose up --build"
+
+[tasks."cf:build"]
+description = "Vite UI into the Cloudflare Worker public/ directory"
+run = "vp build && mkdir -p templates/cloudflare/public && cp -a dist/client/. templates/cloudflare/public/"
+
+[tasks."cf:dev"]
+description = "Wrangler Worker + D1 + built UI"
+run = "mise run cf:build && pnpm --dir templates/cloudflare exec wrangler d1 migrations apply envp --local && pnpm --dir templates/cloudflare exec wrangler dev --port 8787"
+
+[tasks."cf:test"]
+description = "Cloudflare Worker tests"
+run = "pnpm --dir templates/cloudflare test"
+
+[tasks."cf:smoke"]
+description = "Hit a running wrangler dev instance with encrypt/create/open"
+run = "node templates/cloudflare/scripts/smoke.mjs"
