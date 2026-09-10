@@ -29,8 +29,12 @@ description = "Frontend unit tests and Go tests"
 run = ["vp test run", "go test -race ./..."]
 
 [tasks.check]
-description = "Frontend checks and golangci-lint"
-run = ["vp check", "golangci-lint run"]
+description = "Wrangler types, frontend checks, and golangci-lint"
+run = [
+  "pnpm --dir templates/cloudflare exec wrangler types --strict-vars false",
+  "vp check",
+  "golangci-lint run",
+]
 
 [tasks."test:e2e"]
 description = "Playwright against docker compose (nginx + API)"
