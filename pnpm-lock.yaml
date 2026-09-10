@@ -50,6 +50,13 @@ importers:
         version: 0.3.0(@types/node@22.20.1)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.12)(typescript@5.9.3))(esbuild@0.28.2)(svelte@5.57.0)(tsx@4.23.12)(typescript@5.9.3)
 
   templates/cloudflare:
+    dependencies:
+      hono:
+        specifier: ^4.13.7
+        version: 4.13.7
+      ulidx:
+        specifier: ^2.4.1
+        version: 2.4.1
     devDependencies:
       '@cloudflare/vitest-plugin':
         specifier: ^1.1.6
@@ -1415,6 +1422,10 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
+  hono@4.13.7:
+    resolution: {integrity: sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==}
+    engines: {node: '>=16.9.0'}
+
   is-fullwidth-code-point@3.0.0:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
@@ -1428,6 +1439,9 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  layerr@3.0.0:
+    resolution: {integrity: sha512-tv754Ki2dXpPVApOrjTyRo4/QegVb9eVFq4mjqp4+NM5NaX7syQvN5BBNfV/ZpAHCEHV24XdUVrBAoka4jt3pA==}
 
   lefthook-darwin-arm64@1.13.6:
     resolution: {integrity: sha512-m6Lb77VGc84/Qo21Lhq576pEvcgFCnvloEiP02HbAHcIXD0RTLy9u2yAInrixqZeaz13HYtdDaI7OBYAAdVt8A==}
@@ -1755,6 +1769,10 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  ulidx@2.4.1:
+    resolution: {integrity: sha512-xY7c8LPyzvhvew0Fn+Ek3wBC9STZAuDI/Y5andCKi9AX6/jvfaX45PhsDX8oxgPL0YFp0Jhr8qWMbS/p9375Xg==}
+    engines: {node: '>=16'}
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
@@ -2806,6 +2824,8 @@ snapshots:
 
   has-flag@4.0.0: {}
 
+  hono@4.13.7: {}
+
   is-fullwidth-code-point@3.0.0: {}
 
   is-reference@3.0.3:
@@ -2815,6 +2835,8 @@ snapshots:
   js-tokens@4.0.0: {}
 
   kleur@4.1.5: {}
+
+  layerr@3.0.0: {}
 
   lefthook-darwin-arm64@1.13.6:
     optional: true
@@ -3152,6 +3174,10 @@ snapshots:
     optional: true
 
   typescript@5.9.3: {}
+
+  ulidx@2.4.1:
+    dependencies:
+      layerr: 3.0.0
 
   undici-types@6.21.0: {}
 

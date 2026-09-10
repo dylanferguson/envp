@@ -2,7 +2,7 @@
 
 Same envp UI and API, on a Worker with D1 instead of the Fly/Go machine.
 
-The browser still encrypts. The Worker only stores the envelope. TTL and remaining reads are enforced in SQL. A minute cron deletes expired and exhausted rows.
+The browser still encrypts. A Hono Worker stores the envelope in D1. TTL and remaining reads are enforced in SQL. A minute cron deletes expired and exhausted rows.
 
 This does not replace the Fly site.
 
