@@ -57,7 +57,3 @@ run = "mise run cf:build && pnpm --dir templates/cloudflare exec wrangler d1 mig
 [tasks."cf:test"]
 description = "Cloudflare Worker tests"
 run = "pnpm --dir templates/cloudflare test"
-
-[tasks."cf:smoke"]
-description = "Hit a running wrangler dev instance with encrypt/create/open"
-run = "node templates/cloudflare/scripts/smoke.mjs"
