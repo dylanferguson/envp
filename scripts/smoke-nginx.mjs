@@ -15,15 +15,23 @@ const compose = (...args) =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
+const originToken = process.env.X_ORIGIN_TOKEN || "envp-dev-token";
+
 const create = (headers = {}) =>
   fetch("http://127.0.0.1:8080/api/v1/shares", {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", "X-Origin-Token": originToken, ...headers },
     body: JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }),
   });
 
 try {
   compose("up", "--build", "--wait");
+
+  // Without the edge-injected token nginx fails closed.
+  const bare = await fetch("http://127.0.0.1:8080/");
+  assert.equal(bare.status, 403);
+  assert.equal((await create({ "X-Origin-Token": "not-the-token" })).status, 403);
+
   assert.equal((await create()).status, 201);
   let last = 201;
   for (let n = 0; n < 20; n++) last = (await create()).status;

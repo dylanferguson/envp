@@ -23,6 +23,8 @@ services:
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
     image: envp-nginx
+    environment:
+      X_ORIGIN_TOKEN: ${X_ORIGIN_TOKEN:-envp-dev-token}
     network_mode: service:envp
     depends_on:
       envp:

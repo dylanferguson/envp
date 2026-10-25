@@ -28,8 +28,9 @@ FROM nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451
 COPY deploy/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY deploy/nginx/security_headers.conf /etc/nginx/security_headers.conf
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 deploy/nginx/write-origin-token.sh /docker-entrypoint.d/99-write-origin-token.sh
 COPY --from=web /app/dist/client /usr/share/nginx/html
-HEALTHCHECK --interval=5s --timeout=3s --start-period=2s --retries=10 CMD wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1
+HEALTHCHECK --interval=5s --timeout=3s --start-period=2s --retries=10 CMD wget -q -O /dev/null --header="X-Origin-Token: $X_ORIGIN_TOKEN" http://127.0.0.1:8080/ || exit 1
 
 FROM scratch AS envp
 COPY --from=build /envp /envp
