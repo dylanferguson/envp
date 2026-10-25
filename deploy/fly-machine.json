@@ -23,7 +23,13 @@
     },
     {
       "name": "nginx",
-      "image": "registry.fly.io/envp:nginx"
+      "image": "registry.fly.io/envp:nginx",
+      "secrets": [
+        {
+          "env_var": "X_ORIGIN_TOKEN",
+          "name": "X_ORIGIN_TOKEN"
+        }
+      ]
     }
   ]
 }
