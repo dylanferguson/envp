@@ -20,7 +20,7 @@ import (
 
 func testServer(t *testing.T, cfg Config) (http.Handler, *store.Store) {
 	t.Helper()
-	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"), store.Limits{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,6 +198,31 @@ func TestStorageFailureIsGeneric(t *testing.T) {
 	assertError(t, w, 500, "internal_error", "The request could not be processed.")
 }
 
+func TestCreateFullStorage(t *testing.T) {
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"), store.Limits{MaxActiveShares: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	rec := metrics.New()
+	h, err := New(db, Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)), rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Create(t.Context(), []byte{1}, time.Hour, 20); err != nil {
+		t.Fatal(err)
+	}
+	w := request(h, "POST", "/api/v1/shares", `{"ttl_seconds":60,"max_reads":20,"envelope":"AQ"}`)
+	assertError(t, w, 503, "storage_full", "Share storage is full. Try again later.")
+	if w.Header().Get("Retry-After") != "60" {
+		t.Fatalf("Retry-After = %q", w.Header().Get("Retry-After"))
+	}
+}
+
 func TestConcurrentHTTPWrites(t *testing.T) {
 	h, _ := testServer(t, Config{})
 	var wg sync.WaitGroup
@@ -265,7 +290,7 @@ func TestExhaustedLooksMissing(t *testing.T) {
 
 func TestOriginWarnNoOriginField(t *testing.T) {
 	var buf bytes.Buffer
-	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"), store.Limits{})
 	if err != nil {
 		t.Fatal(err)
 	}

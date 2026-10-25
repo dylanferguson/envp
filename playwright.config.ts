@@ -11,6 +11,9 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL,
+    extraHTTPHeaders: {
+      "X-Origin-Token": process.env.X_ORIGIN_TOKEN || "envp-dev-token",
+    },
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
