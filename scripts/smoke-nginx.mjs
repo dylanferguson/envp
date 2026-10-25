@@ -15,10 +15,10 @@ const compose = (...args) =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-const create = () =>
+const create = (headers = {}) =>
   fetch("http://127.0.0.1:8080/api/v1/shares", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }),
   });
 
@@ -28,6 +28,24 @@ try {
   let last = 201;
   for (let n = 0; n < 20; n++) last = (await create()).status;
   assert.equal(last, 429);
+
+  // Spoofed CF-Connecting-IP behind a non-Cloudflare Fly-Client-IP: every
+  // request must share the bucket keyed on Fly-Client-IP.
+  last = 201;
+  for (let n = 0; n < 20; n++) {
+    last = (await create({ "Fly-Client-Ip": "203.0.113.7", "Cf-Connecting-Ip": `198.51.100.${n}` }))
+      .status;
+  }
+  assert.equal(last, 429);
+
+  // Via Cloudflare (Fly-Client-IP in a CF range): each CF-Connecting-IP is
+  // its own bucket.
+  for (let n = 0; n < 20; n++) {
+    const status = (
+      await create({ "Fly-Client-Ip": "104.16.1.1", "Cf-Connecting-Ip": `198.51.100.${n}` })
+    ).status;
+    assert.equal(status, 201);
+  }
   console.log("ok");
 } finally {
   compose("down", "--volumes");
