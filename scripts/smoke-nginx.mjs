@@ -3,10 +3,13 @@ import { execFileSync } from "node:child_process";
 
 const gitCommit =
   process.env.GIT_COMMIT || execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+// Same length as the production token (openssl rand -hex 24).
+const originToken = process.env.X_ORIGIN_TOKEN || "0123456789abcdef".repeat(3);
 const env = {
   ...process.env,
   COMPOSE_PROJECT_NAME: "envp-nginx-smoke",
   GIT_COMMIT: gitCommit,
+  X_ORIGIN_TOKEN: originToken,
 };
 const compose = (...args) =>
   execFileSync("docker", ["compose", ...args], {
@@ -14,8 +17,6 @@ const compose = (...args) =>
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
-
-const originToken = process.env.X_ORIGIN_TOKEN || "envp-dev-token";
 
 const create = (headers = {}) =>
   fetch("http://127.0.0.1:8080/api/v1/shares", {
