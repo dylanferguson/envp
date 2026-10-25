@@ -18,7 +18,33 @@ import (
 
 const defaultRemainingReads = 20
 
-var ErrNotFound = errors.New("share not found")
+var (
+	ErrNotFound = errors.New("share not found")
+	ErrCapacity = errors.New("share storage is full")
+)
+
+// Limits caps active shares so a flood of creates cannot exhaust the disk.
+// Zero values select the default caps.
+type Limits struct {
+	MaxActiveShares int64
+	MaxActiveBytes  int64
+}
+
+// DefaultLimits keeps a 1gb volume well clear of full: worst case is
+// 256 MiB of envelopes plus indexes and WAL checkpoints.
+func DefaultLimits() Limits {
+	return Limits{MaxActiveShares: 50_000, MaxActiveBytes: 256 << 20}
+}
+
+func (l Limits) withDefaults() Limits {
+	if l.MaxActiveShares <= 0 {
+		l.MaxActiveShares = DefaultLimits().MaxActiveShares
+	}
+	if l.MaxActiveBytes <= 0 {
+		l.MaxActiveBytes = DefaultLimits().MaxActiveBytes
+	}
+	return l
+}
 
 type Share struct {
 	ID        string
@@ -32,10 +58,12 @@ type Store struct {
 	consumeShare  *sql.Stmt
 	peekShare     *sql.Stmt
 	deleteExpired *sql.Stmt
+	capacity      *sql.Stmt
+	limits        Limits
 	now           func() time.Time
 }
 
-func Open(ctx context.Context, path string) (*Store, error) {
+func Open(ctx context.Context, path string, limits Limits) (*Store, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("resolve database path: %w", err)
@@ -57,7 +85,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	// SQLite has one writer. Queue work in database/sql instead of competing for locks.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-	s := &Store{db: db, now: time.Now}
+	s := &Store{db: db, limits: limits.withDefaults(), now: time.Now}
 	if err := s.init(ctx); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
@@ -105,6 +133,11 @@ func (s *Store) init(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("prepare sweep: %w", err)
 	}
+	// LENGTH(BLOB) reads the record header, so the scan skips overflow pages.
+	s.capacity, err = s.db.PrepareContext(ctx, "SELECT COUNT(*), COALESCE(SUM(LENGTH(envelope)), 0) FROM shares")
+	if err != nil {
+		return fmt.Errorf("prepare capacity: %w", err)
+	}
 	return nil
 }
 
@@ -123,6 +156,9 @@ func (s *Store) Ping(ctx context.Context) error {
 
 func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration, maxReads int) (Share, error) {
 	now := s.now()
+	if err := s.checkCapacity(ctx, len(envelope)); err != nil {
+		return Share{}, err
+	}
 	id, err := ulid.New(ulid.Timestamp(now), rand.Reader)
 	if err != nil {
 		return Share{}, fmt.Errorf("generate share ID: %w", err)
@@ -132,6 +168,17 @@ func (s *Store) Create(ctx context.Context, envelope []byte, ttl time.Duration, 
 		return Share{}, fmt.Errorf("create share: %w", err)
 	}
 	return share, nil
+}
+
+func (s *Store) checkCapacity(ctx context.Context, incoming int) error {
+	var shares, total int64
+	if err := s.capacity.QueryRowContext(ctx).Scan(&shares, &total); err != nil {
+		return fmt.Errorf("check capacity: %w", err)
+	}
+	if shares >= s.limits.MaxActiveShares || total+int64(incoming) > s.limits.MaxActiveBytes {
+		return ErrCapacity
+	}
+	return nil
 }
 
 func (s *Store) Consume(ctx context.Context, id string) (Share, error) {

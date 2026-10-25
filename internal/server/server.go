@@ -72,6 +72,7 @@ var (
 	errNotFound        = apiError{http.StatusNotFound, "not_found", "Not found."}
 	errShareNotFound   = apiError{http.StatusNotFound, "not_found", "Share not found."}
 	errPayloadTooLarge = apiError{http.StatusRequestEntityTooLarge, "payload_too_large", "Request body is too large."}
+	errStorageFull     = apiError{http.StatusServiceUnavailable, "storage_full", "Share storage is full. Try again later."}
 )
 
 type server struct {
@@ -139,6 +140,12 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request) {
 	}
 	share, err := s.db.Create(r.Context(), envelope, time.Duration(req.TTL)*time.Second, int(req.MaxReads))
 	if err != nil {
+		if errors.Is(err, store.ErrCapacity) {
+			// Shares free up as the sweeper removes expired rows.
+			w.Header().Set("Retry-After", "60")
+			s.error(w, r, errStorageFull)
+			return
+		}
 		s.error(w, r, err)
 		return
 	}

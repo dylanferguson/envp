@@ -16,9 +16,9 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func testStore(t *testing.T) *Store {
+func testStoreWithLimits(t *testing.T, limits Limits) *Store {
 	t.Helper()
-	s, err := Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"))
+	s, err := Open(t.Context(), filepath.Join(t.TempDir(), "shares.db"), limits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,6 +28,11 @@ func testStore(t *testing.T) *Store {
 		}
 	})
 	return s
+}
+
+func testStore(t *testing.T) *Store {
+	t.Helper()
+	return testStoreWithLimits(t, Limits{})
 }
 
 func TestExpiry(t *testing.T) {
@@ -57,7 +62,7 @@ func TestExpiry(t *testing.T) {
 
 func TestPersistence(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nested", "shares.db")
-	s, err := Open(t.Context(), path)
+	s, err := Open(t.Context(), path, Limits{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +73,7 @@ func TestPersistence(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	s, err = Open(t.Context(), path)
+	s, err = Open(t.Context(), path, Limits{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,6 +147,47 @@ func TestConcurrentCreateReadAndSweep(t *testing.T) {
 	}
 	if len(seen) != 100 {
 		t.Fatalf("created %d shares", len(seen))
+	}
+}
+
+func TestCreateRejectsAtShareCap(t *testing.T) {
+	s := testStoreWithLimits(t, Limits{MaxActiveShares: 2})
+	for range 2 {
+		if _, err := s.Create(t.Context(), []byte{1}, time.Hour, 20); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.Create(t.Context(), []byte{1}, time.Hour, 20); !errors.Is(err, ErrCapacity) {
+		t.Fatalf("create at share cap: %v", err)
+	}
+}
+
+func TestCreateRejectsAtByteCap(t *testing.T) {
+	s := testStoreWithLimits(t, Limits{MaxActiveBytes: 8})
+	if _, err := s.Create(t.Context(), []byte{1, 2, 3, 4, 5, 6, 7, 8}, time.Hour, 20); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Create(t.Context(), []byte{1}, time.Hour, 20); !errors.Is(err, ErrCapacity) {
+		t.Fatalf("create at byte cap: %v", err)
+	}
+}
+
+func TestCapacityRecoversAfterSweep(t *testing.T) {
+	s := testStoreWithLimits(t, Limits{MaxActiveShares: 1})
+	now := time.Now()
+	s.now = func() time.Time { return now }
+	if _, err := s.Create(t.Context(), []byte{1}, time.Minute, 20); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Create(t.Context(), []byte{1}, time.Hour, 20); !errors.Is(err, ErrCapacity) {
+		t.Fatalf("create at cap: %v", err)
+	}
+	now = now.Add(2 * time.Minute)
+	if _, err := s.Sweep(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Create(t.Context(), []byte{1}, time.Hour, 20); err != nil {
+		t.Fatalf("create after sweep: %v", err)
 	}
 }
 
@@ -266,7 +312,7 @@ func TestLegacySchemaUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s, err := Open(t.Context(), path)
+	s, err := Open(t.Context(), path, Limits{})
 	if err != nil {
 		t.Fatal(err)
 	}

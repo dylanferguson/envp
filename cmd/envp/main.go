@@ -112,7 +112,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 	startup, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	db, err := store.Open(startup, cfg.dbPath)
+	db, err := store.Open(startup, cfg.dbPath, store.DefaultLimits())
 	if err != nil {
 		return err
 	}
