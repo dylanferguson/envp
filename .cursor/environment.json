@@ -1,10 +1,10 @@
 {
   "name": "envp",
-  "install": "curl -fsSL https://mise.run | MISE_QUIET=1 sh && ~/.local/bin/mise trust && ~/.local/bin/mise install && ~/.local/bin/mise exec -- pnpm install --frozen-lockfile",
+  "install": "[ -x /nix/var/nix/profiles/default/bin/nix ] || curl -fsSL https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm && /nix/var/nix/profiles/default/bin/nix develop --command pnpm install --frozen-lockfile",
   "terminals": [
     {
       "name": "dev",
-      "command": "~/.local/bin/mise run dev"
+      "command": "/nix/var/nix/profiles/default/bin/nix develop --command mise run dev"
     }
   ],
   "ports": [
