@@ -15,6 +15,7 @@
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       commit = self.rev or self.dirtyRev or "unknown";
       nonRootUid = "65532";
+      seconds = n: n * 1000000000; # Docker health check durations are nanoseconds.
     in
     {
       packages = forAllSystems (
@@ -111,6 +112,69 @@
                 "9090/tcp" = { };
               };
               Volumes."/data" = { };
+              Healthcheck = {
+                Test = [
+                  "CMD"
+                  "${envp}/bin/envp"
+                  "healthcheck"
+                ];
+                Interval = seconds 30;
+                Timeout = seconds 3;
+                StartPeriod = seconds 5;
+                Retries = 3;
+              };
+            };
+          };
+
+          # Same uid/gid as the official nginx image, for `user nginx;` in nginx.conf.
+          nginxNss = pkgs.dockerTools.fakeNss.override {
+            extraPasswdLines = [ "nginx:x:101:101:nginx:/var/empty:/bin/false" ];
+            extraGroupLines = [ "nginx:x:101:" ];
+          };
+
+          # Replaces the official image's /docker-entrypoint.sh, which only ran
+          # write-origin-token.sh for this config.
+          nginxEntrypoint = pkgs.writeScript "nginx-entrypoint" ''
+            #!${pkgs.busybox}/bin/sh
+            set -eu
+            sh ${./deploy/nginx/write-origin-token.sh}
+            exec nginx -c /etc/nginx/nginx.conf -e stderr -g 'daemon off;'
+          '';
+
+          nginx-image = pkgs.dockerTools.buildLayeredImage {
+            name = "envp-nginx";
+            tag = "nix";
+            contents = [
+              pkgs.nginx
+              pkgs.busybox
+              nginxNss
+            ];
+            extraCommands = ''
+              mkdir -p etc/nginx/conf.d usr/share/nginx run var/log/nginx
+              mkdir -m 1777 tmp
+              cp ${pkgs.nginx}/conf/mime.types etc/nginx/mime.types
+              cp ${./deploy/nginx/nginx.conf} etc/nginx/nginx.conf
+              cp ${./deploy/nginx/security_headers.conf} etc/nginx/security_headers.conf
+              cp ${./deploy/nginx/default.conf} etc/nginx/conf.d/default.conf
+              ln -s ${web} usr/share/nginx/html
+              ln -s /dev/stdout var/log/nginx/access.log
+              ln -s /dev/stderr var/log/nginx/error.log
+            '';
+            config = {
+              Entrypoint = [ "${nginxEntrypoint}" ];
+              Env = [ "PATH=/bin" ];
+              ExposedPorts."8080/tcp" = { };
+              StopSignal = "SIGQUIT";
+              Healthcheck = {
+                Test = [
+                  "CMD-SHELL"
+                  ''wget -q -O /dev/null --header="X-Origin-Token: $X_ORIGIN_TOKEN" http://127.0.0.1:8080/ || exit 1''
+                ];
+                Interval = seconds 5;
+                Timeout = seconds 3;
+                StartPeriod = seconds 2;
+                Retries = 10;
+              };
             };
           };
         in
@@ -118,7 +182,7 @@
           default = envp;
           inherit envp web;
         }
-        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { inherit envp-image; }
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { inherit envp-image nginx-image; }
       );
     };
 }
