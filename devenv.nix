@@ -1,14 +1,14 @@
 # Development environment. flake.nix builds the shipped binary and images.
 { pkgs, config, ... }:
 let
-  go = config.languages.go.package;
+  go = pkgs.go_1_27;
   node = config.languages.javascript.package;
 in
 {
-  languages.go = {
-    enable = true;
-    package = pkgs.go_1_27;
-  };
+  # Not languages.go: it rebuilds delve, gopls and other Go tools against go_1_27,
+  # which are uncached and which this project does not use.
+  env.GOROOT = "${go}/share/go";
+  env.GOTOOLCHAIN = "local";
   languages.javascript = {
     enable = true;
     package = pkgs.nodejs_24;
@@ -19,6 +19,7 @@ in
     };
   };
   packages = [
+    go
     pkgs.golangci-lint
     pkgs.shellcheck
   ];
