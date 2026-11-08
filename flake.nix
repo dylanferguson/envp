@@ -22,10 +22,14 @@
         let
           inherit (pkgs) lib;
           buildGoModule = pkgs.buildGoModule.override { go = pkgs.go_1_27; };
+          pnpm = pkgs.pnpm_11;
+          # Not the commit: dependency fetches are named after it, so a per-commit
+          # version would refetch them on every commit.
+          version = "0.1.0";
 
           envp = buildGoModule {
             pname = "envp";
-            version = self.shortRev or self.dirtyShortRev or "unknown";
+            inherit version;
             src = lib.fileset.toSource {
               root = ./.;
               fileset = lib.fileset.unions [
@@ -45,6 +49,45 @@
               "-X main.commit=${commit}"
             ];
           };
+
+          web = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+            pname = "envp-web";
+            inherit version;
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.unions [
+                ./package.json
+                ./pnpm-lock.yaml
+                ./pnpm-workspace.yaml
+                ./tsconfig.json
+                ./vite.config.ts
+                ./web
+              ];
+            };
+            nativeBuildInputs = [
+              pkgs.nodejs_24
+              pnpm
+              pkgs.pnpmConfigHook
+            ];
+            pnpmDeps = pkgs.fetchPnpmDeps {
+              inherit (finalAttrs) pname version src;
+              inherit pnpm;
+              fetcherVersion = 5;
+              # Update when pnpm-lock.yaml changes, the same way as vendorHash.
+              hash = "sha256-5w4S87gx5Ln/iJ4sr7tqC+KfPB77xK0NulxzKsiMKUc=";
+            };
+            env.GIT_COMMIT = commit;
+            buildPhase = ''
+              runHook preBuild
+              pnpm exec vp build
+              runHook postBuild
+            '';
+            installPhase = ''
+              runHook preInstall
+              cp -r dist/client $out
+              runHook postInstall
+            '';
+          });
 
           # buildLayeredImage, not streamLayeredImage: the stream script is a Linux
           # program, so macOS could not run it to load the image.
@@ -73,7 +116,7 @@
         in
         {
           default = envp;
-          inherit envp;
+          inherit envp web;
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { inherit envp-image; }
       );
