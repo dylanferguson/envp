@@ -1,6 +1,6 @@
 services:
   envp:
-    image: envp:nix # mise run image
+    image: envp:nix # build-images
     environment:
       PORT: "8081"
       LISTEN_HOST: "127.0.0.1"
