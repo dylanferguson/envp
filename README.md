@@ -19,19 +19,23 @@
 
 ## Run locally
 
+Install [Nix](https://docs.determinate.systems/), then enter the dev shell. It provides Go, Node, pnpm, golangci-lint and mise. With direnv, run `direnv allow` instead.
+
 ```bash
-mise install
-vp install
+nix develop
+pnpm install
 mise run dev
 ```
 
 UI on [http://127.0.0.1:5173](http://127.0.0.1:5173), API on `:8080`. `mise run dev` talks to Go directly and has no per-IP cap. `mise run start` is the API without the UI.
 
-## Docker
+## Containers
 
 ```bash
-docker compose up --build
+mise run up
 ```
+
+Nix builds both images (`flake.nix`) and loads them into Docker as `envp:nix` and `envp-nginx:nix`. On macOS this needs a Linux builder, such as the one in [Determinate Nix](https://docs.determinate.systems/determinate-nix/linux-builder/). `mise run smoke` smoke-tests both images.
 
 App on [http://127.0.0.1:8080](http://127.0.0.1:8080). nginx serves the UI, rate-limits creates and reads, and proxies `/api` to Go on loopback `:8081`. SQLite lives on the named `envp-data` volume.
 

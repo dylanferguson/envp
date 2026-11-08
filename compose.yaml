@@ -1,11 +1,6 @@
 services:
   envp:
-    build:
-      context: .
-      target: envp
-      args:
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    image: envp:go-scratch
+    image: envp:nix # mise run image
     environment:
       PORT: "8081"
       LISTEN_HOST: "127.0.0.1"
@@ -17,12 +12,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 15s
   nginx:
-    build:
-      context: .
-      target: nginx
-      args:
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    image: envp-nginx
+    image: envp-nginx:nix
     environment:
       X_ORIGIN_TOKEN: ${X_ORIGIN_TOKEN:-envp-dev-token}
     network_mode: service:envp

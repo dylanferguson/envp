@@ -1,8 +1,0 @@
-# Runs compose.yaml on the Nix-built images. Load them with `mise run nix:image`.
-services:
-  envp:
-    image: envp:nix
-    build: !reset null
-  nginx:
-    image: envp-nginx:nix
-    build: !reset null

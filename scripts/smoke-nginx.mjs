@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 
-const gitCommit =
-  process.env.GIT_COMMIT || execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 // Same length as the production token (openssl rand -hex 24).
 const originToken = process.env.X_ORIGIN_TOKEN || "0123456789abcdef".repeat(3);
 const env = {
   ...process.env,
   COMPOSE_PROJECT_NAME: "envp-nginx-smoke",
-  GIT_COMMIT: gitCommit,
   X_ORIGIN_TOKEN: originToken,
 };
 const compose = (...args) =>
@@ -26,7 +23,7 @@ const create = (headers = {}) =>
   });
 
 try {
-  compose("up", "--build", "--wait");
+  compose("up", "--wait");
 
   // Without the edge-injected token nginx fails closed.
   const bare = await fetch("http://127.0.0.1:8080/");

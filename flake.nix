@@ -132,8 +132,6 @@
             extraGroupLines = [ "nginx:x:101:" ];
           };
 
-          # Replaces the official image's /docker-entrypoint.sh, which only ran
-          # write-origin-token.sh for this config.
           nginxEntrypoint = pkgs.writeScript "nginx-entrypoint" ''
             #!${pkgs.busybox}/bin/sh
             set -eu
@@ -184,5 +182,25 @@
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { inherit envp-image nginx-image; }
       );
+
+      # mkShell, not mkShellNoCC: `go test -race` needs a C compiler.
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          packages = [
+            pkgs.go_1_27
+            pkgs.nodejs_24
+            pkgs.pnpm_11
+            pkgs.golangci-lint
+            pkgs.watchexec
+            pkgs.mise
+            pkgs.shellcheck
+          ];
+          # GOROOT from a global mise install would point Nix's Go at another stdlib.
+          shellHook = ''
+            unset GOROOT
+            export PATH="$PWD/node_modules/.bin:$PATH"
+          '';
+        };
+      });
     };
 }

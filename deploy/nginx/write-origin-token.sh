@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs from /docker-entrypoint.d/ before nginx starts. Cloudflare injects
+# The image entrypoint runs this before nginx starts. Cloudflare injects
 # X-Origin-Token at the edge; nginx rejects every request without it. Fail
 # closed: if the token is missing nginx must not start.
 set -eu

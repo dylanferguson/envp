@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
 
-const image = process.argv[2] ?? "envp:go-scratch";
+const image = process.argv[2] ?? "envp:nix";
 const docker = (...args) => execFileSync("docker", args, { encoding: "utf8" }).trim();
 const name = `envp-smoke-${process.pid}`;
 const container = docker(

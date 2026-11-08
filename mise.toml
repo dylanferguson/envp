@@ -1,12 +1,8 @@
-[tools]
-go = "1.27.1"
-node = "24.20.0"
-pnpm = "11.22.0"
-golangci-lint = "2.13.2"
-watchexec = "2.7.2"
+# Tools come from the Nix dev shell (`nix develop`); mise only runs tasks.
 
-[env]
-_.path = ["{{config_root}}/node_modules/.bin"]
+[settings]
+# Stop a global mise install from shadowing the dev shell's tools.
+disable_tools = ["go", "node", "pnpm", "npm:pnpm", "golangci-lint", "watchexec"]
 
 [tasks.api]
 description = "Go API, restarting on Go file changes"
@@ -34,16 +30,14 @@ run = ["vp check", "golangci-lint run"]
 
 [tasks."test:e2e"]
 description = "Playwright against docker compose (nginx + API)"
+depends = ["image"]
 run = "playwright test"
 
 [tasks."test:e2e:install"]
 description = "Install Playwright browsers"
 run = "playwright install --with-deps --only-shell"
 
-[tasks."docker:build"]
-run = 'GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD)}" docker compose build'
-
-[tasks."nix:image"]
+[tasks.image]
 description = "Build both images with Nix and load them as envp:nix and envp-nginx:nix"
 run = '''
 sys="${NIX_IMAGE_SYSTEM:-$(uname -m | sed s/arm64/aarch64/)-linux}"
@@ -52,13 +46,12 @@ for image in envp-image nginx-image; do
 done
 '''
 
-[tasks."nix:smoke"]
-description = "Run both smoke tests against the Nix images"
-depends = ["nix:image"]
-run = [
-  "node scripts/smoke-container.mjs envp:nix",
-  "COMPOSE_FILE=compose.yaml:compose.nix.yaml node scripts/smoke-nginx.mjs",
-]
+[tasks.smoke]
+description = "Smoke-test both images"
+depends = ["image"]
+run = ["node scripts/smoke-container.mjs", "node scripts/smoke-nginx.mjs"]
 
-[tasks."docker:run"]
-run = "docker compose up --build"
+[tasks.up]
+description = "Run nginx + API in docker compose"
+depends = ["image"]
+run = "docker compose up"
