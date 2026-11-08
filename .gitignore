@@ -9,3 +9,5 @@ target/
 .pnpm-store/
 .vite/
 *.pem
+result
+result-*

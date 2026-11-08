@@ -43,5 +43,9 @@ run = "playwright install --with-deps --only-shell"
 [tasks."docker:build"]
 run = 'GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD)}" docker compose build'
 
+[tasks."nix:image"]
+description = "Build the API image with Nix and load it as envp:nix"
+run = 'nix build ".#packages.${NIX_IMAGE_SYSTEM:-$(uname -m | sed s/arm64/aarch64/)-linux}.envp-image" -o result-image && docker load < result-image'
+
 [tasks."docker:run"]
 run = "docker compose up --build"
