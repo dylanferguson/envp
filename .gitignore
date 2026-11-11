@@ -11,3 +11,7 @@ target/
 *.pem
 result
 result-*
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+.pre-commit-config.yaml

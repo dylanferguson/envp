@@ -1,10 +1,10 @@
 {
   "name": "envp",
-  "install": "[ -x /nix/var/nix/profiles/default/bin/nix ] || curl -fsSL https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm && /nix/var/nix/profiles/default/bin/nix develop --command pnpm install --frozen-lockfile",
+  "install": "export PATH=\"/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH\"; command -v nix >/dev/null || curl -fsSL https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm && nix profile add \"github:NixOS/nixpkgs/$(nix eval --raw --impure --expr '(builtins.fromJSON (builtins.readFile ./flake.lock)).nodes.nixpkgs.locked.rev')#devenv\" && devenv shell -- true",
   "terminals": [
     {
       "name": "dev",
-      "command": "/nix/var/nix/profiles/default/bin/nix develop --command mise run dev"
+      "command": "export PATH=\"/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH\"; devenv up"
     }
   ],
   "ports": [

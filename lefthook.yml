@@ -1,4 +1,0 @@
-pre-commit:
-  commands:
-    check:
-      run: nix develop --command mise run check

@@ -8,8 +8,6 @@
     "@playwright/test": "^1.62.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^22.15.21",
-    "concurrently": "^9.1.2",
-    "lefthook": "^1.11.12",
     "svelte": "^5.57.0",
     "typescript": "^5.9.3",
     "vite-plus": "catalog:"

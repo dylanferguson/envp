@@ -75,7 +75,7 @@
               inherit pnpm;
               fetcherVersion = 5;
               # Update when pnpm-lock.yaml changes, the same way as vendorHash.
-              hash = "sha256-5w4S87gx5Ln/iJ4sr7tqC+KfPB77xK0NulxzKsiMKUc=";
+              hash = "sha256-uWeAMHq+P+9Ac7WlW/G90IqaQLe+gdTSIpqY/9PINX4=";
             };
             env.GIT_COMMIT = commit;
             buildPhase = ''
@@ -182,25 +182,5 @@
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { inherit envp-image nginx-image; }
       );
-
-      # mkShell, not mkShellNoCC: `go test -race` needs a C compiler.
-      devShells = forAllSystems (pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            pkgs.go_1_27
-            pkgs.nodejs_24
-            pkgs.pnpm_11
-            pkgs.golangci-lint
-            pkgs.watchexec
-            pkgs.mise
-            pkgs.shellcheck
-          ];
-          # GOROOT from a global mise install would point Nix's Go at another stdlib.
-          shellHook = ''
-            unset GOROOT
-            export PATH="$PWD/node_modules/.bin:$PATH"
-          '';
-        };
-      });
     };
 }
