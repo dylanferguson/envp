@@ -2,7 +2,7 @@
   "containers": [
     {
       "name": "envp",
-      "image": "envp:go-scratch",
+      "image": "envp:nix",
       "env": {
         "PORT": "8081",
         "LISTEN_HOST": "127.0.0.1"

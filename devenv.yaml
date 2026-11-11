@@ -1,0 +1,13 @@
+# Same nixpkgs revision as flake.lock, so the dev shell and the image builds
+# use the same packages. Update both together.
+inputs:
+  # Same release as the devenv CLI in that nixpkgs revision.
+  devenv:
+    url: github:cachix/devenv/v2.4.0
+  nixpkgs:
+    url: github:NixOS/nixpkgs/f9a75f41be3a74eab55d3a7679d34ad6cc0da977
+  git-hooks:
+    url: github:cachix/git-hooks.nix
+    inputs:
+      nixpkgs:
+        follows: nixpkgs

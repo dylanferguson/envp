@@ -19,19 +19,21 @@
 
 ## Run locally
 
-```bash
-mise install
-vp install
-mise run dev
-```
-
-UI on [http://127.0.0.1:5173](http://127.0.0.1:5173), API on `:8080`. `mise run dev` talks to Go directly and has no per-IP cap. `mise run start` is the API without the UI.
-
-## Docker
+Install [Nix](https://docs.determinate.systems/) and [devenv](https://devenv.sh/getting-started/) (`nix profile add nixpkgs#devenv`), then start the UI and API:
 
 ```bash
-docker compose up --build
+devenv up
 ```
+
+UI on [http://127.0.0.1:5173](http://127.0.0.1:5173), API on `:8080`. This talks to Go directly and has no per-IP cap. `devenv shell` gives you the toolchain and these commands: `check`, `unit-tests`, `e2e-tests`, `smoke-tests`, `build-api` and `build-images`. With direnv, run `direnv allow` to enter the shell automatically.
+
+## Containers
+
+```bash
+devenv shell compose-up
+```
+
+Nix builds both images (`flake.nix`) and loads them into Docker as `envp:nix` and `envp-nginx:nix`. On macOS this needs a Linux builder, such as the one in [Determinate Nix](https://docs.determinate.systems/determinate-nix/linux-builder/).
 
 App on [http://127.0.0.1:8080](http://127.0.0.1:8080). nginx serves the UI, rate-limits creates and reads, and proxies `/api` to Go on loopback `:8081`. SQLite lives on the named `envp-data` volume.
 

@@ -6,9 +6,6 @@ kill_signal = "SIGTERM"
 kill_timeout = 15
 container = "envp"
 
-[build]
-dockerfile = "Dockerfile"
-
 [experimental]
 machine_config = "deploy/fly-machine.json"
 
