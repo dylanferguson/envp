@@ -3,6 +3,23 @@
 let
   go = pkgs.go_1_27;
   node = config.languages.javascript.package;
+  # Release binary: Bombadil is not in nixpkgs and its flake builds from source.
+  bombadil =
+    let
+      version = "0.7.10";
+      system = pkgs.stdenv.hostPlatform.system;
+      src = pkgs.fetchurl {
+        url = "https://github.com/antithesishq/bombadil/releases/download/v${version}/bombadil-${system}";
+        sha256 =
+          {
+            aarch64-darwin = "3d7866e2e8356390a0f2560853e3c775839f8c8ff648c9552c0105f7f78d1d72";
+            aarch64-linux = "67ee0099c287aba90cfee37b317312678277f51a1b2986c49e339b1509509e73";
+            x86_64-linux = "6f2664ca7d4067017b4efb26db5c29d6dcfecdc78131f96989d336f12420cc1b";
+          }
+          .${system};
+      };
+    in
+    pkgs.runCommand "bombadil-${version}" { } "install -Dm755 ${src} $out/bin/bombadil";
 in
 {
   # Not languages.go: it rebuilds delve, gopls and other Go tools against go_1_27,
@@ -19,6 +36,7 @@ in
     };
   };
   packages = [
+    bombadil
     go
     pkgs.golangci-lint
     pkgs.shellcheck
@@ -90,6 +108,21 @@ in
     e2e-tests = {
       description = "Playwright against docker compose (nginx + API)";
       exec = ''build-images && playwright test "$@"'';
+    };
+    fuzz-tests = {
+      description = "Bombadil explores the UI from `devenv up`, using your installed Chrome";
+      packages = [ pkgs.curl ];
+      exec = ''
+        url=http://127.0.0.1:5173/
+        if ! curl -sf -o /dev/null "$url"; then
+          echo "No UI at $url. Run 'devenv up' first." >&2
+          exit 1
+        fi
+        if [ $# -eq 0 ]; then set -- --time-limit 2m; fi
+        bombadil browser test --headless \
+          --output-path "$DEVENV_ROOT/test-results/bombadil" --output-path-overwrite \
+          "$@" "$url"
+      '';
     };
     install-browsers = {
       description = "Install Playwright browsers";
