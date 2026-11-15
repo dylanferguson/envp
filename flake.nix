@@ -159,7 +159,9 @@
               ln -s /dev/stderr var/log/nginx/error.log
             '';
             config = {
-              Entrypoint = [ "${nginxEntrypoint}" ];
+              # Cmd, not Entrypoint: Fly's Pilot ignores Entrypoint for containers
+              # that fly deploy doesn't fill in, and exits with "executable path not specified".
+              Cmd = [ "${nginxEntrypoint}" ];
               Env = [ "PATH=/bin" ];
               ExposedPorts."8080/tcp" = { };
               StopSignal = "SIGQUIT";
