@@ -1,4 +1,4 @@
-name: Actions security
+name: Actions lockfile
 
 on:
   push:
@@ -9,27 +9,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
-  zizmor:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@v6.1.0
-        with:
-          persist-credentials: false
-      - uses: zizmorcore/zizmor-action@v0.8.1
-        with:
-          version: 1.32.0
-
   # Fails when actions.lock is out of sync with the workflows or a pin no longer verifies upstream.
-  lockfile:
+  verify:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

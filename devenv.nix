@@ -48,11 +48,12 @@ in
   scripts = {
     # Self-contained so the pre-commit hook also works outside the devenv shell.
     check = {
-      description = "Frontend checks and golangci-lint";
+      description = "Frontend checks, golangci-lint and zizmor";
       packages = [
         go
         node
         pkgs.golangci-lint
+        pkgs.zizmor
       ];
       exec = ''
         set -e
@@ -60,6 +61,7 @@ in
         cd "$(git rev-parse --show-toplevel)"
         node_modules/.bin/vp check
         golangci-lint run
+        zizmor --offline .github/workflows
       '';
     };
     unit-tests = {
