@@ -132,6 +132,14 @@
             extraGroupLines = [ "nginx:x:101:" ];
           };
 
+          # Only the applets the image uses. With all of busybox, /bin/swapon links
+          # to the busybox binary and Fly's replace-swapon.sh hook fails, so nginx exits.
+          nginxTools = pkgs.runCommand "nginx-tools" { } ''
+            mkdir -p $out/bin
+            ln -s ${pkgs.busybox}/bin/busybox $out/bin/sh
+            ln -s ${pkgs.busybox}/bin/busybox $out/bin/wget
+          '';
+
           nginxEntrypoint = pkgs.writeScript "nginx-entrypoint" ''
             #!${pkgs.busybox}/bin/sh
             set -eu
@@ -144,7 +152,7 @@
             tag = "nix";
             contents = [
               pkgs.nginx
-              pkgs.busybox
+              nginxTools
               nginxNss
             ];
             extraCommands = ''
