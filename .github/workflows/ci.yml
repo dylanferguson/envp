@@ -19,12 +19,14 @@ jobs:
       run:
         shell: devenv shell -- bash -eo pipefail {0}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: actions/checkout@v6.1.0
+        with:
+          persist-credentials: false
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.2
       # devenv from the same nixpkgs revision as flake.lock and devenv.yaml.
       - run: nix profile add "github:NixOS/nixpkgs/$(jq -r .nodes.nixpkgs.locked.rev flake.lock)#devenv"
         shell: bash
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      - uses: actions/cache@v5.1.0
         with:
           path: |
             ~/.cache/go-build
@@ -33,7 +35,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('go.sum', '.golangci.yml', 'devenv.lock') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      - uses: actions/cache@v5.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
@@ -45,12 +47,12 @@ jobs:
       - run: docker compose -p envp-e2e down --volumes --remove-orphans
         if: always()
       - run: smoke-tests
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: playwright-results
           path: test-results/
-      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - run: |
           image="registry.fly.io/envp:${GITHUB_SHA}"
@@ -71,8 +73,10 @@ jobs:
       group: fly-deploy
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+      - uses: actions/checkout@v6.1.0
+        with:
+          persist-credentials: false
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
       - run: flyctl deploy --image registry.fly.io/envp:${{ github.sha }} --ha=false
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
