@@ -25,7 +25,7 @@ Install [Nix](https://docs.determinate.systems/) and [devenv](https://devenv.sh/
 devenv up
 ```
 
-UI on [http://127.0.0.1:5173](http://127.0.0.1:5173), API on `:8080`. This talks to Go directly and has no per-IP cap. `devenv shell` gives you the toolchain and these commands: `check` (lint, including zizmor on the GitHub Actions workflows), `unit-tests`, `e2e-tests`, `smoke-tests`, `build-api` and `build-images`. With direnv, run `direnv allow` to enter the shell automatically.
+UI on [http://127.0.0.1:5173](http://127.0.0.1:5173), API on `:8080`. This talks to Go directly and has no per-IP cap. `devenv shell` gives you the toolchain and these commands: `check` (lint, including zizmor on the GitHub Actions workflows), `unit-tests`, `e2e-tests`, `smoke-tests`, `fuzz-tests`, `build-api` and `build-images`. `fuzz-tests` runs [Bombadil](https://github.com/antithesishq/bombadil) against the UI from `devenv up` for two minutes, or with the flags you pass, such as `fuzz-tests --time-limit 10m`. It needs Chrome installed. With direnv, run `direnv allow` to enter the shell automatically.
 
 ## Containers
 
