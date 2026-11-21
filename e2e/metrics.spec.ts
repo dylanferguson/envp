@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers.js";
 
 const INTERNAL_URL = "http://127.0.0.1:9090";
 
@@ -12,5 +12,8 @@ test("keeps health and metrics off the public port", async ({ request }) => {
 
   const metrics = await fetch(`${INTERNAL_URL}/metrics`);
   expect(metrics.status).toBe(200);
-  expect(await metrics.text()).toContain("shares_created_total");
+  const body = await metrics.text();
+  expect(body).toContain("shares_created_total");
+  expect(body).toContain("shares_active");
+  expect(body).toContain("shares_active_bytes");
 });

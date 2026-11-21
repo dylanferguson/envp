@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { ENVS_MAGIC, SAMPLE_ENV, decodeBase64Url } from "./helpers.js";
+import { ENVS_MAGIC, SAMPLE_ENV, decodeBase64Url, expect, test } from "./helpers.js";
 
 test.describe("create share", () => {
   test.beforeEach(async ({ page }) => {
@@ -81,5 +80,17 @@ test.describe("create share", () => {
     await expect(page.getByRole("button", { name: "share" })).toBeDisabled();
     await expect(page.getByRole("slider", { name: "ttl", exact: true })).toHaveValue("7200");
     await expect(page.getByRole("slider", { name: "reads", exact: true })).toHaveValue("50");
+  });
+
+  test("unmounts the copy toast under prefers-reduced-motion", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await page.getByRole("textbox", { name: "paste your .env" }).fill(SAMPLE_ENV);
+    await page.getByRole("button", { name: "share" }).click();
+
+    const toast = page.locator("p.toast");
+    await expect(toast).toBeVisible();
+    await expect(toast).toHaveCount(0, { timeout: 6000 });
   });
 });

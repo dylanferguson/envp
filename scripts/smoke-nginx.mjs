@@ -22,25 +22,59 @@ const create = (headers = {}) =>
     body: JSON.stringify({ ttl_seconds: 60, max_reads: 20, envelope: "AQID_w" }),
   });
 
+function assertSecurityHeaders(response, label) {
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff", `${label}: nosniff`);
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer", `${label}: referrer-policy`);
+  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow", `${label}: x-robots-tag`);
+  assert.ok(response.headers.get("content-security-policy"), `${label}: csp`);
+}
+
 try {
   compose("up", "--wait");
 
   // Without the edge-injected token nginx fails closed.
   const bare = await fetch("http://127.0.0.1:8080/");
   assert.equal(bare.status, 403);
+  assertSecurityHeaders(bare, "403 bare");
   assert.equal((await create({ "X-Origin-Token": "not-the-token" })).status, 403);
 
-  assert.equal((await create()).status, 201);
-  let last = 201;
-  for (let n = 0; n < 20; n++) last = (await create()).status;
-  assert.equal(last, 429);
+  // /open/ trailing slash and security headers including conditional HSTS.
+  const openSlash = await fetch("http://127.0.0.1:8080/open/", {
+    headers: { "X-Origin-Token": originToken },
+  });
+  assert.equal(openSlash.status, 200);
+  assertSecurityHeaders(openSlash, "/open/");
+  assert.equal(openSlash.headers.get("strict-transport-security"), null);
+
+  const httpsRoot = await fetch("http://127.0.0.1:8080/", {
+    headers: { "X-Origin-Token": originToken, "X-Forwarded-Proto": "https" },
+  });
+  assert.equal(httpsRoot.status, 200);
+  assert.match(httpsRoot.headers.get("strict-transport-security") ?? "", /max-age=31536000/);
+
+  const created = await create();
+  assert.equal(created.status, 201);
+  assertSecurityHeaders(created, "201 create");
+
+  let lastResp = created;
+  for (let n = 0; n < 20; n++) lastResp = await create();
+  assert.equal(lastResp.status, 429);
+  assertSecurityHeaders(lastResp, "429 create");
 
   // Spoofed CF-Connecting-IP behind a non-Cloudflare Fly-Client-IP: every
   // request must share the bucket keyed on Fly-Client-IP.
-  last = 201;
+  let last = 201;
   for (let n = 0; n < 20; n++) {
     last = (await create({ "Fly-Client-Ip": "203.0.113.7", "Cf-Connecting-Ip": `198.51.100.${n}` }))
       .status;
+  }
+  assert.equal(last, 429);
+
+  // Cloudflare Fly-Client-IP with an empty CF-Connecting-IP must fall back to
+  // Fly-Client-IP instead of skipping rate limiting.
+  last = 201;
+  for (let n = 0; n < 20; n++) {
+    last = (await create({ "Fly-Client-Ip": "104.16.1.2" })).status;
   }
   assert.equal(last, 429);
 
