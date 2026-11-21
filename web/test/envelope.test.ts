@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   EnvelopeError,
+  exportKeyFragment,
   generateKey,
   importKeyFromFragment,
   open,
@@ -49,5 +50,12 @@ describe("envelope", () => {
     await expect(importKeyFromFragment("tooshort" as KeyFragment)).rejects.toBeInstanceOf(
       EnvelopeError,
     );
+  });
+
+  it("imports fragment keys with decrypt-only usage", async () => {
+    const fragment = await exportKeyFragment(await generateKey());
+    const imported = await importKeyFromFragment(fragment);
+    expect(imported.usages).toEqual(["decrypt"]);
+    await expect(seal(new TextEncoder().encode("x"), imported)).rejects.toThrow();
   });
 });

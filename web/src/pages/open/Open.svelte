@@ -73,15 +73,29 @@
     if (outcome.phase === "revealed") {
       envOutput = outcome.envOutput;
       state = { phase: "revealed" };
+      if (!isManual && location.hash) {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
       return;
+    }
+    if (!isManual && location.hash && (outcome.phase === "gone" || outcome.phase === "tampered")) {
+      history.replaceState(null, "", location.pathname + location.search);
     }
     state = outcome;
   }
 
   function onCopy(): void {
-    void navigator.clipboard.writeText(envOutput).then(() => {
-      showToast("copied to clipboard");
-    });
+    const text = envOutput;
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        if (state.phase === "revealed" && envOutput === text) {
+          showToast("copied to clipboard");
+        }
+      },
+      () => {
+        openResult?.selectOutput();
+      },
+    );
   }
 
   function onOpenLink(): void {

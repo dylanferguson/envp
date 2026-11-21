@@ -20,14 +20,20 @@ export type CreateShareResponse = {
 export class ShareApiError extends Error {
   constructor(status: number, statusText = "") {
     const reason = statusText.trim();
-    super(status > 0 ? (reason ? `${status} ${reason}` : `${status}`) : "Request failed");
+    super(status > 0 ? (reason ? `${status} ${reason}` : `${status}`) : reason || "Request failed");
     this.name = "ShareApiError";
   }
 }
 
-function asObject(body: unknown): Record<string, unknown> | null {
+async function readJsonObject(response: Response): Promise<Record<string, unknown>> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ShareApiError(0, "Invalid server response");
+  }
   if (typeof body !== "object" || body === null) {
-    return null;
+    throw new ShareApiError(0, "Invalid server response");
   }
   return body as Record<string, unknown>;
 }
@@ -66,11 +72,11 @@ export async function createShare(
   if (!response.ok) {
     throw new ShareApiError(response.status, response.statusText);
   }
-  const body = asObject(await response.json());
-  const meta = body ? parseShareMeta(body) : null;
-  const maxReadsOut = body ? parseMaxReads(body.max_reads) : null;
+  const body = await readJsonObject(response);
+  const meta = parseShareMeta(body);
+  const maxReadsOut = parseMaxReads(body.max_reads);
   if (!meta || !maxReadsOut) {
-    throw new ShareApiError(0);
+    throw new ShareApiError(0, "Invalid server response");
   }
   return { ...meta, maxReads: maxReadsOut };
 }
@@ -83,22 +89,19 @@ export async function getShare(id: ShareId): Promise<Uint8Array | null> {
   if (!response.ok) {
     throw new ShareApiError(response.status, response.statusText);
   }
-  const body = asObject(await response.json());
-  if (!body) {
-    return null;
-  }
+  const body = await readJsonObject(response);
   const meta = parseShareMeta(body);
   if (!meta || typeof body.envelope !== "string" || body.envelope.length === 0) {
-    return null;
+    throw new ShareApiError(0, "Invalid server response");
   }
   let envelope: Uint8Array;
   try {
     envelope = base64urlDecode(body.envelope);
   } catch {
-    return null;
+    throw new ShareApiError(0, "Invalid server response");
   }
   if (envelope.length === 0 || envelope.length > MAX_ENVELOPE_BYTES) {
-    return null;
+    throw new ShareApiError(0, "Invalid server response");
   }
   return envelope;
 }

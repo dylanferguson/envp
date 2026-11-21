@@ -45,13 +45,8 @@
       return;
     }
     state = outcome;
-    if (outcome.phase === "done") {
-      if (outcome.copied) {
-        showToast("link copied to clipboard");
-      }
-      // Wait for CreateDone's component binding; CopyField handles the visual swap timing.
-      await tick();
-      createDone?.selectLink();
+    if (outcome.phase === "done" && outcome.copied) {
+      showToast("link copied to clipboard");
     }
   }
 
@@ -59,14 +54,18 @@
     if (state.phase !== "done") {
       return;
     }
-    void navigator.clipboard.writeText(state.url).then(
+    const { url } = state;
+    void navigator.clipboard.writeText(url).then(
       () => {
+        if (state.phase !== "done" || state.url !== url) {
+          return;
+        }
         state = { ...state, copied: true };
         showToast("link copied to clipboard");
         createDone?.selectLink();
       },
       () => {
-        if (state.phase === "done") {
+        if (state.phase === "done" && state.url === url) {
           state = { ...state, copied: false };
         }
       },
@@ -77,7 +76,9 @@
     dismissToast();
     createForm?.clearInput();
     state = { phase: "idle" };
-    createForm?.focusInput();
+    void tick().then(() => {
+      createForm?.focusInput();
+    });
   }
 
   $effect(() => {

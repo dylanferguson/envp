@@ -11,10 +11,10 @@
 </script>
 
 <div class="swap-stage">
-  <div class="swap-pane" class:is-out={showAlt}>
+  <div class="swap-pane" class:is-out={showAlt} inert={showAlt}>
     {@render primary()}
   </div>
-  <div class="swap-pane" class:is-out={!showAlt}>
+  <div class="swap-pane" class:is-out={!showAlt} inert={!showAlt}>
     {@render alt()}
   </div>
 </div>

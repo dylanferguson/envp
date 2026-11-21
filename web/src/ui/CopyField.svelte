@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+
   type Props = {
     id: string;
     value: string;
@@ -20,6 +22,7 @@
   }: Props = $props();
 
   let field = $state<HTMLTextAreaElement | null>(null);
+  let cancelPendingSelect: (() => void) | null = null;
 
   // Retry after SwapStage's 380 ms pane transition and this field's 400 ms resize.
   const SWAP_SELECT_DELAY_MS = 420;
@@ -33,16 +36,41 @@
   }
 
   function scheduleSelect(node: HTMLTextAreaElement): () => void {
+    cancelPendingSelect?.();
+    let cancelled = false;
+    let raf2 = 0;
     applySelect(node);
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(() => applySelect(node));
+    const raf1 = requestAnimationFrame(() => {
+      if (cancelled) {
+        return;
+      }
+      raf2 = requestAnimationFrame(() => {
+        if (!cancelled) {
+          applySelect(node);
+        }
+      });
     });
-    const timer = setTimeout(() => applySelect(node), SWAP_SELECT_DELAY_MS);
-    return () => {
-      cancelAnimationFrame(raf);
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        applySelect(node);
+      }
+    }, SWAP_SELECT_DELAY_MS);
+    const cancel = (): void => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       clearTimeout(timer);
+      if (cancelPendingSelect === cancel) {
+        cancelPendingSelect = null;
+      }
     };
+    cancelPendingSelect = cancel;
+    return cancel;
   }
+
+  onDestroy(() => {
+    cancelPendingSelect?.();
+  });
 
   export function selectAll(): void {
     const el = field;

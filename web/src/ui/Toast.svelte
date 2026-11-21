@@ -2,7 +2,7 @@
   import { finishHide, toast } from "../lib/toast.svelte.js";
 
   function onAnimationEnd(event: AnimationEvent): void {
-    if (!event.animationName.endsWith("toast-out")) {
+    if (!/toast-out(-reduced)?$/.test(event.animationName)) {
       return;
     }
     finishHide();

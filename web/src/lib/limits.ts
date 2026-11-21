@@ -60,7 +60,7 @@ export function parseShareId(value: string): ShareId | null {
 }
 
 export function shareIdFromPath(pathname: string): ShareId | null {
-  const match = pathname.match(/^\/share\/([^/]+)$/);
+  const match = pathname.match(/^\/share\/([^/]+)\/?$/);
   return match?.[1] ? parseShareId(match[1]) : null;
 }
 
@@ -111,15 +111,16 @@ export function formatExpiryLabel(ttlSeconds: number): string {
   if (ttlSeconds >= 86400) {
     return "expires in 24h";
   }
-  const minutes = Math.round(ttlSeconds / 60);
-  if (minutes >= 60) {
-    const hours = Math.round(ttlSeconds / 3600);
-    return `expires in ${hours}h`;
+  const totalMinutes = Math.round(ttlSeconds / 60);
+  if (totalMinutes >= 60) {
+    const hours = Math.floor(totalMinutes / 60);
+    const remMinutes = totalMinutes % 60;
+    return remMinutes > 0 ? `expires in ${hours}h ${remMinutes}m` : `expires in ${hours}h`;
   }
-  return `expires in ${minutes}m`;
+  return `expires in ${totalMinutes}m`;
 }
 
-export const LONGEST_EXPIRY_LABEL = formatExpiryLabel(MAX_TTL_SECONDS);
+export const LONGEST_EXPIRY_LABEL = formatExpiryLabel(MAX_TTL_SECONDS - 60);
 
 export function formatExpiresAtLabel(expiresAt: UnixMillis, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((expiresAt - now) / 1000));
