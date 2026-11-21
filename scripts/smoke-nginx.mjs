@@ -61,31 +61,28 @@ try {
   assert.equal(lastResp.status, 429);
   assertSecurityHeaders(lastResp, "429 create");
 
-  // Spoofed CF-Connecting-IP behind a non-Cloudflare Fly-Client-IP: every
-  // request must share the bucket keyed on Fly-Client-IP.
+  // Without CF-Connecting-IP, requests fall back to Fly-Client-IP.
   let last = 201;
   for (let n = 0; n < 20; n++) {
-    last = (await create({ "Fly-Client-Ip": "203.0.113.7", "Cf-Connecting-Ip": `198.51.100.${n}` }))
-      .status;
+    last = (await create({ "Fly-Client-Ip": "203.0.113.7" })).status;
   }
   assert.equal(last, 429);
 
-  // Cloudflare Fly-Client-IP with an empty CF-Connecting-IP must fall back to
-  // Fly-Client-IP instead of skipping rate limiting.
-  last = 201;
-  for (let n = 0; n < 20; n++) {
-    last = (await create({ "Fly-Client-Ip": "104.16.1.2" })).status;
-  }
-  assert.equal(last, 429);
-
-  // Via Cloudflare (Fly-Client-IP in a CF range): each CF-Connecting-IP is
-  // its own bucket.
+  // With CF-Connecting-IP, each visitor IP gets its own bucket.
   for (let n = 0; n < 20; n++) {
     const status = (
-      await create({ "Fly-Client-Ip": "104.16.1.1", "Cf-Connecting-Ip": `198.51.100.${n}` })
+      await create({ "Fly-Client-Ip": "203.0.113.8", "Cf-Connecting-Ip": `198.51.100.${n}` })
     ).status;
     assert.equal(status, 201);
   }
+
+  // Repeated requests from the same CF-Connecting-IP share a bucket and hit 429.
+  last = 201;
+  for (let n = 0; n < 20; n++) {
+    last = (await create({ "Fly-Client-Ip": "203.0.113.9", "Cf-Connecting-Ip": "198.51.100.99" }))
+      .status;
+  }
+  assert.equal(last, 429);
   console.log("ok");
 } finally {
   compose("down", "--volumes");

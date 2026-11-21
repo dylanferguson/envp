@@ -48,7 +48,7 @@ App on [http://127.0.0.1:8080](http://127.0.0.1:8080). nginx serves the UI, rate
 
 ## Production
 
-nginx rate-limits on the client IP Fly's edge reports (`Fly-Client-IP`, honoring `CF-Connecting-IP` only when that edge IP is in a Cloudflare range), returns 403 for `*.fly.dev`, and requires an `X-Origin-Token` header that only Cloudflare sets, so direct-to-Fly traffic is rejected. Without the secret, nginx exits at boot (fail closed).
+nginx requires an `X-Origin-Token` header that only Cloudflare sets (exiting at boot if unset), returns 403 for `*.fly.dev`, and rate-limits on `CF-Connecting-IP` (falling back to `Fly-Client-IP` and the socket peer).
 
 Wire the edge token — both values must match:
 
