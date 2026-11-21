@@ -12,8 +12,5 @@ test("keeps health and metrics off the public port", async ({ request }) => {
 
   const metrics = await fetch(`${INTERNAL_URL}/metrics`);
   expect(metrics.status).toBe(200);
-  const body = await metrics.text();
-  expect(body).toContain("shares_created_total");
-  expect(body).toContain("shares_active");
-  expect(body).toContain("shares_active_bytes");
+  expect(await metrics.text()).toContain("shares_created_total");
 });

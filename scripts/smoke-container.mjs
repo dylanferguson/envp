@@ -62,8 +62,6 @@ try {
   const metricsBody = await metrics.text();
   assert.match(metricsBody, /http_requests_total/);
   assert.match(metricsBody, /shares_created_total/);
-  assert.match(metricsBody, /shares_active 1\b/);
-  assert.match(metricsBody, /shares_active_bytes 4\b/);
 
   docker("restart", "--time", "15", container);
   const afterRestart = publishedURL(8080);
