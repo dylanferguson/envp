@@ -1,6 +1,11 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
@@ -46,17 +51,17 @@ func TestConfig(t *testing.T) {
 	}
 }
 
-func TestConfigSidecarPort(t *testing.T) {
+func TestConfigPortRespectsExplicitValue(t *testing.T) {
 	for _, tc := range []struct {
 		name, listenHost, port string
 		want                   int
 	}{
 		{"public default", "", "", 8080},
 		{"public explicit", "", "8080", 8080},
-		{"sidecar default", "127.0.0.1", "", 8081},
-		{"sidecar fly service port", "127.0.0.1", "8080", 8081},
-		{"sidecar explicit", "127.0.0.1", "8081", 8081},
-		{"sidecar custom", "127.0.0.1", "8082", 8082},
+		{"loopback default", "127.0.0.1", "", 8080},
+		{"loopback explicit 8080", "127.0.0.1", "8080", 8080},
+		{"loopback explicit 8081", "127.0.0.1", "8081", 8081},
+		{"loopback custom", "127.0.0.1", "8082", 8082},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("INTERNAL_PORT", "9090")
@@ -75,6 +80,39 @@ func TestConfigSidecarPort(t *testing.T) {
 			}
 			if cfg.port != tc.want {
 				t.Fatalf("port = %d, want %d", cfg.port, tc.want)
+			}
+		})
+	}
+}
+
+func TestHealthJSON(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		pingErr   error
+		releaseID string
+		wantCode  int
+		wantStat  string
+	}{
+		{"pass", nil, "abc1234", http.StatusOK, "pass"},
+		{"fail", errors.New("db down"), "abc1234", http.StatusServiceUnavailable, "fail"},
+		{"special chars", nil, "v1\x01\"test\"", http.StatusOK, "pass"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := health(func(context.Context) error { return tc.pingErr }, tc.releaseID)
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/health", nil))
+			if w.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d", w.Code, tc.wantCode)
+			}
+			var body struct {
+				Status    string `json:"status"`
+				ReleaseID string `json:"releaseId"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("invalid json %q: %v", w.Body.String(), err)
+			}
+			if body.Status != tc.wantStat || body.ReleaseID != tc.releaseID {
+				t.Fatalf("body = %+v", body)
 			}
 		})
 	}

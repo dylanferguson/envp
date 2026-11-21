@@ -18,6 +18,7 @@ type Job string
 const JobSweep Job = "sweep"
 
 type Recorder struct {
+	reg            *prometheus.Registry
 	requests       *prometheus.CounterVec
 	duration       *prometheus.HistogramVec
 	created        prometheus.Counter
@@ -32,6 +33,7 @@ func New() *Recorder {
 	reg := prometheus.NewRegistry()
 	auto := promauto.With(reg)
 	rec := &Recorder{
+		reg: reg,
 		requests: auto.NewCounterVec(prometheus.CounterOpts{
 			Name: "http_requests_total",
 			Help: "HTTP requests by method, handler, and status.",
@@ -73,6 +75,34 @@ func New() *Recorder {
 }
 
 func (r *Recorder) Handler() http.Handler { return r.handler }
+
+func (r *Recorder) RegisterStorageStats(stats func() (shares, bytes int64, err error)) {
+	r.reg.MustRegister(&storageCollector{
+		sharesDesc: prometheus.NewDesc("shares_active", "Active shares currently stored.", nil, nil),
+		bytesDesc:  prometheus.NewDesc("shares_active_bytes", "Total envelope bytes currently stored.", nil, nil),
+		stats:      stats,
+	})
+}
+
+type storageCollector struct {
+	sharesDesc *prometheus.Desc
+	bytesDesc  *prometheus.Desc
+	stats      func() (shares, bytes int64, err error)
+}
+
+func (c *storageCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.sharesDesc
+	ch <- c.bytesDesc
+}
+
+func (c *storageCollector) Collect(ch chan<- prometheus.Metric) {
+	shares, bytes, err := c.stats()
+	if err != nil {
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(c.sharesDesc, prometheus.GaugeValue, float64(shares))
+	ch <- prometheus.MustNewConstMetric(c.bytesDesc, prometheus.GaugeValue, float64(bytes))
+}
 
 func (r *Recorder) RecordJob(name Job, processed int64, took time.Duration, err error) {
 	job := string(name)

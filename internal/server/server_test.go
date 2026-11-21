@@ -144,6 +144,67 @@ func TestBodyAndShareLimits(t *testing.T) {
 	}
 }
 
+func TestPrettyPrintedMaxShare(t *testing.T) {
+	h, _ := testServer(t, Config{})
+	body, err := json.MarshalIndent(map[string]any{
+		"ttl_seconds": maxTTLSeconds,
+		"max_reads":   maxMaxReads,
+		"envelope":    base64.RawURLEncoding.EncodeToString(make([]byte, maxShareBytes)),
+		"note":        "pretty-printed payload with extra field",
+	}, "", "    ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := request(h, "POST", "/api/v1/shares", string(body))
+	if w.Code != 201 {
+		t.Fatalf("pretty-printed max share: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestParseOriginIPv6(t *testing.T) {
+	for _, tc := range []struct {
+		raw, want string
+	}{
+		{"http://[::1]", "http://[::1]"},
+		{"https://[::1]:443", "https://[::1]"},
+		{"http://[::1]:8080", "http://[::1]:8080"},
+		{"https://[2001:DB8::1]", "https://[2001:db8::1]"},
+	} {
+		got, err := ParseOrigin(tc.raw)
+		if err != nil || got != tc.want {
+			t.Errorf("ParseOrigin(%q) = %q, %v; want %q", tc.raw, got, err, tc.want)
+		}
+	}
+}
+
+func TestNonGetPostMethodsGoThroughMiddleware(t *testing.T) {
+	h, _ := testServer(t, Config{})
+
+	w := request(h, http.MethodDelete, "/api/v1/shares", "")
+	assertError(t, w, http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed.")
+	if w.Header().Get("Allow") != "POST" {
+		t.Fatalf("Allow = %q, want POST", w.Header().Get("Allow"))
+	}
+	if w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", w.Header().Get("Cache-Control"))
+	}
+
+	w = request(h, http.MethodPut, "/api/v1/shares/01ARZ3NDEKTSV4RRFFQ69G5FAV", "")
+	assertError(t, w, http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed.")
+	if w.Header().Get("Allow") != "GET, HEAD" {
+		t.Fatalf("Allow = %q, want GET, HEAD", w.Header().Get("Allow"))
+	}
+	if w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", w.Header().Get("Cache-Control"))
+	}
+
+	w = request(h, http.MethodDelete, "/api/v1/missing", "")
+	assertError(t, w, http.StatusNotFound, "not_found", "Not found.")
+	if w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", w.Header().Get("Cache-Control"))
+	}
+}
+
 func TestUnknownExpiredAndInvalidIDs(t *testing.T) {
 	h, db := testServer(t, Config{})
 	expired, err := db.Create(t.Context(), []byte{1}, -time.Minute, 20)
