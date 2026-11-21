@@ -1,5 +1,25 @@
-import type { Page } from "@playwright/test";
-import { expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
+
+function testClientIp(testId: string): string {
+  let hash = 0;
+  for (let i = 0; i < testId.length; i++) {
+    hash = (hash * 31 + testId.charCodeAt(i)) >>> 0;
+  }
+  const third = (hash >>> 8) & 0xff;
+  const fourth = (hash & 0xfe) + 1;
+  return `10.99.${third}.${fourth}`;
+}
+
+export const test = base.extend({
+  extraHTTPHeaders: async ({ extraHTTPHeaders }, use, testInfo) => {
+    await use({
+      ...extraHTTPHeaders,
+      "Fly-Client-Ip": testClientIp(testInfo.testId),
+    });
+  },
+});
+
+export { expect };
 
 export const SAMPLE_ENV = "API_KEY=e2e-secret\nDB_HOST=localhost\n";
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseMaxReads, parseShareId, parseShareLink } from "../src/lib/limits.js";
+import {
+  formatExpiryLabel,
+  parseMaxReads,
+  parseShareId,
+  parseShareLink,
+  shareIdFromPath,
+} from "../src/lib/limits.js";
 
 const SHARE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const KEY_FRAGMENT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq";
@@ -40,5 +46,23 @@ describe("parseShareLink", () => {
   it("rejects a link with no key", () => {
     expect(parseShareLink(`/share/${SHARE_ID}`)).toBeNull();
     expect(parseShareLink("not-a-share-link")).toBeNull();
+  });
+
+  it("accepts a trailing slash on /share/:id/", () => {
+    expect(shareIdFromPath(`/share/${SHARE_ID}/`)).toBe(SHARE_ID);
+    expect(parseShareLink(`https://envp.example/share/${SHARE_ID}/#${KEY_FRAGMENT}`)).toEqual({
+      shareId: SHARE_ID,
+      keyFragment: KEY_FRAGMENT,
+    });
+  });
+});
+
+describe("formatExpiryLabel", () => {
+  it("formats minutes, whole hours, and mixed hours and minutes", () => {
+    expect(formatExpiryLabel(60)).toBe("expires in 1m");
+    expect(formatExpiryLabel(3600)).toBe("expires in 1h");
+    expect(formatExpiryLabel(5400)).toBe("expires in 1h 30m");
+    expect(formatExpiryLabel(86340)).toBe("expires in 23h 59m");
+    expect(formatExpiryLabel(86400)).toBe("expires in 24h");
   });
 });

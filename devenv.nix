@@ -103,11 +103,19 @@ in
     };
     smoke-tests = {
       description = "Smoke-test both images";
-      exec = "build-images && node scripts/smoke-container.mjs && node scripts/smoke-nginx.mjs";
+      exec = ''
+        set -e
+        if [ -z "''${SKIP_IMAGE_BUILD:-}" ]; then build-images; fi
+        node scripts/smoke-container.mjs && node scripts/smoke-nginx.mjs
+      '';
     };
     e2e-tests = {
       description = "Playwright against docker compose (nginx + API)";
-      exec = ''build-images && playwright test "$@"'';
+      exec = ''
+        set -e
+        if [ -z "''${SKIP_IMAGE_BUILD:-}" ]; then build-images; fi
+        playwright test "$@"
+      '';
     };
     fuzz-tests = {
       description = "Bombadil explores the UI from `devenv up`, using your installed Chrome";

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -268,8 +269,8 @@ func TestConcurrentConsume(t *testing.T) {
 	}
 }
 
-func TestSweepCollectsExhausted(t *testing.T) {
-	s := testStore(t)
+func TestConsumeDeletesExhaustedImmediately(t *testing.T) {
+	s := testStoreWithLimits(t, Limits{MaxActiveShares: 1})
 	created, err := s.Create(t.Context(), []byte{1}, time.Hour*24, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -277,14 +278,64 @@ func TestSweepCollectsExhausted(t *testing.T) {
 	if _, err := s.Consume(t.Context(), created.ID); err != nil {
 		t.Fatal(err)
 	}
-	if count, err := s.Sweep(t.Context()); err != nil || count != 1 {
+	// Row must be gone immediately, freeing capacity without waiting for Sweep.
+	var remaining int
+	if err := s.db.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM shares").Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Fatalf("rows remaining after final consume = %d, want 0", remaining)
+	}
+	if _, err := s.Create(t.Context(), []byte{2}, time.Hour, 1); err != nil {
+		t.Fatalf("create after exhaust: %v", err)
+	}
+	if count, err := s.Sweep(t.Context()); err != nil || count != 0 {
 		t.Fatalf("sweep: %d, %v", count, err)
 	}
-	if err := s.Peek(t.Context(), created.ID); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("peek after sweep: %v", err)
+}
+
+func TestCreateReclaimsExpiredAtCapacity(t *testing.T) {
+	s := testStoreWithLimits(t, Limits{MaxActiveShares: 1})
+	now := time.Now()
+	s.now = func() time.Time { return now }
+	if _, err := s.Create(t.Context(), []byte{1}, time.Minute, 20); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := s.Consume(t.Context(), created.ID); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("consume after sweep: %v", err)
+	now = now.Add(2 * time.Minute)
+	if _, err := s.Create(t.Context(), []byte{2}, time.Hour, 20); err != nil {
+		t.Fatalf("create with expired share at cap: %v", err)
+	}
+}
+
+func TestConcurrentCreateRespectsCapacity(t *testing.T) {
+	s := testStoreWithLimits(t, Limits{MaxActiveShares: 10})
+	var successes atomic.Int32
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := s.Create(t.Context(), []byte{1, 2, 3}, time.Hour, 5)
+			if errors.Is(err, ErrCapacity) {
+				return
+			}
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			successes.Add(1)
+		}()
+	}
+	wg.Wait()
+	if successes.Load() != 10 {
+		t.Fatalf("successes = %d, want 10", successes.Load())
+	}
+	var rows int
+	if err := s.db.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM shares").Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 10 {
+		t.Fatalf("rows = %d, want 10", rows)
 	}
 }
 
@@ -344,5 +395,70 @@ func TestSweepEveryStopsWithoutCallback(t *testing.T) {
 	}
 	if called {
 		t.Fatal("callback ran after cancel")
+	}
+}
+
+func TestSweepUsesExpiresAtIndex(t *testing.T) {
+	s := testStore(t)
+	rows, err := s.db.QueryContext(t.Context(), "EXPLAIN QUERY PLAN "+deleteExpiredSQL, int64(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var plan strings.Builder
+	for rows.Next() {
+		var id, parent, notused int
+		var detail string
+		if err := rows.Scan(&id, &parent, &notused, &detail); err != nil {
+			t.Fatal(err)
+		}
+		plan.WriteString(detail)
+		plan.WriteByte('\n')
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan.String(), "shares_expires_at") {
+		t.Fatalf("sweep query plan does not use shares_expires_at index:\n%s", plan.String())
+	}
+}
+
+func TestStatsTracksSharesAndBytes(t *testing.T) {
+	s := testStore(t)
+	now := time.Now()
+	s.now = func() time.Time { return now }
+
+	st, err := s.Stats(t.Context())
+	if err != nil || st.ActiveShares != 0 || st.ActiveBytes != 0 {
+		t.Fatalf("initial stats = %+v, %v", st, err)
+	}
+
+	one, err := s.Create(t.Context(), []byte{1, 2, 3}, time.Minute, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Create(t.Context(), []byte{4, 5, 6, 7, 8}, time.Minute, 5); err != nil {
+		t.Fatal(err)
+	}
+	st, err = s.Stats(t.Context())
+	if err != nil || st.ActiveShares != 2 || st.ActiveBytes != 8 {
+		t.Fatalf("after create stats = %+v, %v", st, err)
+	}
+
+	if _, err := s.Consume(t.Context(), one.ID); err != nil {
+		t.Fatal(err)
+	}
+	st, err = s.Stats(t.Context())
+	if err != nil || st.ActiveShares != 1 || st.ActiveBytes != 5 {
+		t.Fatalf("after exhaust stats = %+v, %v", st, err)
+	}
+
+	now = now.Add(2 * time.Minute)
+	if _, err := s.Sweep(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	st, err = s.Stats(t.Context())
+	if err != nil || st.ActiveShares != 0 || st.ActiveBytes != 0 {
+		t.Fatalf("after sweep stats = %+v, %v", st, err)
 	}
 }

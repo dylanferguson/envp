@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers.js";
 
 const INTERNAL_URL = "http://127.0.0.1:9090";
 

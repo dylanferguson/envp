@@ -124,37 +124,37 @@
 
   @keyframes tree-node-in {
     from {
-      color: #7c828b;
+      color: var(--muted);
     }
     to {
-      color: #48d597;
+      color: var(--phosphor);
     }
   }
 
   @keyframes tree-twig-in {
     from {
-      color: #23262b;
+      color: var(--hairline);
     }
     to {
-      color: #48d597;
+      color: var(--phosphor);
     }
   }
 
   @keyframes tree-twig-error-in {
     from {
-      color: #23262b;
+      color: var(--hairline);
     }
     to {
-      color: #ff6a80;
+      color: var(--coral);
     }
   }
 
   @keyframes tree-node-error-in {
     from {
-      color: #7c828b;
+      color: var(--muted);
     }
     to {
-      color: #ff6a80;
+      color: var(--coral);
     }
   }
 

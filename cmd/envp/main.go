@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -83,10 +84,6 @@ func loadConfig() (config, error) {
 	}
 	c.http.PublicOrigin = origin
 	c.listenHost = os.Getenv("LISTEN_HOST")
-	// nginx owns :8080. Image ENV and Fly's service port still default PORT to 8080.
-	if c.listenHost == "127.0.0.1" && c.port == 8080 {
-		c.port = 8081
-	}
 	if c.port == c.internalPort {
 		return c, errors.New("INTERNAL_PORT must differ from PORT")
 	}
@@ -126,12 +123,15 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		id = id[:7]
 	}
 	rec := metrics.New()
-	sweepStarted := time.Now()
-	n, err := db.Sweep(startup)
-	rec.RecordJob(metrics.JobSweep, n, time.Since(sweepStarted), err)
-	if err != nil {
-		return err
-	}
+	rec.RegisterStorageStats(func() (int64, int64, error) {
+		queryCtx, queryCancel := context.WithTimeout(ctx, 2*time.Second)
+		defer queryCancel()
+		st, err := db.Stats(queryCtx)
+		if err != nil {
+			return 0, 0, err
+		}
+		return st.ActiveShares, st.ActiveBytes, nil
+	})
 	handler, err := server.New(db, cfg.http, logger, rec)
 	if err != nil {
 		return err
@@ -155,12 +155,18 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		db.SweepEvery(maintenance, time.Minute, func(n int64, took time.Duration, err error) {
+		recordSweep := func(n int64, took time.Duration, err error) {
 			rec.RecordJob(metrics.JobSweep, n, took, err)
 			if err != nil {
 				logger.Error("sweep failed", "error", err)
 			}
-		})
+		}
+		start := time.Now()
+		n, err := db.Sweep(maintenance)
+		if err == nil || maintenance.Err() == nil {
+			recordSweep(n, time.Since(start), err)
+		}
+		db.SweepEvery(maintenance, time.Minute, recordSweep)
 	}()
 	defer func() { stopMaintenance(); wg.Wait() }()
 	serveErr := make(chan error, 2)
@@ -180,6 +186,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	return shutdownHTTP(publicServer, internalServer)
 }
 
+type healthResponse struct {
+	Status    string `json:"status"`
+	ReleaseID string `json:"releaseId"`
+}
+
 func health(ping func(context.Context) error, releaseID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		status, code := "pass", http.StatusOK
@@ -188,7 +199,7 @@ func health(ping func(context.Context) error, releaseID string) http.HandlerFunc
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_, _ = fmt.Fprintf(w, `{"status":%q,"releaseId":%q}`, status, releaseID)
+		_ = json.NewEncoder(w).Encode(healthResponse{Status: status, ReleaseID: releaseID})
 	}
 }
 

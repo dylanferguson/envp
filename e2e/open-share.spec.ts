@@ -1,17 +1,29 @@
-import { expect, test } from "@playwright/test";
 import {
   UNKNOWN_SHARE_ID,
   VALID_KEY_FRAGMENT,
   createShare,
+  expect,
   expectDecryptedEnv,
+  test,
 } from "./helpers.js";
 
 test.describe("open share", () => {
-  test("roundtrips create → open via share URL", async ({ page }) => {
+  test("roundtrips create → open via share URL and scrubs the key hash", async ({ page }) => {
     const url = await createShare(page);
     await page.goto(url);
     await expectDecryptedEnv(page);
     await expect(page.getByRole("textbox", { name: "decrypted .env" })).toBeFocused();
+    expect(await page.evaluate(() => location.hash)).toBe("");
+  });
+
+  test("opens /share/:id/ and /open/ with trailing slashes", async ({ page }) => {
+    const url = await createShare(page);
+    const parsed = new URL(url);
+    await page.goto(`${parsed.origin}${parsed.pathname}/${parsed.hash}`);
+    await expectDecryptedEnv(page);
+
+    await page.goto("/open/");
+    await expect(page.getByRole("textbox", { name: "paste shared link" })).toBeVisible();
   });
 
   test("opens a pasted link on /open", async ({ page }) => {

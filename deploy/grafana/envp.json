@@ -897,13 +897,135 @@
       "type": "timeseries"
     },
     {
+      "datasource": "${source}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 40000
+              },
+              {
+                "color": "red",
+                "value": 47500
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "id": 18,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": "${source}",
+          "exemplar": true,
+          "expr": "sum(shares_active{app=~\"^$app$\"})",
+          "interval": "",
+          "legendFormat": "Active shares",
+          "refId": "A"
+        }
+      ],
+      "title": "Active shares",
+      "type": "stat"
+    },
+    {
+      "datasource": "${source}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 214748364
+              },
+              {
+                "color": "red",
+                "value": 255013683
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "id": 19,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": "${source}",
+          "exemplar": true,
+          "expr": "sum(shares_active_bytes{app=~\"^$app$\"})",
+          "interval": "",
+          "legendFormat": "Active bytes",
+          "refId": "A"
+        }
+      ],
+      "title": "Active share bytes",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 37
       },
       "id": 12,
       "panels": [],
@@ -964,7 +1086,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 34
+        "y": 38
       },
       "id": 13,
       "options": {
@@ -1045,7 +1167,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 34
+        "y": 38
       },
       "id": 14,
       "options": {

@@ -19,12 +19,16 @@ import (
 )
 
 const (
-	minTTLSeconds      = 60
-	maxTTLSeconds      = 86400
-	minMaxReads        = 1
-	maxMaxReads        = 100
-	maxShareBytes      = 65570
-	maxCreateJSONBytes = 64 + (maxShareBytes*4+2)/3
+	minTTLSeconds       = 60
+	maxTTLSeconds       = 86400
+	minMaxReads         = 1
+	maxMaxReads         = 100
+	envelopeHeaderBytes = 18
+	maxPlaintextBytes   = 65536
+	gcmTagBytes         = 16
+	maxShareBytes       = envelopeHeaderBytes + maxPlaintextBytes + gcmTagBytes
+	// Base64url-encoded max envelope plus headroom for JSON fields and formatting.
+	maxCreateJSONBytes = (maxShareBytes*4+2)/3 + 4096
 )
 
 type Config struct {
@@ -67,12 +71,13 @@ type apiError struct {
 func (e apiError) Error() string { return e.message }
 
 var (
-	errInvalidRequest  = apiError{http.StatusBadRequest, "invalid_request", "The request could not be processed."}
-	errForbidden       = apiError{http.StatusForbidden, "forbidden", "The request origin is not allowed."}
-	errNotFound        = apiError{http.StatusNotFound, "not_found", "Not found."}
-	errShareNotFound   = apiError{http.StatusNotFound, "not_found", "Share not found."}
-	errPayloadTooLarge = apiError{http.StatusRequestEntityTooLarge, "payload_too_large", "Request body is too large."}
-	errStorageFull     = apiError{http.StatusServiceUnavailable, "storage_full", "Share storage is full. Try again later."}
+	errInvalidRequest   = apiError{http.StatusBadRequest, "invalid_request", "The request could not be processed."}
+	errForbidden        = apiError{http.StatusForbidden, "forbidden", "The request origin is not allowed."}
+	errNotFound         = apiError{http.StatusNotFound, "not_found", "Not found."}
+	errShareNotFound    = apiError{http.StatusNotFound, "not_found", "Share not found."}
+	errMethodNotAllowed = apiError{http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed."}
+	errPayloadTooLarge  = apiError{http.StatusRequestEntityTooLarge, "payload_too_large", "Request body is too large."}
+	errStorageFull      = apiError{http.StatusServiceUnavailable, "storage_full", "Share storage is full. Try again later."}
 )
 
 type server struct {
@@ -90,13 +95,16 @@ func New(db *store.Store, config Config, logger *slog.Logger, rec *metrics.Recor
 		config.PublicOrigin = origin
 	}
 	s := &server{db: db, config: config, log: logger}
-	track := rec.Instrument
+	wrap := func(h http.HandlerFunc) http.Handler {
+		return rec.Instrument(s.recover(noStore(h)))
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/shares", track(s.recover(noStore(s.createShare))))
-	mux.Handle("GET /api/v1/shares/{id}", track(s.recover(noStore(s.readShare))))
-	mux.Handle("GET /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
-	mux.Handle("POST /api/{path...}", track(s.recover(noStore(s.apiNotFound))))
+	mux.Handle("POST /api/v1/shares", wrap(s.createShare))
+	mux.Handle("/api/v1/shares", wrap(s.methodNotAllowed("POST")))
+	mux.Handle("GET /api/v1/shares/{id}", wrap(s.readShare))
+	mux.Handle("/api/v1/shares/{id}", wrap(s.methodNotAllowed("GET, HEAD")))
+	mux.Handle("/api/{path...}", wrap(s.apiNotFound))
 
 	return nosniff(mux), nil
 }
@@ -187,6 +195,13 @@ func (s *server) readShare(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) apiNotFound(w http.ResponseWriter, r *http.Request) {
 	s.error(w, r, errNotFound)
+}
+
+func (s *server) methodNotAllowed(allow string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Allow", allow)
+		s.error(w, r, errMethodNotAllowed)
+	}
 }
 
 func (s *server) expectedOrigin(r *http.Request) string {
@@ -284,6 +299,9 @@ func ParseOrigin(raw string) (string, error) {
 		port = ""
 	}
 	if port == "" {
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
 		return u.Scheme + "://" + host, nil
 	}
 	return u.Scheme + "://" + net.JoinHostPort(host, port), nil

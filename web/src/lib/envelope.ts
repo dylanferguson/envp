@@ -48,7 +48,7 @@ export async function importKeyFromFragment(fragment: KeyFragment): Promise<Cryp
     toArrayBuffer(raw),
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt"],
+    ["decrypt"],
   );
 }
 
